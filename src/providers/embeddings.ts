@@ -1,5 +1,5 @@
 /**
- * Embedding providers for llmwiki.
+ * Embedding providers for wikimem.
  * Supports Google Gemini (text-embedding-004), OpenAI (text-embedding-3-small), and local fallback.
  */
 

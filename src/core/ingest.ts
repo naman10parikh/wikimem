@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, statSync } from 'node:fs';
 import { join, basename, extname, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import type { LLMProvider } from '../providers/types.js';
 import type { VaultConfig } from './vault.js';
 import { readWikiPage, writeWikiPage, listWikiPages, slugify } from './vault.js';

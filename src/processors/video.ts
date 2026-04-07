@@ -37,7 +37,7 @@ export async function processVideo(filePath: string): Promise<VideoResult> {
   }
 
   // Step 1: Extract audio track via ffmpeg
-  const audioPath = join(tmpdir(), `llmwiki-video-${Date.now()}.wav`);
+  const audioPath = join(tmpdir(), `wikimem-video-${Date.now()}.wav`);
   const extractResult = spawnSync('ffmpeg', [
     '-i', filePath,
     '-vn',                    // no video

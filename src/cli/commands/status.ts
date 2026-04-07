@@ -6,6 +6,7 @@ import { getVaultConfig, getVaultStats } from '../../core/vault.js';
 
 interface StatusOptions {
   vault?: string;
+  json?: boolean;
 }
 
 export function registerStatusCommand(program: Command): void {
@@ -13,16 +14,33 @@ export function registerStatusCommand(program: Command): void {
     .command('status')
     .description('Show vault statistics')
     .option('-v, --vault <path>', 'Vault root directory', '.')
+    .option('--json', 'Output as JSON (machine-readable)')
     .action((options: StatusOptions) => {
       const vaultRoot = resolve(options.vault ?? '.');
       const config = getVaultConfig(vaultRoot);
 
       if (!existsSync(config.schemaPath)) {
-        console.error(chalk.red('Not a wikimem vault. Run `wikimem init` first.'));
+        if (options.json) {
+          console.log(JSON.stringify({ error: 'Not a wikimem vault', hint: 'Run `wikimem init` first' }));
+        } else {
+          console.error(chalk.red('Not a wikimem vault. Run `wikimem init` first.'));
+        }
         process.exit(1);
       }
 
       const stats = getVaultStats(config);
+
+      if (options.json) {
+        console.log(JSON.stringify({
+          pages: stats.pageCount,
+          words: stats.wordCount,
+          sources: stats.sourceCount,
+          wikilinks: stats.wikilinks,
+          orphanPages: stats.orphanPages,
+          lastUpdated: stats.lastUpdated,
+        }));
+        return;
+      }
 
       console.log();
       console.log(chalk.bold('wikimem vault status'));
@@ -34,5 +52,6 @@ export function registerStatusCommand(program: Command): void {
       console.log(`  ${chalk.blue('Orphan pages:')} ${stats.orphanPages > 0 ? chalk.yellow(stats.orphanPages) : chalk.green(0)}`);
       console.log(`  ${chalk.blue('Last updated:')} ${stats.lastUpdated}`);
       console.log();
+      console.log(chalk.dim('Next: wikimem lint — check wiki health'));
     });
 }

@@ -135,7 +135,7 @@ export function getDefaultObsidianConfig(): ObsidianConfig {
 
 /**
  * Generate the .obsidian/ directory with optimal config files
- * for displaying an llmwiki vault.
+ * for displaying a wikimem vault.
  */
 export function setupObsidian(root: string): void {
   const obsidianDir = join(root, '.obsidian');

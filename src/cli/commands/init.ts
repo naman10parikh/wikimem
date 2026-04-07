@@ -26,7 +26,14 @@ export function registerInitCommand(program: Command): void {
         process.exit(1);
       }
 
-      console.log(chalk.blue(`Initializing wikimem vault in ${root} (template: ${template})...`));
+      // ASCII art banner
+      console.log();
+      console.log(chalk.hex('#6b21a8').bold(' ╦ ╦╦╦╔═╦╔╦╗╔═╗╔╦╗'));
+      console.log(chalk.hex('#6b21a8').bold(' ║║║║╠╩╗║║║║║╠═╝║║║'));
+      console.log(chalk.hex('#6b21a8').bold(' ╚╩╝╩╩ ╩╩╩ ╩╩╚═╝╩ ╩'));
+      console.log(chalk.dim(` v0.1.0 — self-improving knowledge bases`));
+      console.log();
+      console.log(chalk.blue(`Initializing vault in ${root} (template: ${template})...`));
 
       // Create directory structure
       const dirs = [

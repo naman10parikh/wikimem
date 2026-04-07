@@ -46,7 +46,7 @@ export async function processAudio(filePath: string): Promise<AudioResult> {
 }
 
 async function transcribeWithWhisper(filePath: string, title: string): Promise<AudioResult> {
-  const tmpOutput = join(tmpdir(), `llmwiki-whisper-${Date.now()}`);
+  const tmpOutput = join(tmpdir(), `wikimem-whisper-${Date.now()}`);
 
   const result = spawnSync('whisper', [
     filePath,
