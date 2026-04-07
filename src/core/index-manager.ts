@@ -14,6 +14,9 @@ export async function updateIndex(
   const indexPath = config.indexPath;
   let indexContent = existsSync(indexPath) ? readFileSync(indexPath, 'utf-8') : '';
 
+  // Remove placeholder text after first real content is added
+  indexContent = indexContent.replace(/\n_No sources ingested yet\.[^_]*_\n?/g, '\n');
+
   for (const page of newPages) {
     const link = `- [[${page.title}]] — ${page.summary}`;
     const sectionHeader = `## ${capitalize(page.category)}`;

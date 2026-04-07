@@ -98,7 +98,11 @@ async function scrapeRss(source: SourceConfig, destDir: string): Promise<number>
     }
 
     return count;
-  } catch {
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes('ENOTFOUND') || msg.includes('fetch failed') || msg.includes('abort')) {
+      console.error(`  Network error scraping ${source.name}: check URL and internet connection`);
+    }
     return 0;
   }
 }

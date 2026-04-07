@@ -1,78 +1,102 @@
-# MASTER TODOs — wikimem
+# MASTER TODOs — wikimem v0.2.0
 
-## P0: CRITICAL (Must fix before V1)
+**npm:** https://www.npmjs.com/package/wikimem
+**GitHub:** https://github.com/naman10parikh/llmwiki
+**Published:** April 7, 2026 | 15 commits | 15K+ lines
 
-### Web UI
-- [ ] Page clicking shows rendered markdown (not raw), like Obsidian
-- [ ] Metadata/frontmatter displayed nicely (tags, dates, sources, summary)
-- [ ] Graph nodes clickable → opens page content in side panel
-- [ ] Markdown rendering: headings, lists, links, code blocks, wikilinks as clickable
-- [ ] Wikilinks in rendered pages navigate to other pages
-- [ ] Search bar in web UI (search pages, jump to result)
-- [ ] File upload via web UI (drag-drop to raw/ folder)
-- [ ] Show processing status when ingesting
-- [ ] CLI parity: ingest, query, lint, improve all accessible from web UI
-- [ ] Mobile-responsive layout
+---
 
-### Terminal Experience
-- [ ] Global install works (`npm install -g wikimem` → `wikimem` command)
-- [ ] Nice ASCII art on `wikimem init` (like AgentGrid)
-- [ ] Colored, polished output on every command
-- [ ] Progress bars for long operations
-- [ ] `wikimem` with no args shows quick help + status if in a vault dir
+## DONE (with evidence)
 
-### Ingestion Pipeline (E2E verified)
-- [ ] Text/markdown: tested E2E ✅
-- [ ] URL: tested E2E ✅
-- [ ] Image (Claude vision): test with real image from chairman's machine
-- [ ] Audio (Whisper/Deepgram): test with real audio file
-- [ ] Video (ffmpeg+Whisper): test with real video file
-- [ ] PDF: test with real PDF (resume, paper)
-- [ ] DOCX: test with real Word doc
-- [ ] XLSX: test with real Excel file
-- [ ] PPTX: test with real PowerPoint
-- [ ] Verify raw/ folder structure after each ingest (date-stamped)
-- [ ] Verify wiki/ pages created with correct frontmatter + wikilinks
-- [ ] Verify index.md updated
-- [ ] Verify log.md updated
-- [ ] Verify .obsidian/ graph shows new nodes
+### Core CLI
+- [x] `wikimem init` — ✅ ASCII banner, vault created with AGENTS.md, config.yaml, raw/, wiki/, .obsidian/
+- [x] `wikimem ingest <file>` — ✅ Karpathy gist → 7 pages, 49 wikilinks
+- [x] `wikimem ingest <url>` — ✅ GitHub gist URL → 5 pages, 35 wikilinks
+- [x] `wikimem ingest <dir> --recursive` — Built, needs E2E
+- [x] `wikimem query "..."` — ✅ Rich answer with [[wikilinks]], 8 sources
+- [x] `wikimem lint` — ✅ 43 issues found correctly
+- [x] `wikimem status` — ✅ 13 pages, 2578 words, 108 wikilinks
+- [x] `wikimem watch` — Built, needs E2E
+- [x] `wikimem scrape` — Built, RSS tested by swarm
+- [x] `wikimem improve` — ✅ Score 96/100
+- [x] `wikimem duplicates` — Built, needs E2E
+- [x] `wikimem serve` — ✅ Server starts, API responds
 
-### Local Model Support
-- [ ] Test with Ollama (llama3.2) — no API key needed
-- [ ] Graceful fallback when no API key and no Ollama
-- [ ] Clear instructions: "No LLM configured. Install Ollama or set ANTHROPIC_API_KEY"
+### Multi-Modal (CEO-tested with REAL files)
+- [x] Text/Markdown — ✅ works
+- [x] URL — ✅ Firecrawl + fetch
+- [x] Image (Claude Vision) — ✅ diagram → 5 pages, 59 wikilinks
+- [x] DOCX (mammoth) — ✅ "Idea of India" → 5 pages, 40 wikilinks
+- [x] PDF — ❌ FAILS on real PDFs (needs pdf-parse)
+- [x] XLSX — Built, not tested
+- [x] PPTX — Built, not tested
+- [x] Audio — Built, not tested (needs Whisper)
+- [x] Video — Built, not tested (needs ffmpeg)
 
-### Folder Structure
-- [ ] Show evolving folder structure after each operation
-- [ ] raw/{date}/ subdirs created correctly
-- [ ] wiki/sources/, wiki/entities/, wiki/concepts/, wiki/syntheses/ populated
-- [ ] All markdown files have correct YAML frontmatter
+### Infrastructure
+- [x] npm published (v0.2.0) — ✅
+- [x] GitHub repo — ✅ 15 commits
+- [x] .obsidian/ config — ✅ graph colors by folder
+- [x] Semantic dedup — Built
+- [x] Interactive tagging — Built, --tags tested
+- [x] Gemini embeddings — Built
+- [x] Hybrid search — Built
+- [x] 58 tests (52 passing, 6 need fix)
+- [x] CI workflow — Built
+- [x] Web UI markdown rendering — Built v0.2.0
 
-## P1: IMPORTANT (Should fix)
+---
 
-### Web UI Enhancements
-- [ ] Dark theme matching Energy design system (#141312 bg, purple accent)
-- [ ] Graph coloring by page type (sources=blue, entities=green, etc.)
-- [ ] Recently ingested sources timeline
-- [ ] Vault health score displayed
-- [ ] Settings page (configure provider, API key, template)
+## NOT DONE — P0
 
-### Automations
-- [ ] Scrape E2E: add RSS source, run scrape, verify files in raw/
-- [ ] Improve E2E: run improve, verify it creates missing pages
-- [ ] Watch mode: drop file in raw/, verify auto-ingest
-- [ ] Scheduled execution (node-cron for scrape + improve)
+| # | Bug/Feature | Status | Evidence |
+|---|-------------|--------|----------|
+| 1 | PDF extraction fails on real PDFs | BUG | Resume came as "pdf-extraction-failed" |
+| 2 | Web UI page click → rendered markdown | NEEDS VISUAL TEST | marked.js added but not verified in browser |
+| 3 | Web UI search bar | NOT BUILT | |
+| 4 | Web UI file upload | NOT BUILT | |
+| 5 | Global install (`npm i -g wikimem` → `wikimem` works) | NOT VERIFIED | bin entry may be broken |
+| 6 | 6 unit tests failing | BUG | checkDuplicate signature changed |
+| 7 | `wikimem` no args → show status or help | NOT BUILT | |
+| 8 | XLSX test with real file | NOT TESTED | |
+| 9 | PPTX test with real file | NOT TESTED | |
+| 10 | Audio test | NOT TESTED | needs Whisper |
+| 11 | Video test | NOT TESTED | needs ffmpeg |
+| 12 | Obsidian graph view visual test | NOT TESTED | |
+| 13 | Duplicate detection E2E | NOT TESTED | |
+| 14 | Watch mode E2E | NOT TESTED | |
 
-### Multi-user
-- [ ] How to mock multiple users on one machine
-- [ ] Shared vault concept (business template)
-- [ ] Per-user raw/ subdirectories
+## NOT DONE — P1
 
-## P2: NICE TO HAVE
+| # | Feature | Status |
+|---|---------|--------|
+| 15 | `init --from-repo` (codebase → wiki) | NOT BUILT |
+| 16 | `init --from-folder` (existing files → wiki) | NOT BUILT |
+| 17 | `add-source` (incremental) | NOT BUILT |
+| 18 | Ollama local model test | NOT TESTED |
+| 19 | Scheduled automations (cron) | NOT BUILT |
+| 20 | Multi-user vault | NOT BUILT |
+| 21 | qmd integration | NOT BUILT |
+| 22 | CLI parity in web UI | NOT BUILT |
 
-- [ ] MCP server mode (for Claude Code integration)
-- [ ] Obsidian plugin that triggers wikimem from within Obsidian
-- [ ] Export wiki as static site (MkDocs/Docusaurus)
-- [ ] qmd integration for advanced search
-- [ ] LLM Council with multiple models for improve command
-- [ ] Google 2.0 embeddings for video/audio (multimodal)
+---
+
+## CEO Testing Log
+
+| Test | Result | Evidence |
+|------|--------|----------|
+| init vault | ✅ | ASCII banner, 8 files created |
+| ingest markdown | ✅ | 7 pages, 49 wikilinks |
+| ingest URL | ✅ | 5 pages, 35 wikilinks |
+| ingest JPEG (vision) | ✅ | 5 pages, 59 wikilinks |
+| ingest DOCX | ✅ | 5 pages, 40 wikilinks |
+| ingest PDF | ❌ | "pdf-extraction-failed" |
+| query | ✅ | Rich answer with citations |
+| lint | ✅ | 43 issues found |
+| improve dry-run | ✅ | Score 96/100 |
+| status | ✅ | 13 pages, 2578 words |
+| serve API | ✅ | JSON responses correct |
+| serve HTML | ✅ | HTML loads in curl |
+| web UI visual | ⬜ | NOT TESTED via browser |
+| Obsidian visual | ⬜ | NOT TESTED |
+| global install | ⬜ | NOT TESTED |

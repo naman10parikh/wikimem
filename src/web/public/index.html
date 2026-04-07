@@ -6,7 +6,7 @@
   <title>wikimem — Mission Control</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet">
   <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Markdown rendering is built-in, no external deps needed -->
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -667,12 +667,50 @@
 
     function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-    // ── Page Modal with Rendered Markdown ──
+    // ── Simple Markdown Renderer (no external deps) ──
+    function renderMarkdown(md) {
+      let html = esc(md);
+      // Code blocks (fenced)
+      html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="lang-$1">$2</code></pre>');
+      // Headings
+      html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+      // Bold + italic
+      html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      // Inline code
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+      // Blockquotes
+      html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+      // Unordered lists
+      html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+      html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+      // Ordered lists
+      html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+      // Links
+      html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+      // Horizontal rules
+      html = html.replace(/^---$/gm, '<hr>');
+      // Paragraphs (double newline)
+      html = html.replace(/\n\n/g, '</p><p>');
+      html = '<p>' + html + '</p>';
+      // Clean up empty paragraphs
+      html = html.replace(/<p>\s*<\/p>/g, '');
+      html = html.replace(/<p>\s*(<h[123]>)/g, '$1');
+      html = html.replace(/(<\/h[123]>)\s*<\/p>/g, '$1');
+      html = html.replace(/<p>\s*(<ul>)/g, '$1');
+      html = html.replace(/(<\/ul>)\s*<\/p>/g, '$1');
+      html = html.replace(/<p>\s*(<blockquote>)/g, '$1');
+      html = html.replace(/<p>\s*(<pre>)/g, '$1');
+      html = html.replace(/<p>\s*(<hr>)/g, '$1');
+      return html;
+    }
+
     function renderWikilinks(html) {
-      // Convert [[Page Name]] to clickable links
       return html.replace(/\[\[([^\]]+)\]\]/g, (_, name) => {
-        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-        return `<a href="#" class="wikilink" data-title="${esc(slug)}" onclick="event.preventDefault(); openPage('${esc(slug)}')">${esc(name)}</a>`;
+        return `<a href="#" class="wikilink" onclick="event.preventDefault(); openPage('${esc(name)}')">${esc(name)}</a>`;
       });
     }
 
@@ -682,17 +720,16 @@
 
       // Show frontmatter as badges
       const tags = (page.frontmatter.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('');
-      const sources = (page.frontmatter.sources || []).map(s => `<span class="source-badge">${esc(String(s))}</span>`).join('');
       document.getElementById('modal-meta').innerHTML =
         `<span>${page.wordCount} words</span>` +
         `<span>${page.wikilinks.length} links</span>` +
         (page.frontmatter.type ? `<span class="type-badge">${page.frontmatter.type}</span>` : '') +
         (page.frontmatter.created ? `<span>${page.frontmatter.created}</span>` : '') +
-        tags + sources;
+        tags;
 
-      // Render markdown with marked.js + clickable wikilinks
-      const rawHtml = typeof marked !== 'undefined' ? marked.parse(page.content) : `<pre>${esc(page.content)}</pre>`;
-      document.getElementById('modal-body').innerHTML = renderWikilinks(rawHtml);
+      // Render markdown + wikilinks
+      const rendered = renderMarkdown(page.content);
+      document.getElementById('modal-body').innerHTML = renderWikilinks(rendered);
       document.getElementById('page-modal').classList.add('visible');
     }
 

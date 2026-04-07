@@ -1,6 +1,6 @@
 {
   "name": "wikimem",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Build self-improving knowledge bases with LLMs. Ingest anything, query everything, auto-evolve.",
   "type": "module",
   "bin": {

@@ -50,15 +50,17 @@ export async function ingestSource(
   let title: string;
   let rawPath: string;
 
+  let needsCopyToRaw = false;
+
   if (isUrl) {
     const urlResult = await processUrl(source);
     content = urlResult.content;
     title = urlResult.title;
-    // Save to raw/ with date stamp
+    // Will save to raw/ after dedup check
     const dateDir = join(config.rawDir, now);
     mkdirSync(dateDir, { recursive: true });
     rawPath = join(dateDir, `${slugify(title)}.md`);
-    writeFileSync(rawPath, content, 'utf-8');
+    needsCopyToRaw = true;
   } else {
     if (!existsSync(source)) {
       throw new Error(`File not found: ${source}`);
@@ -66,12 +68,12 @@ export async function ingestSource(
     const ext = extname(source).toLowerCase();
     rawPath = source;
 
-    // Copy to raw/ if not already there
+    // Determine raw path but don't copy yet (dedup check first)
     if (!source.startsWith(config.rawDir)) {
       const dateDir = join(config.rawDir, now);
       mkdirSync(dateDir, { recursive: true });
       rawPath = join(dateDir, basename(source));
-      copyFileSync(source, rawPath);
+      needsCopyToRaw = true;
     }
 
     // Process based on file type — supports every major format
@@ -137,8 +139,18 @@ export async function ingestSource(
   // Step 2: Semantic dedup check (unless --force)
   if (!options.force) {
     const existingPages = listWikiPages(config.wikiDir);
-    const isDuplicate = await checkDuplicate(content, existingPages, provider, config.rawDir);
+    // Only skip self-match when source is already in raw/ (not being copied)
+    const skipSelf = needsCopyToRaw ? undefined : rawPath;
+    const isDuplicate = await checkDuplicate(content, existingPages, provider, config.rawDir, skipSelf);
     if (isDuplicate.duplicate) {
+      // Copy to raw/ so we can write meta alongside it
+      if (needsCopyToRaw) {
+        if (isUrl) {
+          writeFileSync(rawPath, content, 'utf-8');
+        } else {
+          copyFileSync(source, rawPath);
+        }
+      }
       // Mark in raw/ frontmatter but don't add to wiki
       const rejectionMeta = {
         title,
@@ -163,6 +175,15 @@ export async function ingestSource(
         rejected: true,
         rejectionReason: isDuplicate.reason,
       };
+    }
+  }
+
+  // Step 2.5: Copy source to raw/ now that dedup passed
+  if (needsCopyToRaw) {
+    if (isUrl) {
+      writeFileSync(rawPath, content, 'utf-8');
+    } else {
+      copyFileSync(source, rawPath);
     }
   }
 

@@ -147,7 +147,17 @@ export function createServer(vaultRoot: string, port: number): void {
         return;
       }
       const pages = listWikiPages(config.wikiDir);
-      const match = pages.find((p) => basename(p, '.md') === title);
+      // Match by slug OR by frontmatter title (case-insensitive)
+      const titleLower = title.toLowerCase();
+      const slugified = titleLower.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const match = pages.find((p) => {
+        const fileSlug = basename(p, '.md');
+        if (fileSlug === title || fileSlug === slugified) return true;
+        try {
+          const page = readWikiPage(p);
+          return page.title.toLowerCase() === titleLower;
+        } catch { return false; }
+      });
       if (!match) {
         res.status(404).json({ error: 'Page not found' });
         return;
