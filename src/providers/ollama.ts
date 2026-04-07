@@ -15,21 +15,40 @@ export class OllamaProvider implements LLMProvider {
       ? [{ role: 'system' as const, content: options.systemPrompt }, ...messages.filter((m) => m.role !== 'system')]
       : messages;
 
-    const response = await fetch(`${this.baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: options?.model ?? this.defaultModel,
-        messages: allMessages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
-        stream: false,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: options?.model ?? this.defaultModel,
+          messages: allMessages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          stream: false,
+        }),
+      });
+    } catch (error: unknown) {
+      if (error instanceof Error && (error.message.includes('ECONNREFUSED') || error.message.includes('fetch failed'))) {
+        throw new Error(
+          `Could not connect to Ollama at ${this.baseUrl}.\n` +
+          'Make sure Ollama is running:  ollama serve\n' +
+          'Install Ollama: https://ollama.com/download',
+        );
+      }
+      throw error;
+    }
 
     if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text().catch(() => '');
+      if (response.status === 404 || errorText.includes('not found')) {
+        throw new Error(
+          `Model "${options?.model ?? this.defaultModel}" not found in Ollama.\n` +
+          `Pull it first:  ollama pull ${options?.model ?? this.defaultModel}`,
+        );
+      }
+      throw new Error(`Ollama API error: ${response.status} ${response.statusText}. ${errorText}`);
     }
 
     const data = (await response.json()) as {

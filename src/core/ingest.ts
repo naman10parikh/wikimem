@@ -137,7 +137,7 @@ export async function ingestSource(
   // Step 2: Semantic dedup check (unless --force)
   if (!options.force) {
     const existingPages = listWikiPages(config.wikiDir);
-    const isDuplicate = await checkDuplicate(content, existingPages, provider);
+    const isDuplicate = await checkDuplicate(content, existingPages, provider, config.rawDir, rawPath);
     if (isDuplicate.duplicate) {
       // Mark in raw/ frontmatter but don't add to wiki
       const rejectionMeta = {
@@ -254,13 +254,28 @@ interface DuplicateCheck {
 async function checkDuplicate(
   content: string,
   existingPages: string[],
-  provider: LLMProvider,
+  _provider: LLMProvider,
+  rawDir?: string,
 ): Promise<DuplicateCheck> {
+  // Check 1: Exact content hash match against existing raw sources
+  if (rawDir && existsSync(rawDir)) {
+    const newHash = createHash('sha256').update(content).digest('hex');
+    const existingHash = findExistingRawHash(rawDir, newHash, content);
+    if (existingHash) {
+      return {
+        duplicate: true,
+        reason: `Exact duplicate of previously ingested source "${existingHash}"`,
+        similarPage: existingHash,
+        score: 1.0,
+      };
+    }
+  }
+
   if (existingPages.length === 0) {
     return { duplicate: false, reason: '' };
   }
 
-  // Simple heuristic first: check content length overlap
+  // Check 2: Jaccard similarity against wiki pages
   const contentSnippet = content.substring(0, 500);
 
   for (const pagePath of existingPages.slice(0, 20)) {
@@ -289,6 +304,32 @@ async function checkDuplicate(
   }
 
   return { duplicate: false, reason: '' };
+}
+
+/** Walk raw/ and compare SHA-256 hashes to detect exact duplicate sources */
+function findExistingRawHash(rawDir: string, _newHash: string, newContent: string): string | undefined {
+  const newNorm = newContent.trim();
+  try {
+    const entries = readdirSync(rawDir);
+    for (const entry of entries) {
+      const full = join(rawDir, entry);
+      const stat = statSync(full);
+      if (stat.isDirectory()) {
+        const result = findExistingRawHash(full, _newHash, newContent);
+        if (result) return result;
+      } else if (!entry.endsWith('.meta.json') && !entry.startsWith('.')) {
+        try {
+          const existing = readFileSync(full, 'utf-8').trim();
+          if (existing === newNorm) return basename(full);
+        } catch {
+          // Binary file or read error — skip
+        }
+      }
+    }
+  } catch {
+    // Dir read error
+  }
+  return undefined;
 }
 
 function buildIngestPrompt(

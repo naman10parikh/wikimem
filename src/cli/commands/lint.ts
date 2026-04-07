@@ -57,6 +57,11 @@ export function registerLintCommand(program: Command): void {
 
         console.log();
         console.log(chalk.dim(`Score: ${result.score}/100`));
+
+        if (!options.fix && result.issues.some((i) => i.category === 'no-summary' || i.category === 'orphan')) {
+          console.log();
+          console.log(chalk.dim('Next: wikimem improve — auto-fix issues with LLM'));
+        }
       }
     });
 }

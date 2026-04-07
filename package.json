@@ -1,6 +1,6 @@
 {
   "name": "wikimem",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "Build self-improving knowledge bases with LLMs. Ingest anything, query everything, auto-evolve.",
   "type": "module",
   "bin": {
@@ -17,7 +17,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc && cp -r src/web/public dist/web/public 2>/dev/null || true",
+    "build": "tsc && chmod +x dist/index.js && cp -r src/web/public dist/web/public 2>/dev/null || true",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -19,7 +19,12 @@ export function createProvider(
       return new OllamaProvider(options?.model, options?.baseUrl);
     default:
       throw new Error(
-        `Unknown provider: ${name}. Supported: claude, openai, ollama`,
+        `Unknown provider: "${name}".\n` +
+        'Supported providers:\n' +
+        '  claude   — Anthropic (requires ANTHROPIC_API_KEY)\n' +
+        '  openai   — OpenAI (requires OPENAI_API_KEY)\n' +
+        '  ollama   — Local models (requires Ollama running)\n' +
+        'Set in config.yaml:  provider: claude',
       );
   }
 }
