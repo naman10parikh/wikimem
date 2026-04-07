@@ -22,7 +22,7 @@ if (process.argv.length <= 2) {
     console.log(chalk.hex('#6b21a8').bold(' ╦ ╦╦╦╔═╦╔╦╗╔═╗╔╦╗'));
     console.log(chalk.hex('#6b21a8').bold(' ║║║║╠╩╗║║║║║╠═╝║║║'));
     console.log(chalk.hex('#6b21a8').bold(' ╚╩╝╩╩ ╩╩╩ ╩╩╚═╝╩ ╩'));
-    console.log(chalk.dim(' v0.1.0 — self-improving knowledge bases'));
+    console.log(chalk.dim(' self-improving knowledge bases'));
     console.log();
     console.log(chalk.bold('  Vault detected'));
     console.log(chalk.dim('  ─'.padEnd(40, '─')));

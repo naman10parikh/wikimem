@@ -31,7 +31,7 @@ export function registerInitCommand(program: Command): void {
       console.log(chalk.hex('#6b21a8').bold(' ╦ ╦╦╦╔═╦╔╦╗╔═╗╔╦╗'));
       console.log(chalk.hex('#6b21a8').bold(' ║║║║╠╩╗║║║║║╠═╝║║║'));
       console.log(chalk.hex('#6b21a8').bold(' ╚╩╝╩╩ ╩╩╩ ╩╩╚═╝╩ ╩'));
-      console.log(chalk.dim(` v0.1.0 — self-improving knowledge bases`));
+      console.log(chalk.dim(` self-improving knowledge bases`));
       console.log();
       console.log(chalk.blue(`Initializing vault in ${root} (template: ${template})...`));
 
@@ -121,11 +121,13 @@ node_modules/
       console.log();
       console.log(chalk.bold('Quick start:'));
       console.log();
-      console.log(chalk.white(`  cd ${root}`));
+      if (root !== '.') {
+        console.log(chalk.white(`  cd ${root}`));
+      }
       console.log(chalk.white('  export ANTHROPIC_API_KEY=sk-ant-...  # or OPENAI_API_KEY'));
-      console.log(chalk.white('  npx wikimem ingest <file-or-url>'));
-      console.log(chalk.white('  npx wikimem query "your question"'));
-      console.log(chalk.white('  npx wikimem serve                   # web UI at localhost:3141'));
+      console.log(chalk.white('  wikimem ingest <file-or-url>'));
+      console.log(chalk.white('  wikimem query "your question"'));
+      console.log(chalk.white('  wikimem serve                       # web UI at localhost:3141'));
       console.log();
       console.log(chalk.dim('Open in Obsidian:'));
       console.log(chalk.dim(`  Open Obsidian → "Open folder as vault" → select ${absRoot}`));
