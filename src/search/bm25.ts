@@ -50,13 +50,15 @@ export function bm25Search(query: string, documents: Document[]): SearchResult[]
       score += termIdf * (numerator / denominator);
     }
 
-    // Boost title matches
+    // Boost title matches (additive, not multiplicative — avoids exponential blowup)
     const titleTerms = tokenize(doc.title);
+    let titleBoost = 0;
     for (const term of queryTerms) {
       if (titleTerms.includes(term)) {
-        score *= 1.5;
+        titleBoost += score * 0.5;
       }
     }
+    score += titleBoost;
 
     if (score > 0) {
       results.push({ path: doc.path, score, title: doc.title });

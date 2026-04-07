@@ -7,6 +7,13 @@ provider: claude          # claude | openai | ollama
 model: ~                  # Leave empty for provider default
 # api_key: ~              # Set via ANTHROPIC_API_KEY or OPENAI_API_KEY env var
 
+# Embeddings (for semantic search)
+embeddings:
+  provider: auto            # gemini | openai | local | auto (auto-detect from env)
+  # model: ~                # Leave empty for provider default
+  # GOOGLE_API_KEY env var for Gemini, OPENAI_API_KEY for OpenAI
+  # 'local' works offline with zero deps (hash-based, lower quality)
+
 # Vault Settings
 vault:
   name: "My ${capitalize(template)} Wiki"
@@ -42,8 +49,10 @@ improve:
 
 # Search
 search:
-  engine: bm25                   # bm25 (built-in) | external
-  # For large wikis (500+ pages), consider external search tools
+  engine: bm25                   # bm25 | semantic | hybrid
+  # bm25: keyword search (built-in, no API needed)
+  # semantic: embedding-based similarity (requires embeddings config)
+  # hybrid: combines bm25 + semantic via reciprocal rank fusion
 
 # Processing
 processing:

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { VaultConfig } from './vault.js';
 import type { UserConfig, SourceConfig } from './config.js';
 import { slugify } from './vault.js';
+import { appendLog } from './log-manager.js';
 
 export interface ScrapeResult {
   sourcesProcessed: number;
@@ -33,6 +34,14 @@ export async function scrapeExternalSources(
     entries.push({ source: source.name, files, date: now });
     totalFiles += files;
   }
+
+  // Log scrape results
+  const sourceList = entries.map((e) => `${e.source}: ${e.files} file(s)`).join(', ');
+  appendLog(
+    config.logPath,
+    `scrape | ${totalFiles} files from ${toProcess.length} source(s)`,
+    sourceList || 'No files scraped.',
+  );
 
   return {
     sourcesProcessed: toProcess.length,

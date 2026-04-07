@@ -118,21 +118,23 @@ export function getVaultStats(config: VaultConfig): VaultStats {
   let totalWords = 0;
   let totalLinks = 0;
   const allLinked = new Set<string>();
-  const allPages = new Set<string>();
+  const pageTitleMap = new Map<string, string>(); // path -> frontmatter title
 
   for (const pagePath of pages) {
     const page = readWikiPage(pagePath);
     totalWords += page.wordCount;
     totalLinks += page.wikilinks.length;
-    allPages.add(page.title);
+    pageTitleMap.set(pagePath, page.title);
     for (const link of page.wikilinks) {
       allLinked.add(link);
     }
   }
 
+  // Check both frontmatter title AND filename — wikilinks may use either
   const orphans = pages.filter((p) => {
-    const title = basename(p, '.md');
-    return !allLinked.has(title) && title !== 'index' && title !== 'log';
+    const fileName = basename(p, '.md');
+    const title = pageTitleMap.get(p) ?? fileName;
+    return !allLinked.has(title) && !allLinked.has(fileName) && fileName !== 'index' && fileName !== 'log';
   });
 
   const rawFiles = existsSync(config.rawDir)

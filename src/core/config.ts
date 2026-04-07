@@ -27,6 +27,10 @@ export interface UserConfig {
   search?: {
     engine?: string;
   };
+  embeddings?: {
+    provider?: string;
+    model?: string;
+  };
   processing?: {
     audio?: { enabled?: boolean; provider?: string };
     image?: { enabled?: boolean };

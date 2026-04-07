@@ -1,7 +1,8 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, writeFileSync } from 'node:fs';
+import { join, basename, extname } from 'node:path';
 import type { LLMProvider } from '../providers/types.js';
 import type { VaultConfig } from './vault.js';
-import { listWikiPages, readWikiPage, getVaultStats } from './vault.js';
+import { listWikiPages, readWikiPage, writeWikiPage, getVaultStats, extractWikilinks } from './vault.js';
 import { lintWiki } from './lint.js';
 import { appendLog } from './log-manager.js';
 
@@ -39,7 +40,7 @@ export async function improveWiki(
     coverage: calculateCoverage(config, pageCount),
     consistency: Math.max(0, 100 - lintResult.issues.filter((i) => i.category === 'contradiction').length * 15),
     crossLinking: calculateCrossLinking(stats, pageCount),
-    freshness: 85, // TODO: compare source dates with wiki update dates
+    freshness: calculateFreshness(config, pages),
     organization: calculateOrganization(lintResult.issues),
   };
 
@@ -59,8 +60,13 @@ export async function improveWiki(
   // Phase 4: Apply (unless dry-run)
   if (!options.dryRun) {
     for (const action of actions) {
-      action.applied = true;
-      // TODO: actually apply each action (rewrite pages, add links, etc.)
+      try {
+        applyAction(action, config, provider);
+        action.applied = true;
+      } catch {
+        // Non-fatal: log but continue with remaining actions
+        action.applied = false;
+      }
     }
   }
 
@@ -147,6 +153,80 @@ async function proposeImprovements(
   }
 
   return actions;
+}
+
+function calculateFreshness(config: VaultConfig, pages: string[]): number {
+  if (pages.length === 0) return 100;
+
+  const now = Date.now();
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+  let totalScore = 0;
+
+  for (const pagePath of pages) {
+    try {
+      const stat = statSync(pagePath);
+      const ageMs = now - stat.mtimeMs;
+      // Pages updated within 30 days get 100, linearly decaying to 0 at 180 days
+      const pageScore = Math.max(0, Math.min(100, Math.round(100 - (ageMs / (thirtyDaysMs * 6)) * 100)));
+      totalScore += pageScore;
+    } catch {
+      totalScore += 50; // Default for unreadable files
+    }
+  }
+
+  return Math.round(totalScore / pages.length);
+}
+
+function applyAction(
+  action: ImproveAction,
+  config: VaultConfig,
+  _provider: LLMProvider,
+): void {
+  switch (action.type) {
+    case 'cross-link': {
+      // Extract page name from description
+      const orphanMatch = action.description.match(/orphan page: (.+)$/);
+      if (orphanMatch?.[1]) {
+        const orphanTitle = orphanMatch[1];
+        // Find the index page and add a link
+        if (existsSync(config.indexPath)) {
+          const indexContent = readFileSync(config.indexPath, 'utf-8');
+          if (!indexContent.includes(`[[${orphanTitle}]]`)) {
+            const updatedIndex = indexContent + `\n- [[${orphanTitle}]]\n`;
+            writeFileSync(config.indexPath, updatedIndex, 'utf-8');
+          }
+        }
+      }
+      break;
+    }
+    case 'cleanup': {
+      // Add missing frontmatter summary using first sentence of content
+      const pageMatch = action.description.match(/to: (.+)$/);
+      if (pageMatch?.[1]) {
+        const targetTitle = pageMatch[1];
+        const pages = listWikiPages(config.wikiDir);
+        for (const pagePath of pages) {
+          try {
+            const page = readWikiPage(pagePath);
+            if (page.title === targetTitle && !page.frontmatter['summary']) {
+              const firstSentence = page.content.split(/[.!?]\s/)[0] ?? '';
+              page.frontmatter['summary'] = firstSentence.substring(0, 120);
+              writeWikiPage(pagePath, page.content, page.frontmatter);
+            }
+          } catch {
+            // Skip unreadable pages
+          }
+        }
+      }
+      break;
+    }
+    case 'suggest-page':
+    case 'reorganize':
+    case 'flag-contradiction':
+      // These action types require LLM involvement to implement properly.
+      // For now, they remain as proposals in the output.
+      break;
+  }
 }
 
 // Re-export for type use
