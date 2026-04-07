@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import chalk from 'chalk';
 import { getDefaultAgentsMd } from '../../templates/agents-md.js';
 import { getDefaultConfig } from '../../templates/config-yaml.js';
+import { setupObsidian } from '../../core/obsidian.js';
 
 interface InitOptions {
   template?: string;
@@ -94,6 +95,9 @@ _Chronological record of wiki operations. Auto-maintained by llmwiki._
 `,
         'utf-8',
       );
+
+      // Set up Obsidian config
+      setupObsidian(root);
 
       // Write .gitignore
       writeFileSync(

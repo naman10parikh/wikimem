@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from 'node:fs';
-import { join, basename, extname } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, statSync } from 'node:fs';
+import { join, basename, extname, resolve } from 'node:path';
 import type { LLMProvider } from '../providers/types.js';
 import type { VaultConfig } from './vault.js';
 import { readWikiPage, writeWikiPage, listWikiPages, slugify } from './vault.js';
@@ -21,9 +21,12 @@ export interface IngestResult {
   rejectionReason?: string;
 }
 
-interface IngestOptions {
+export interface IngestOptions {
   verbose: boolean;
   force?: boolean;
+  tags?: string[];
+  category?: string;
+  metadata?: Record<string, string>;
 }
 
 export async function ingestSource(
@@ -169,21 +172,35 @@ export async function ingestSource(
   let linksAdded = 0;
 
   for (const page of pages) {
-    const pagePath = join(config.wikiDir, page.category, `${slugify(page.title)}.md`);
+    // User-supplied category overrides LLM-detected category
+    const pageCategory = options.category ?? page.category;
+    const pagePath = join(config.wikiDir, pageCategory, `${slugify(page.title)}.md`);
     const dir = join(pagePath, '..');
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
 
-    writeWikiPage(pagePath, page.content, {
+    // Merge user-supplied tags with LLM-detected tags (dedup)
+    const mergedTags = [...new Set([...page.tags, ...(options.tags ?? [])])];
+
+    const frontmatterData: Record<string, unknown> = {
       title: page.title,
-      type: page.category,
+      type: pageCategory,
       created: now,
       updated: now,
-      tags: page.tags,
+      tags: mergedTags,
       sources: [rawPath],
       summary: page.summary,
-    });
+    };
+
+    // Merge any custom metadata from --interactive or future extensions
+    if (options.metadata) {
+      for (const [key, value] of Object.entries(options.metadata)) {
+        frontmatterData[key] = value;
+      }
+    }
+
+    writeWikiPage(pagePath, page.content, frontmatterData);
 
     pagesUpdated++;
     linksAdded += (page.content.match(/\[\[[^\]]+\]\]/g) ?? []).length;
@@ -329,4 +346,93 @@ function parseLLMPages(response: string): ParsedPage[] {
   }
 
   return pages;
+}
+
+// --- Batch Ingest ---
+
+export interface BatchIngestResult {
+  ingested: number;
+  skipped: number;
+  duplicates: number;
+  errors: number;
+  results: Array<{ file: string; result?: IngestResult; error?: string }>;
+}
+
+/** Collect ingestable files from a directory */
+export function collectFiles(dir: string, recursive: boolean): string[] {
+  const files: string[] = [];
+  const resolved = resolve(dir);
+  if (!existsSync(resolved) || !statSync(resolved).isDirectory()) {
+    return files;
+  }
+
+  const entries = readdirSync(resolved);
+  for (const entry of entries) {
+    // Skip hidden files and .meta.json files
+    if (entry.startsWith('.') || entry.endsWith('.meta.json')) continue;
+    const full = join(resolved, entry);
+    const stat = statSync(full);
+    if (stat.isDirectory() && recursive) {
+      files.push(...collectFiles(full, true));
+    } else if (stat.isFile()) {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
+/** Check if a file was already ingested by reading log.md */
+export function isAlreadyIngested(logPath: string, filePath: string): boolean {
+  if (!existsSync(logPath)) return false;
+  const log = readFileSync(logPath, 'utf-8');
+  const fileName = basename(filePath);
+  return log.includes(fileName);
+}
+
+// --- Duplicate Listing ---
+
+export interface DuplicateEntry {
+  file: string;
+  title: string;
+  reason: string;
+  similarTo: string;
+  score: number;
+  date: string;
+}
+
+/** Scan raw/ for .meta.json files indicating rejected duplicates */
+export function listDuplicates(rawDir: string): DuplicateEntry[] {
+  const duplicates: DuplicateEntry[] = [];
+  if (!existsSync(rawDir)) return duplicates;
+
+  function walk(dir: string): void {
+    const entries = readdirSync(dir);
+    for (const entry of entries) {
+      const full = join(dir, entry);
+      const stat = statSync(full);
+      if (stat.isDirectory()) {
+        walk(full);
+      } else if (entry.endsWith('.meta.json')) {
+        try {
+          const raw = readFileSync(full, 'utf-8');
+          const meta = JSON.parse(raw) as Record<string, unknown>;
+          if (meta['rejected'] === true) {
+            duplicates.push({
+              file: full.replace('.meta.json', ''),
+              title: (meta['title'] as string) ?? basename(full, '.meta.json'),
+              reason: (meta['rejection_reason'] as string) ?? 'Unknown',
+              similarTo: (meta['similar_to'] as string) ?? 'Unknown',
+              score: (meta['similarity_score'] as number) ?? 0,
+              date: (meta['date'] as string) ?? '',
+            });
+          }
+        } catch {
+          // Skip malformed meta files
+        }
+      }
+    }
+  }
+
+  walk(rawDir);
+  return duplicates;
 }

@@ -66,7 +66,7 @@ export function bm25Search(query: string, documents: Document[]): SearchResult[]
   return results.sort((a, b) => b.score - a.score);
 }
 
-function tokenize(text: string): string[] {
+export function tokenize(text: string): string[] {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
