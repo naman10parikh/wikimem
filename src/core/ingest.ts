@@ -7,6 +7,10 @@ import { updateIndex } from './index-manager.js';
 import { appendLog } from './log-manager.js';
 import { processText } from '../processors/text.js';
 import { processUrl } from '../processors/url.js';
+import { isImageFile, processImage } from '../processors/image.js';
+import { isAudioFile, processAudio } from '../processors/audio.js';
+import { isVideoFile, processVideo } from '../processors/video.js';
+import { isPdfFile, processPdf } from '../processors/pdf.js';
 
 export interface IngestResult {
   title: string;
@@ -60,17 +64,52 @@ export async function ingestSource(
       copyFileSync(source, rawPath);
     }
 
-    // Process based on file type
-    switch (ext) {
-      case '.md':
-      case '.txt':
-      case '.csv':
-        content = readFileSync(source, 'utf-8');
-        title = basename(source, ext);
-        break;
-      default:
-        content = readFileSync(source, 'utf-8');
-        title = basename(source, ext);
+    // Process based on file type — supports every major format
+    if (isImageFile(source)) {
+      const result = await processImage(source);
+      content = result.markdown;
+      title = result.title;
+    } else if (isAudioFile(source)) {
+      const result = await processAudio(source);
+      content = result.markdown;
+      title = result.title;
+    } else if (isVideoFile(source)) {
+      const result = await processVideo(source);
+      content = result.markdown;
+      title = result.title;
+    } else if (isPdfFile(source)) {
+      const result = await processPdf(source);
+      content = result.markdown;
+      title = result.title;
+    } else {
+      // Text-based formats: .md, .txt, .csv, .json, .yaml, .xml, .html,
+      // .pptx, .docx, .xlsx (basic extraction — full Office support via swarm)
+      switch (ext) {
+        case '.pptx':
+        case '.docx':
+        case '.xlsx':
+        case '.xls':
+        case '.ppt':
+        case '.doc':
+          // Office formats — extract what we can, flag for enhanced processing
+          content = `# ${basename(source, ext)}\n\n> **Source:** [${basename(source)}](${source})\n> **Type:** Office document (${ext})\n> **Note:** Full Office extraction coming soon. Raw file preserved in raw/.\n`;
+          title = basename(source, ext);
+          break;
+        case '.json':
+          content = `# ${basename(source, ext)}\n\n\`\`\`json\n${readFileSync(source, 'utf-8').substring(0, 20000)}\n\`\`\``;
+          title = basename(source, ext);
+          break;
+        case '.html':
+        case '.htm':
+          const html = readFileSync(source, 'utf-8');
+          const htmlTitle = html.match(/<title>(.*?)<\/title>/i)?.[1];
+          content = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 20000);
+          title = htmlTitle ?? basename(source, ext);
+          break;
+        default:
+          content = readFileSync(source, 'utf-8');
+          title = basename(source, ext);
+      }
     }
   }
 
