@@ -11,6 +11,11 @@ import { isImageFile, processImage } from '../processors/image.js';
 import { isAudioFile, processAudio } from '../processors/audio.js';
 import { isVideoFile, processVideo } from '../processors/video.js';
 import { isPdfFile, processPdf } from '../processors/pdf.js';
+import { processDocx } from '../processors/docx.js';
+import { processXlsx } from '../processors/xlsx.js';
+import { processPptx } from '../processors/pptx.js';
+import { embedPage } from '../search/semantic.js';
+import type { EmbeddingProvider } from '../providers/embeddings.js';
 
 export interface IngestResult {
   title: string;
@@ -27,6 +32,7 @@ export interface IngestOptions {
   tags?: string[];
   category?: string;
   metadata?: Record<string, string>;
+  embeddingProvider?: EmbeddingProvider;
 }
 
 export async function ingestSource(
@@ -86,18 +92,29 @@ export async function ingestSource(
       title = result.title;
     } else {
       // Text-based formats: .md, .txt, .csv, .json, .yaml, .xml, .html,
-      // .pptx, .docx, .xlsx (basic extraction — full Office support via swarm)
+      // Office formats: .docx, .xlsx, .pptx (full extraction)
       switch (ext) {
-        case '.pptx':
         case '.docx':
-        case '.xlsx':
-        case '.xls':
-        case '.ppt':
-        case '.doc':
-          // Office formats — extract what we can, flag for enhanced processing
-          content = `# ${basename(source, ext)}\n\n> **Source:** [${basename(source)}](${source})\n> **Type:** Office document (${ext})\n> **Note:** Full Office extraction coming soon. Raw file preserved in raw/.\n`;
-          title = basename(source, ext);
+        case '.doc': {
+          const docResult = await processDocx(source);
+          content = docResult.markdown;
+          title = docResult.title;
           break;
+        }
+        case '.xlsx':
+        case '.xls': {
+          const xlsResult = await processXlsx(source);
+          content = xlsResult.markdown;
+          title = xlsResult.title;
+          break;
+        }
+        case '.pptx':
+        case '.ppt': {
+          const pptResult = await processPptx(source);
+          content = pptResult.markdown;
+          title = pptResult.title;
+          break;
+        }
         case '.json':
           content = `# ${basename(source, ext)}\n\n\`\`\`json\n${readFileSync(source, 'utf-8').substring(0, 20000)}\n\`\`\``;
           title = basename(source, ext);
@@ -206,7 +223,20 @@ export async function ingestSource(
     linksAdded += (page.content.match(/\[\[[^\]]+\]\]/g) ?? []).length;
   }
 
-  // Step 5: Update index.md and log.md
+  // Step 5: Generate embeddings for new pages (if provider configured)
+  if (options.embeddingProvider) {
+    for (const page of pages) {
+      const pageCategory = options.category ?? page.category;
+      const pagePath = join(config.wikiDir, pageCategory, `${slugify(page.title)}.md`);
+      try {
+        await embedPage(pagePath, page.content, options.embeddingProvider);
+      } catch {
+        // Embedding failure is non-fatal — page is still ingested
+      }
+    }
+  }
+
+  // Step 6: Update index.md and log.md
   await updateIndex(config, pages);
   appendLog(config.logPath, `ingest | ${title}`, `Processed ${source}. Created/updated ${pagesUpdated} pages.`);
 

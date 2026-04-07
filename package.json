@@ -50,9 +50,11 @@
     "chokidar": "^4.0.0",
     "commander": "^13.0.0",
     "gray-matter": "^4.0.3",
+    "mammoth": "^1.12.0",
     "node-cron": "^3.0.3",
     "openai": "^4.80.0",
     "ora": "^8.1.0",
+    "xlsx": "^0.18.5",
     "yaml": "^2.6.0"
   },
   "devDependencies": {

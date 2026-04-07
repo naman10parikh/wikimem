@@ -4,6 +4,7 @@ import type { LLMProvider } from '../providers/types.js';
 import type { VaultConfig } from './vault.js';
 import { listWikiPages, readWikiPage, writeWikiPage, slugify } from './vault.js';
 import { searchPages } from '../search/index.js';
+import type { EmbeddingProvider } from '../providers/embeddings.js';
 import { appendLog } from './log-manager.js';
 
 export interface QueryResult {
@@ -14,6 +15,8 @@ export interface QueryResult {
 
 interface QueryOptions {
   fileBack: boolean;
+  searchMode?: 'bm25' | 'semantic' | 'hybrid';
+  embeddingProvider?: EmbeddingProvider;
 }
 
 export async function queryWiki(
@@ -28,7 +31,11 @@ export async function queryWiki(
     : '';
 
   const allPages = listWikiPages(config.wikiDir);
-  const relevantPages = searchPages(question, allPages);
+  const relevantPages = await searchPages(question, allPages, {
+    mode: options.searchMode ?? 'bm25',
+    embeddingProvider: options.embeddingProvider,
+    wikiDir: config.wikiDir,
+  });
 
   // Step 2: Read the most relevant pages (up to 10)
   const pageContents: string[] = [];
