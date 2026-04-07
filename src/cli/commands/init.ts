@@ -60,7 +60,7 @@ created: "${now}"
 
 # Wiki Index
 
-_This index is auto-maintained by llmwiki. Each page is listed with a one-line summary._
+_This index is auto-maintained by wikimem. Each page is listed with a one-line summary._
 
 ## Sources
 
@@ -86,7 +86,7 @@ created: "${now}"
 
 # Wiki Log
 
-_Chronological record of wiki operations. Auto-maintained by llmwiki._
+_Chronological record of wiki operations. Auto-maintained by wikimem._
 
 ## [${now}] init | Vault created
 

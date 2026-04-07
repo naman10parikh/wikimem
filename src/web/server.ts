@@ -29,9 +29,11 @@ interface GraphData {
 function buildGraph(config: VaultConfig): GraphData {
   const pages = listWikiPages(config.wikiDir);
   const nodesMap = new Map<string, GraphNode>();
+  const titleToId = new Map<string, string>();
   const links: GraphLink[] = [];
   const incomingCount = new Map<string, number>();
 
+  // First pass: build nodes and title→id map
   for (const pagePath of pages) {
     const page = readWikiPage(pagePath);
     const id = basename(pagePath, '.md');
@@ -44,10 +46,21 @@ function buildGraph(config: VaultConfig): GraphData {
       linksOut: page.wikilinks.length,
       linksIn: 0,
     });
+    titleToId.set(page.title, id);
+    titleToId.set(id, id);
+  }
+
+  // Second pass: resolve wikilinks (title or filename) to node IDs
+  for (const pagePath of pages) {
+    const page = readWikiPage(pagePath);
+    const sourceId = basename(pagePath, '.md');
 
     for (const link of page.wikilinks) {
-      links.push({ source: id, target: link });
-      incomingCount.set(link, (incomingCount.get(link) ?? 0) + 1);
+      const targetId = titleToId.get(link) ?? titleToId.get(link.toLowerCase());
+      if (targetId && targetId !== sourceId) {
+        links.push({ source: sourceId, target: targetId });
+        incomingCount.set(targetId, (incomingCount.get(targetId) ?? 0) + 1);
+      }
     }
   }
 
