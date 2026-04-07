@@ -137,7 +137,7 @@ export async function ingestSource(
   // Step 2: Semantic dedup check (unless --force)
   if (!options.force) {
     const existingPages = listWikiPages(config.wikiDir);
-    const isDuplicate = await checkDuplicate(content, existingPages, provider, config.rawDir, rawPath);
+    const isDuplicate = await checkDuplicate(content, existingPages, provider, config.rawDir);
     if (isDuplicate.duplicate) {
       // Mark in raw/ frontmatter but don't add to wiki
       const rejectionMeta = {
@@ -256,11 +256,12 @@ async function checkDuplicate(
   existingPages: string[],
   _provider: LLMProvider,
   rawDir?: string,
+  currentRawPath?: string,
 ): Promise<DuplicateCheck> {
   // Check 1: Exact content hash match against existing raw sources
   if (rawDir && existsSync(rawDir)) {
     const newHash = createHash('sha256').update(content).digest('hex');
-    const existingHash = findExistingRawHash(rawDir, newHash, content);
+    const existingHash = findExistingRawHash(rawDir, newHash, content, currentRawPath);
     if (existingHash) {
       return {
         duplicate: true,
@@ -306,18 +307,26 @@ async function checkDuplicate(
   return { duplicate: false, reason: '' };
 }
 
-/** Walk raw/ and compare SHA-256 hashes to detect exact duplicate sources */
-function findExistingRawHash(rawDir: string, _newHash: string, newContent: string): string | undefined {
+/** Walk raw/ and compare content to detect exact duplicate sources */
+function findExistingRawHash(
+  rawDir: string,
+  _newHash: string,
+  newContent: string,
+  skipPath?: string,
+): string | undefined {
   const newNorm = newContent.trim();
+  const skipResolved = skipPath ? resolve(skipPath) : undefined;
   try {
     const entries = readdirSync(rawDir);
     for (const entry of entries) {
       const full = join(rawDir, entry);
       const stat = statSync(full);
       if (stat.isDirectory()) {
-        const result = findExistingRawHash(full, _newHash, newContent);
+        const result = findExistingRawHash(full, _newHash, newContent, skipPath);
         if (result) return result;
       } else if (!entry.endsWith('.meta.json') && !entry.startsWith('.')) {
+        // Skip the file we're currently ingesting
+        if (skipResolved && resolve(full) === skipResolved) continue;
         try {
           const existing = readFileSync(full, 'utf-8').trim();
           if (existing === newNorm) return basename(full);

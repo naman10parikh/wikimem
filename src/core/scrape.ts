@@ -74,7 +74,10 @@ async function scrapeRss(source: SourceConfig, destDir: string): Promise<number>
   if (!source.url) return 0;
 
   try {
-    const response = await fetch(source.url);
+    const response = await fetch(source.url, { signal: AbortSignal.timeout(15000) });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} from ${source.url}`);
+    }
     const text = await response.text();
 
     // Simple RSS parsing — extract <item> titles and links

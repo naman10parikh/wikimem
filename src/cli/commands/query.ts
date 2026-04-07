@@ -54,6 +54,8 @@ export function registerQueryCommand(program: Command): void {
 
         if (result.filedAs) {
           console.log(chalk.green(`Answer filed as: ${result.filedAs}`));
+        } else {
+          console.log(chalk.dim('Tip: use --file to save this answer as a wiki page'));
         }
       } catch (error) {
         spinner.fail(chalk.red('Query failed'));
