@@ -1,14 +1,14 @@
-# Contributing to llmwiki
+# Contributing to wikimem
 
-Thanks for your interest in contributing. llmwiki is an open-source project and we welcome contributions of all kinds.
+Thanks for your interest in contributing. wikimem is an open-source project and we welcome contributions of all kinds.
 
 ## Getting Started
 
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/llmwiki.git
-   cd llmwiki
+   git clone https://github.com/YOUR_USERNAME/wikimem.git
+   cd wikimem
    ```
 3. Install dependencies:
    ```bash
@@ -142,7 +142,7 @@ test: add E2E tests for ingest pipeline
 
 When filing an issue, include:
 
-- **llmwiki version** (`llmwiki --version`)
+- **wikimem version** (`wikimem --version`)
 - **Node.js version** (`node --version`)
 - **OS** (macOS, Linux, Windows/WSL)
 - **Steps to reproduce**

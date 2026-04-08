@@ -1,6 +1,6 @@
 export function getDefaultConfig(template: string): string {
   return `# wikimem configuration
-# Docs: https://github.com/naman10parikh/llmwiki
+# Docs: https://github.com/naman10parikh/wikimem
 
 # LLM Provider
 provider: claude          # claude | openai | ollama

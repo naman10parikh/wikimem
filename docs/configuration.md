@@ -1,13 +1,13 @@
 # Configuration Reference
 
-llmwiki is configured through `config.yaml` in the vault root. This file is created by `llmwiki init` and can be edited at any time.
+wikimem is configured through `config.yaml` in the vault root. This file is created by `wikimem init` and can be edited at any time.
 
 ## Complete config.yaml
 
 ```yaml
 # =============================================================================
-# llmwiki configuration
-# Full reference: https://github.com/naman10parikh/llmwiki/blob/main/docs/configuration.md
+# wikimem configuration
+# Full reference: https://github.com/naman10parikh/wikimem/blob/main/docs/configuration.md
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -33,8 +33,8 @@ vault:
 # External Sources — Automation 2 (Scraping)
 # ---------------------------------------------------------------------------
 # Each source fetches external content and deposits it in raw/{date}/
-# Run manually: llmwiki scrape
-# Run one source: llmwiki scrape -s "Source Name"
+# Run manually: wikimem scrape
+# Run one source: wikimem scrape -s "Source Name"
 sources: []
 
 # Source types and their fields:
@@ -65,7 +65,7 @@ improve:
   schedule: "0 3 * * *"   # Cron: when to run (default: daily at 3am)
   threshold: 80            # Quality score threshold (0-100)
   auto_apply: false        # true = apply changes automatically
-                           # false = require `llmwiki improve` to apply
+                           # false = require `wikimem improve` to apply
 
 # ---------------------------------------------------------------------------
 # Search Engine

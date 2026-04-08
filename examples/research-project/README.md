@@ -1,11 +1,11 @@
 # Example: Research Project Wiki
 
-Use llmwiki to build a structured literature review and research wiki for a specific topic.
+Use wikimem to build a structured literature review and research wiki for a specific topic.
 
 ## Setup
 
 ```bash
-llmwiki init llm-agents-research --template research
+wikimem init llm-agents-research --template research
 cd llm-agents-research
 ```
 
@@ -15,16 +15,16 @@ Gather your core papers and ingest them:
 
 ```bash
 # PDFs from your downloads
-llmwiki ingest ~/Papers/attention-is-all-you-need.pdf
-llmwiki ingest ~/Papers/chain-of-thought-prompting.pdf
-llmwiki ingest ~/Papers/toolformer.pdf
+wikimem ingest ~/Papers/attention-is-all-you-need.pdf
+wikimem ingest ~/Papers/chain-of-thought-prompting.pdf
+wikimem ingest ~/Papers/toolformer.pdf
 
 # ArXiv URLs (fetches and converts to markdown)
-llmwiki ingest https://arxiv.org/abs/2201.11903
-llmwiki ingest https://arxiv.org/abs/2302.04761
+wikimem ingest https://arxiv.org/abs/2201.11903
+wikimem ingest https://arxiv.org/abs/2302.04761
 ```
 
-For each paper, llmwiki creates:
+For each paper, wikimem creates:
 - A **source summary** in `wiki/sources/` with key findings
 - **Entity pages** in `wiki/entities/` for authors, organizations, models
 - **Concept pages** in `wiki/concepts/` for techniques and ideas
@@ -35,16 +35,16 @@ Layer in blog posts, talks, and related material:
 
 ```bash
 # Blog posts
-llmwiki ingest https://lilianweng.github.io/posts/2023-06-23-agent/
+wikimem ingest https://lilianweng.github.io/posts/2023-06-23-agent/
 
 # Conference talks (video transcription)
-llmwiki ingest ~/Videos/neurips-keynote.mp4
+wikimem ingest ~/Videos/neurips-keynote.mp4
 
 # Lecture recordings
-llmwiki ingest ~/Recordings/lecture-7-transformers.mp3
+wikimem ingest ~/Recordings/lecture-7-transformers.mp3
 
 # Your own notes
-llmwiki ingest notes/reading-notes-week-1.md
+wikimem ingest notes/reading-notes-week-1.md
 ```
 
 ## Phase 3: Automated Monitoring
@@ -78,10 +78,10 @@ improve:
 Then run periodically:
 
 ```bash
-llmwiki scrape              # Fetch new sources
-llmwiki ingest raw/today/*  # Process into wiki
-llmwiki improve --dry-run   # Review proposed improvements
-llmwiki improve             # Apply improvements
+wikimem scrape              # Fetch new sources
+wikimem ingest raw/today/*  # Process into wiki
+wikimem improve --dry-run   # Review proposed improvements
+wikimem improve             # Apply improvements
 ```
 
 ## Phase 4: Query and Synthesize
@@ -90,30 +90,30 @@ Use the wiki as a research assistant:
 
 ```bash
 # Literature review questions
-llmwiki query "What are the main approaches to tool use in LLM agents?"
-llmwiki query "How has the chain-of-thought technique evolved since 2022?"
-llmwiki query "Compare ReAct, Toolformer, and HuggingGPT approaches"
+wikimem query "What are the main approaches to tool use in LLM agents?"
+wikimem query "How has the chain-of-thought technique evolved since 2022?"
+wikimem query "Compare ReAct, Toolformer, and HuggingGPT approaches"
 
 # Save synthesis as wiki pages
-llmwiki query "Write a literature review of LLM agent architectures" --file
-llmwiki query "What open problems remain in LLM agents?" --file
+wikimem query "Write a literature review of LLM agent architectures" --file
+wikimem query "What open problems remain in LLM agents?" --file
 ```
 
 ## Phase 5: Maintain Quality
 
 ```bash
 # Health check
-llmwiki lint
+wikimem lint
 # Output:
 #   ! [orphan] Page "Toolformer" has no inbound links
 #   ! [missing-link] "ReAct" links to non-existent "[[Reasoning and Acting]]"
 #   Score: 72/100
 
 # Fix issues
-llmwiki lint --fix
+wikimem lint --fix
 
 # Run full improvement cycle
-llmwiki improve
+wikimem improve
 # Output:
 #   Wiki Quality Score: 78/100
 #     coverage: 85/100
@@ -177,7 +177,7 @@ llm-agents-research/
 ## Tips
 
 - **Ingest early, query often.** The more sources you add, the better the cross-references become.
-- **Let the LLM Council work.** Run `llmwiki improve` weekly to keep the wiki healthy.
+- **Let the LLM Council work.** Run `wikimem improve` weekly to keep the wiki healthy.
 - **Edit AGENTS.md** to add domain-specific conventions. For example, add a "Methodology" section requirement for paper summaries.
 - **Use `--file` on queries** to build a synthesis section that captures your evolving understanding.
 - **Check `wiki/log.md`** to see the chronological history of everything that has happened in your research wiki.

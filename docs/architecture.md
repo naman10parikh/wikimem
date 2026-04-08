@@ -1,6 +1,6 @@
 # Architecture
 
-llmwiki is built around two core ideas: **three layers** of data and **three automations** that operate on them.
+wikimem is built around two core ideas: **three layers** of data and **three automations** that operate on them.
 
 ## Three Layers
 
@@ -33,7 +33,7 @@ The `raw/` directory stores original source documents exactly as received. Files
 
 This serves as the provenance layer. Every wiki page traces back to one or more files in `raw/` through the `sources:` field in its frontmatter. If a wiki page's accuracy is questioned, you can always go back to the original source.
 
-When you run `llmwiki ingest file.pdf`, the file is copied to `raw/{today}/file.pdf` before processing. URLs are fetched and saved as markdown files in `raw/`.
+When you run `wikimem ingest file.pdf`, the file is copied to `raw/{today}/file.pdf` before processing. URLs are fetched and saved as markdown files in `raw/`.
 
 ### Layer 2: wiki/ (LLM-Generated Knowledge)
 
@@ -84,7 +84,7 @@ This file is meant to be co-evolved. The LLM reads it before every operation. Yo
 
 ### Automation 1: Ingest & Process
 
-Triggered by `llmwiki ingest <source>` or automatically by `llmwiki watch`.
+Triggered by `wikimem ingest <source>` or automatically by `wikimem watch`.
 
 ```
 Source file/URL
@@ -135,7 +135,7 @@ Source file/URL
 
 ### Automation 2: External Scrape
 
-Triggered by `llmwiki scrape` or on a cron schedule configured in `config.yaml`.
+Triggered by `wikimem scrape` or on a cron schedule configured in `config.yaml`.
 
 ```
 config.yaml sources:
@@ -150,11 +150,11 @@ config.yaml sources:
                     Wiki pages created
 ```
 
-Scraping deposits files into `raw/` with today's date. If watch mode is running, Automation 1 triggers automatically. Otherwise, run `llmwiki ingest` to process the new files.
+Scraping deposits files into `raw/` with today's date. If watch mode is running, Automation 1 triggers automatically. Otherwise, run `wikimem ingest` to process the new files.
 
 ### Automation 3: Self-Improve
 
-Triggered by `llmwiki improve` or on a cron schedule.
+Triggered by `wikimem improve` or on a cron schedule.
 
 ```
 Phase 1: Score

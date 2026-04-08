@@ -6,7 +6,7 @@ A personal wiki for collecting and connecting everything you learn.
 
 ```bash
 # Create the vault
-llmwiki init my-brain --template personal
+wikimem init my-brain --template personal
 cd my-brain
 ```
 
@@ -18,13 +18,13 @@ Drop markdown files, text files, or paste URLs:
 
 ```bash
 # Ingest a blog post
-llmwiki ingest https://paulgraham.com/greatwork.html
+wikimem ingest https://paulgraham.com/greatwork.html
 
 # Ingest your own notes
-llmwiki ingest ~/Documents/meeting-notes.md
+wikimem ingest ~/Documents/meeting-notes.md
 
 # Ingest a PDF
-llmwiki ingest ~/Downloads/research-paper.pdf
+wikimem ingest ~/Downloads/research-paper.pdf
 ```
 
 ### Voice memos and podcasts
@@ -33,10 +33,10 @@ If you have Whisper installed (`pip install openai-whisper`):
 
 ```bash
 # Transcribe and ingest a voice memo
-llmwiki ingest ~/voice-memos/idea-2026-04-07.m4a
+wikimem ingest ~/voice-memos/idea-2026-04-07.m4a
 
 # Transcribe a podcast episode
-llmwiki ingest ~/Podcasts/episode-42.mp3
+wikimem ingest ~/Podcasts/episode-42.mp3
 ```
 
 ### Screenshots and images
@@ -45,21 +45,21 @@ With `ANTHROPIC_API_KEY` set (uses Claude Vision):
 
 ```bash
 # Describe and ingest a whiteboard photo
-llmwiki ingest ~/Photos/whiteboard-session.jpg
+wikimem ingest ~/Photos/whiteboard-session.jpg
 
 # Ingest a diagram
-llmwiki ingest ~/Screenshots/architecture-diagram.png
+wikimem ingest ~/Screenshots/architecture-diagram.png
 ```
 
 ## Querying
 
 ```bash
 # Ask questions across all your knowledge
-llmwiki query "What are the recurring themes in my reading?"
-llmwiki query "What did Paul Graham say about doing great work?"
+wikimem query "What are the recurring themes in my reading?"
+wikimem query "What did Paul Graham say about doing great work?"
 
 # Save an answer as a wiki page
-llmwiki query "Summarize everything I know about transformers" --file
+wikimem query "Summarize everything I know about transformers" --file
 ```
 
 ## Staying Current
@@ -80,8 +80,8 @@ sources:
 Then run:
 
 ```bash
-llmwiki scrape
-llmwiki ingest raw/2026-04-07/*.md
+wikimem scrape
+wikimem ingest raw/2026-04-07/*.md
 ```
 
 ## Watch Mode
@@ -90,7 +90,7 @@ Set it and forget it:
 
 ```bash
 # Auto-ingest anything dropped into raw/
-llmwiki watch
+wikimem watch
 ```
 
 Now just drag files into the `raw/` folder and they appear in your wiki automatically.
@@ -99,13 +99,13 @@ Now just drag files into the `raw/` folder and they appear in your wiki automati
 
 ```bash
 # Check wiki health
-llmwiki lint
+wikimem lint
 
 # Self-improve (reorganize, fix broken links, add cross-references)
-llmwiki improve
+wikimem improve
 
 # See stats
-llmwiki status
+wikimem status
 ```
 
 ## Opening in Obsidian

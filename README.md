@@ -1,6 +1,6 @@
-# llmwiki
+# wikimem
 
-[![npm version](https://img.shields.io/npm/v/llmwiki.svg)](https://www.npmjs.com/package/llmwiki)
+[![npm version](https://img.shields.io/npm/v/wikimem.svg)](https://www.npmjs.com/package/wikimem)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#tests)
@@ -10,7 +10,7 @@
 Drop files in. Get a structured, interlinked wiki out. It improves itself while you sleep.
 
 ```bash
-npx llmwiki init my-wiki
+npx wikimem init my-wiki
 ```
 
 ```
@@ -22,7 +22,7 @@ raw/                        wiki/
     blog-url                  syntheses/ ......... cross-cutting analysis
 ```
 
-llmwiki processes any source (text, PDF, audio, video, images, URLs), compiles it into an interlinked markdown wiki with frontmatter and `[[wikilinks]]`, and opens directly in Obsidian.
+wikimem processes any source (text, PDF, audio, video, images, URLs), compiles it into an interlinked markdown wiki with frontmatter and `[[wikilinks]]`, and opens directly in Obsidian.
 
 Works with **Claude, OpenAI, or Ollama** (local). Your data stays on your machine.
 
@@ -31,7 +31,7 @@ Inspired by [Andrej Karpathy's LLM Wiki pattern](https://x.com/karpathy/status/1
 ## Install
 
 ```bash
-npm install -g llmwiki
+npm install -g wikimem
 ```
 
 **Requirements:** Node.js >= 18 &middot; An LLM API key (or Ollama running locally)
@@ -40,28 +40,28 @@ npm install -g llmwiki
 
 ```bash
 # 1. Create a vault
-llmwiki init my-wiki
+wikimem init my-wiki
 cd my-wiki
 
 # 2. Ingest something
-llmwiki ingest https://en.wikipedia.org/wiki/Large_language_model
-llmwiki ingest ~/Documents/research-paper.pdf
+wikimem ingest https://en.wikipedia.org/wiki/Large_language_model
+wikimem ingest ~/Documents/research-paper.pdf
 
 # 3. Ask questions
-llmwiki query "What are the key differences between RAG and compiled knowledge?"
+wikimem query "What are the key differences between RAG and compiled knowledge?"
 ```
 
 That's it. Your wiki is now a folder of markdown files you can open in Obsidian, VS Code, or any text editor.
 
-## Why llmwiki?
+## Why wikimem?
 
 **The problem:** You have dozens of sources &mdash; papers, podcasts, articles, screenshots, meeting recordings. They sit in folders. You forget what's in them. When you need something, you search and re-read.
 
 **RAG approach:** Chunk documents, embed them, retrieve at query time. Lossy, opaque, and the "knowledge" lives in a vector database you can't read.
 
-**llmwiki approach:** Compile sources into structured markdown pages with summaries, cross-references, and citations. The knowledge is readable, editable, version-controlled, and improves itself over time.
+**wikimem approach:** Compile sources into structured markdown pages with summaries, cross-references, and citations. The knowledge is readable, editable, version-controlled, and improves itself over time.
 
-| | RAG | llmwiki |
+| | RAG | wikimem |
 |---|---|---|
 | **Storage** | Vector embeddings | Plain markdown files |
 | **Readable?** | No (opaque vectors) | Yes (open in any editor) |
@@ -92,16 +92,16 @@ That's it. Your wiki is now a folder of markdown files you can open in Obsidian,
 
 ```
 ┌────────────────────────────────────────────────────┐
-│                    llmwiki CLI                      │
+│                    wikimem CLI                      │
 │                                                    │
-│  llmwiki init         Create a new vault           │
-│  llmwiki ingest       Process source → wiki pages  │
-│  llmwiki query        Ask questions with citations  │
-│  llmwiki lint         Health-check the wiki        │
-│  llmwiki watch        Auto-ingest on file drop     │
-│  llmwiki scrape       Fetch from external sources  │
-│  llmwiki improve      Self-improvement cycle       │
-│  llmwiki status       Vault statistics             │
+│  wikimem init         Create a new vault           │
+│  wikimem ingest       Process source → wiki pages  │
+│  wikimem query        Ask questions with citations  │
+│  wikimem lint         Health-check the wiki        │
+│  wikimem watch        Auto-ingest on file drop     │
+│  wikimem scrape       Fetch from external sources  │
+│  wikimem improve      Self-improvement cycle       │
+│  wikimem status       Vault statistics             │
 ├──────────────────────┬─────────────────────────────┤
 │   Three Layers       │   Three Automations         │
 │                      │                             │
@@ -137,57 +137,57 @@ That's it. Your wiki is now a folder of markdown files you can open in Obsidian,
 
 ## All Commands
 
-### `llmwiki init [directory]`
+### `wikimem init [directory]`
 
 Create a new vault with the standard directory structure.
 
 ```bash
-llmwiki init my-wiki                    # Create in my-wiki/
-llmwiki init .                          # Initialize current directory
-llmwiki init my-wiki --template research   # Use research template
-llmwiki init my-wiki --force            # Overwrite existing
+wikimem init my-wiki                    # Create in my-wiki/
+wikimem init .                          # Initialize current directory
+wikimem init my-wiki --template research   # Use research template
+wikimem init my-wiki --force            # Overwrite existing
 ```
 
 Templates: `personal` (default), `research`, `business`, `codebase`
 
-### `llmwiki ingest <source>`
+### `wikimem ingest <source>`
 
 Process a file or URL into wiki pages.
 
 ```bash
-llmwiki ingest paper.pdf                # PDF → extract text → wiki pages
-llmwiki ingest podcast.mp3              # Audio → Whisper transcription → wiki
-llmwiki ingest screenshot.png           # Image → Claude Vision description → wiki
-llmwiki ingest lecture.mp4              # Video → ffmpeg → Whisper → wiki
-llmwiki ingest article.md               # Markdown → wiki pages
-llmwiki ingest data.json                # JSON → code block in wiki
-llmwiki ingest page.html                # HTML → strip tags → wiki
-llmwiki ingest report.docx              # Office → basic extraction → wiki
-llmwiki ingest https://example.com/post # URL → Firecrawl/fetch → wiki
-llmwiki ingest raw/2026-04-07/file.md   # Re-ingest from raw/
+wikimem ingest paper.pdf                # PDF → extract text → wiki pages
+wikimem ingest podcast.mp3              # Audio → Whisper transcription → wiki
+wikimem ingest screenshot.png           # Image → Claude Vision description → wiki
+wikimem ingest lecture.mp4              # Video → ffmpeg → Whisper → wiki
+wikimem ingest article.md               # Markdown → wiki pages
+wikimem ingest data.json                # JSON → code block in wiki
+wikimem ingest page.html                # HTML → strip tags → wiki
+wikimem ingest report.docx              # Office → basic extraction → wiki
+wikimem ingest https://example.com/post # URL → Firecrawl/fetch → wiki
+wikimem ingest raw/2026-04-07/file.md   # Re-ingest from raw/
 ```
 
 Each source is auto-detected by file type, copied to `raw/{date}/`, checked for duplicates, compiled into wiki pages by the LLM, and indexed. Use `-p` to pick a provider, `-m` for a specific model, `--verbose` for detailed output.
 
-### `llmwiki query <question>`
+### `wikimem query <question>`
 
 Ask a question and get an answer synthesized from your wiki.
 
 ```bash
-llmwiki query "What are the main themes across my sources?"
-llmwiki query "Compare approaches to knowledge management" --file
-llmwiki query "Who is mentioned most frequently?" -p openai
+wikimem query "What are the main themes across my sources?"
+wikimem query "Compare approaches to knowledge management" --file
+wikimem query "Who is mentioned most frequently?" -p openai
 ```
 
 Use `--file` to save the answer as a synthesis page in `wiki/syntheses/`. The query engine uses BM25 search to find relevant pages, reads the top 10, and synthesizes an answer with `[[wikilink]]` citations.
 
-### `llmwiki lint`
+### `wikimem lint`
 
 Health-check the wiki for structural issues.
 
 ```bash
-llmwiki lint                  # Check for issues
-llmwiki lint --fix            # Auto-fix where possible
+wikimem lint                  # Check for issues
+wikimem lint --fix            # Auto-fix where possible
 ```
 
 Checks for:
@@ -198,24 +198,24 @@ Checks for:
 
 Reports a quality score out of 100.
 
-### `llmwiki watch`
+### `wikimem watch`
 
 Watch the `raw/` directory and auto-ingest new files.
 
 ```bash
-llmwiki watch                 # Watch current vault
-llmwiki watch -v ./my-wiki    # Watch a specific vault
+wikimem watch                 # Watch current vault
+wikimem watch -v ./my-wiki    # Watch a specific vault
 ```
 
 Uses `chokidar` for reliable cross-platform file watching. Waits for writes to stabilize before ingesting (2-second debounce). Press `Ctrl+C` to stop.
 
-### `llmwiki scrape`
+### `wikimem scrape`
 
 Fetch content from configured external sources and deposit in `raw/`.
 
 ```bash
-llmwiki scrape                # Run all configured sources
-llmwiki scrape -s "HN Top"   # Run a specific source
+wikimem scrape                # Run all configured sources
+wikimem scrape -s "HN Top"   # Run a specific source
 ```
 
 Sources are configured in `config.yaml`:
@@ -237,14 +237,14 @@ sources:
 
 Supported source types: `rss`, `github`, `url`
 
-### `llmwiki improve`
+### `wikimem improve`
 
 Run the self-improvement cycle (Automation 3).
 
 ```bash
-llmwiki improve                   # Evaluate and improve
-llmwiki improve --dry-run         # Show what would change
-llmwiki improve --threshold 90    # Stricter quality bar
+wikimem improve                   # Evaluate and improve
+wikimem improve --dry-run         # Show what would change
+wikimem improve --threshold 90    # Stricter quality bar
 ```
 
 The improvement cycle:
@@ -254,16 +254,16 @@ The improvement cycle:
 3. **Improve** &mdash; Proposes actions: add cross-links, create missing pages, expand stubs, flag contradictions
 4. **Log** &mdash; Records what changed and why in `log.md`
 
-### `llmwiki status`
+### `wikimem status`
 
 Show vault statistics at a glance.
 
 ```bash
-llmwiki status
+wikimem status
 ```
 
 ```
-llmwiki vault status
+wikimem vault status
 ────────────────────────────────────
   Pages:        42
   Words:        18,340
@@ -275,7 +275,7 @@ llmwiki vault status
 
 ## Configuration
 
-After `llmwiki init`, your vault contains a `config.yaml` where you set the LLM provider, external sources, self-improvement schedule, and processing options.
+After `wikimem init`, your vault contains a `config.yaml` where you set the LLM provider, external sources, self-improvement schedule, and processing options.
 
 See [docs/configuration.md](docs/configuration.md) for the full reference.
 
@@ -291,7 +291,7 @@ See [docs/configuration.md](docs/configuration.md) for the full reference.
 
 ## Multi-Model Support
 
-llmwiki works with any major LLM provider. Choose at init time or per-command.
+wikimem works with any major LLM provider. Choose at init time or per-command.
 
 | Provider | Flag | Default Model | Env Variable |
 |----------|------|---------------|-------------|
@@ -301,13 +301,13 @@ llmwiki works with any major LLM provider. Choose at init time or per-command.
 
 ```bash
 # Use Claude (default)
-llmwiki ingest paper.pdf
+wikimem ingest paper.pdf
 
 # Use OpenAI
-llmwiki ingest paper.pdf -p openai -m gpt-4o-mini
+wikimem ingest paper.pdf -p openai -m gpt-4o-mini
 
 # Use Ollama (fully local, no API keys)
-llmwiki ingest paper.pdf -p ollama -m llama3.2
+wikimem ingest paper.pdf -p ollama -m llama3.2
 ```
 
 ## Multi-Format Support
@@ -324,11 +324,11 @@ llmwiki ingest paper.pdf -p ollama -m llama3.2
 | **Office** | `.docx`, `.pptx`, `.xlsx` | Basic extraction | None (enhanced coming) |
 | **URL** | `https://...` | Firecrawl / fetch | Optional `FIRECRAWL_API_KEY` |
 
-When a processor's requirements are not met (e.g., Whisper not installed for audio), llmwiki creates a reference page noting the source file and suggests installing the missing tool. The raw file is always preserved.
+When a processor's requirements are not met (e.g., Whisper not installed for audio), wikimem creates a reference page noting the source file and suggests installing the missing tool. The raw file is always preserved.
 
 ## Obsidian Integration
 
-llmwiki vaults are Obsidian vaults. Open any llmwiki directory in Obsidian and you get:
+wikimem vaults are Obsidian vaults. Open any wikimem directory in Obsidian and you get:
 
 - **Graph view** showing all pages and their `[[wikilinks]]`
 - **YAML frontmatter** rendered as page metadata
@@ -377,7 +377,7 @@ my-wiki/
 ## Tests
 
 ```bash
-cd /path/to/llmwiki && pnpm test
+cd /path/to/wikimem && pnpm test
 ```
 
 ## Contributing

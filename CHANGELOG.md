@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to llmwiki will be documented in this file.
+All notable changes to wikimem will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -34,4 +34,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **AGENTS.md schema:** co-evolving wiki structure document
 - **YAML configuration:** `config.yaml` for provider, sources, schedules, processing options
 
-[0.1.0]: https://github.com/naman10parikh/llmwiki/releases/tag/v0.1.0
+[0.1.0]: https://github.com/naman10parikh/wikimem/releases/tag/v0.1.0
