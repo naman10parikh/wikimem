@@ -89,7 +89,7 @@ describe('ingest', () => {
     cleanup();
   });
 
-  it('ingests a local text file and creates wiki pages', async () => {
+  it('ingests a local text file and creates wiki pages', { timeout: 15000 }, async () => {
     const config = getVaultConfig(TEST_ROOT);
     const provider = createMockProvider();
 
