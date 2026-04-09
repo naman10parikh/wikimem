@@ -14,9 +14,13 @@
 
 import { createInterface } from 'node:readline';
 import { existsSync, readFileSync } from 'node:fs';
-import { basename, extname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getVaultConfig, getVaultStats, listWikiPages, readWikiPage } from './core/vault.js';
 import { searchPages } from './search/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // ─── JSON-RPC types ────────────────────────────────────────────────────────
 
@@ -68,7 +72,7 @@ const TOOLS = [
       properties: {
         type: {
           type: 'string',
-          description: 'Filter by page type (source | entity | concept | synthesis). Omit for all pages.',
+          description: 'Filter by page type (sources | entities | concepts | syntheses). Omit for all pages.',
         },
       },
     },
@@ -268,7 +272,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
 
       // Spawn the CLI ingest command in a child process
       const { spawn } = await import('node:child_process');
-      const wikimemBin = join(resolve(import.meta.url.replace('file://', ''), '../../..'), 'dist/index.js');
+      const wikimemBin = join(__dirname, 'index.js');
 
       const result = await new Promise<{ success: boolean; output: string }>((res) => {
         const proc = spawn(
@@ -388,7 +392,7 @@ async function handleRequest(req: JsonRpcRequest): Promise<JsonRpcResponse | nul
 
 function getVersion(): string {
   try {
-    const pkgPath = join(resolve(import.meta.url.replace('file://', ''), '../../..'), 'package.json');
+    const pkgPath = join(__dirname, '..', 'package.json');
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version: string };
     return pkg.version;
   } catch {

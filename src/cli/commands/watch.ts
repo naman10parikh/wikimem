@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { getVaultConfig } from '../../core/vault.js';
-import { createProvider } from '../../providers/index.js';
+import { createProviderFromUserConfig } from '../../providers/index.js';
 import { loadConfig } from '../../core/config.js';
 import { watchRawDirectory } from '../../core/watcher.js';
 
@@ -28,8 +28,9 @@ export function registerWatchCommand(program: Command): void {
         process.exit(1);
       }
 
-      const providerName = options.provider ?? userConfig.provider ?? 'claude';
-      const provider = createProvider(providerName);
+      const provider = createProviderFromUserConfig(userConfig, {
+        providerOverride: options.provider,
+      });
 
       console.log(chalk.blue(`Watching ${config.rawDir} for new files...`));
       console.log(chalk.dim('Press Ctrl+C to stop.'));

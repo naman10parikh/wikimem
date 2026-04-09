@@ -792,14 +792,169 @@
     }
     .meta-add-tag:hover { color: var(--accent); border-color: var(--accent); }
 
-    /* ── Entity info box (UX-031) ── */
-    .page-infobox { float:right; clear:right; margin:0 0 20px 28px; width:240px; background:var(--bg-surface); border:1px solid var(--border); border-radius:8px; padding:14px 16px; font-size:12px; }
-    .infobox-title { font-size:14px; font-weight:600; color:var(--text-bright); margin-bottom:10px; border-bottom:1px solid var(--border-subtle); padding-bottom:8px; text-align:center; }
-    .infobox-row { display:flex; gap:8px; padding:4px 0; border-bottom:1px solid var(--border-subtle); }
-    .infobox-row:last-child { border-bottom:none; }
-    .infobox-key { color:var(--text-muted); width:60px; flex-shrink:0; font-size:11px; padding-top:2px; }
-    .infobox-val { flex:1; color:var(--text); display:flex; flex-wrap:wrap; gap:3px; }
-    @media (max-width: 700px) { .page-infobox { float:none; width:100%; margin:0 0 20px; } }
+    /* ── Entity / concept profile (UX-031) ── */
+    #page-entity-profile:empty { display: none; }
+    #page-entity-profile:not(:empty) { margin: 0 0 8px; }
+    #page-view.wiki-editing #page-entity-profile { display: none; }
+    .entity-profile-layout { position: relative; margin-bottom: 28px; }
+    .entity-profile-layout::after { content: ''; display: table; clear: both; }
+    .page-infobox.entity-infobox {
+      float: right;
+      clear: right;
+      margin: 0 0 20px 28px;
+      width: min(300px, 92vw);
+      background: linear-gradient(165deg, var(--bg-surface) 0%, var(--bg-inset) 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0;
+      font-size: 12px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+    }
+    .entity-infobox-brand {
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-inset);
+      border-radius: 12px 12px 0 0;
+      text-align: center;
+    }
+    .entity-type-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: 1px solid rgba(215, 186, 125, 0.35);
+      background: rgba(215, 186, 125, 0.12);
+      color: var(--amber);
+    }
+    .entity-type-badge--entity {
+      border-color: rgba(79, 158, 255, 0.35);
+      background: rgba(79, 158, 255, 0.12);
+      color: var(--accent);
+    }
+    .entity-type-badge--concept {
+      border-color: rgba(180, 140, 255, 0.35);
+      background: rgba(180, 140, 255, 0.1);
+      color: #c4b5fd;
+    }
+    .entity-infobox-title {
+      margin: 0;
+      padding: 14px 16px 12px;
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text-bright);
+      line-height: 1.25;
+      text-align: center;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .entity-infobox-dl { margin: 0; padding: 12px 16px 16px; }
+    .entity-infobox-dl-row {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 8px 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-subtle);
+      align-items: start;
+    }
+    .entity-infobox-dl-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .entity-infobox-dl-row dt {
+      margin: 0;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      padding-top: 3px;
+    }
+    .entity-infobox-dl-row dd { margin: 0; min-width: 0; font-size: 12px; color: var(--text-secondary); }
+    .entity-infobox-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .entity-infobox-time { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+    .entity-source-ul { margin: 0; padding-left: 1.1em; font-size: 11px; }
+    .entity-source-ul li { margin: 4px 0; }
+    .entity-infobox-related { display: flex; flex-wrap: wrap; gap: 6px; }
+    .entity-related-chip {
+      cursor: pointer;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid rgba(79, 158, 255, 0.2);
+      transition: background 0.15s;
+    }
+    .entity-related-chip:hover { background: rgba(79, 158, 255, 0.2); }
+    .entity-summary { overflow: hidden; padding-right: 8px; margin-bottom: 4px; }
+    .entity-summary--lede {
+      font-size: 17px;
+      line-height: 1.65;
+      color: var(--text-secondary);
+      padding: 16px 18px 18px;
+      margin: 0;
+      background: var(--bg-inset);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      border-left: 4px solid var(--accent);
+    }
+    .entity-summary--lede p { margin: 0 0 0.65em; font-size: inherit; line-height: inherit; }
+    .entity-summary--lede p:last-child { margin-bottom: 0; }
+    .entity-profile-sections { clear: both; padding-top: 8px; display: flex; flex-direction: column; gap: 20px; }
+    .entity-section { margin: 0; }
+    .entity-section-title {
+      margin: 0 0 10px;
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-bright);
+      letter-spacing: 0.02em;
+    }
+    .entity-mentioned-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+    .entity-mentioned-link {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 8px 12px;
+      margin: 0;
+      font: inherit;
+      font-size: 14px;
+      color: var(--wiki-link);
+      background: var(--bg-inset);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .entity-mentioned-link:hover {
+      background: var(--bg-hover);
+      border-color: var(--border);
+      color: var(--wiki-link-hover);
+    }
+    .entity-mentioned--empty .entity-empty-hint { margin: 0; font-size: 13px; color: var(--text-muted); font-style: italic; }
+    .entity-activity { margin: 0; }
+    .entity-activity-track {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--bg-inset);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+    }
+    .entity-activity-node { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .entity-activity-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+    .entity-activity-value { font-size: 13px; font-weight: 500; color: var(--text-bright); font-family: var(--font-mono); word-break: break-word; }
+    @media (max-width: 700px) {
+      .page-infobox.entity-infobox { float: none; width: 100%; margin: 0 0 20px; }
+      .entity-activity-track { grid-template-columns: 1fr; }
+    }
 
     /* ── Wikipedia-style page layout (UX-011) ── */
     #page-view { display:none; height:100%; overflow-y:auto; }
@@ -1443,7 +1598,7 @@
     .search-result-icon { font-size: 12px; color: var(--text-muted); width: 18px; text-align: center; }
     .search-result-title { flex: 1; font-size: 13px; color: var(--text); }
     .search-result-cat { font-size: 10px; color: var(--text-muted); }
-    #search-empty { padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+    #search-empty, .search-empty-msg { padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
     /* ── Status bar ── */
     #statusbar {
@@ -1965,10 +2120,10 @@
           <button type="button" class="sidebar-tab-btn active" id="sidebar-tab-files" title="Files" aria-selected="true" role="tab">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
           </button>
-          <button type="button" class="sidebar-tab-btn" id="sidebar-tab-search" title="Search" role="tab">
+          <button type="button" class="sidebar-tab-btn" id="sidebar-tab-search" title="Search" aria-selected="false" role="tab">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </button>
-          <button type="button" class="sidebar-tab-btn" id="sidebar-tab-bookmarks" title="Bookmarks" role="tab">
+          <button type="button" class="sidebar-tab-btn" id="sidebar-tab-bookmarks" title="Bookmarks" aria-selected="false" role="tab">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           </button>
         </div>
@@ -2772,6 +2927,98 @@
       chrome.innerHTML = parts.join('');
     }
 
+    /** First narrative block for entity lede (skips leading markdown headings). */
+    function extractEntityLede(md) {
+      const s = String(md || '').replace(/\r\n/g, '\n');
+      if (!s.trim()) return { lede: '', rest: '' };
+      const lines = s.split('\n');
+      let i = 0;
+      while (i < lines.length) {
+        const t = lines[i].trim();
+        if (!t) {
+          i++;
+          continue;
+        }
+        if (/^#{1,6}\s/.test(t)) {
+          while (i < lines.length && lines[i].trim()) i++;
+          while (i < lines.length && !lines[i].trim()) i++;
+          continue;
+        }
+        break;
+      }
+      if (i >= lines.length) return { lede: '', rest: s.trim() };
+      const block = [];
+      while (i < lines.length) {
+        const line = lines[i];
+        if (!line.trim()) break;
+        if (/^#{1,6}\s/.test(line.trim())) break;
+        block.push(line);
+        i++;
+      }
+      while (i < lines.length && !lines[i].trim()) i++;
+      const lede = block.join('\n').trim();
+      const rest = i < lines.length ? lines.slice(i).join('\n') : '';
+      return { lede, rest: rest.trim() };
+    }
+
+    /** CRM-style profile chrome for entity & concept pages (UX-031). */
+    function buildEntityProfileHtml(page, backlinks, ledeMd) {
+      const fm = page.frontmatter || {};
+      const title = page.title;
+      const typeRaw = String(fm.type || 'entity').toLowerCase();
+      const typeSafe = typeRaw.replace(/[^a-z0-9-]/g, '') || 'entity';
+      const typeLabel = esc(fm.type || 'Entity');
+      const tags = (fm.tags || []).map((t) => `<span class="meta-badge meta-tag">${esc(t)}</span>`).join(' ');
+      const sourceItems = (fm.sources || []).map((s) => {
+        const short = String(s).split('/').slice(-2).join('/');
+        return `<li><span class="meta-source-path" title="${esc(s)}">${esc(short)}</span></li>`;
+      }).join('');
+      const related = (fm.related || []).map((r) => {
+        const name = r.replace(/^\[\[|\]\]$/g, '');
+        return `<span class="entity-related-chip" onclick="openPage('${esc(name)}')">${esc(name)}</span>`;
+      }).join('');
+
+      let ledeHtml = '';
+      if (ledeMd && String(ledeMd).trim()) {
+        ledeHtml = `<div class="entity-summary entity-summary--lede md" role="region" aria-label="Summary">${renderWikilinks(renderMarkdown(String(ledeMd).trim()))}</div>`;
+      }
+
+      const mentionedBlock =
+        backlinks.length > 0
+          ? `<section class="entity-section entity-mentioned" aria-labelledby="entity-mentioned-h"><h3 id="entity-mentioned-h" class="entity-section-title">Mentioned in</h3><ul class="entity-mentioned-list">${backlinks
+              .map(
+                (b) =>
+                  `<li><button type="button" class="entity-mentioned-link" onclick="openPage('${esc(b)}')">${esc(b)}</button></li>`
+              )
+              .join('')}</ul></section>`
+          : `<section class="entity-section entity-mentioned entity-mentioned--empty" aria-labelledby="entity-mentioned-h"><h3 id="entity-mentioned-h" class="entity-section-title">Mentioned in</h3><p class="entity-empty-hint">No other pages link here yet.</p></section>`;
+
+      const firstAdded = fm.created ? esc(String(fm.created)) : '—';
+      const lastMod = fm.updated || fm.created ? esc(String(fm.updated || fm.created)) : '—';
+      const n = backlinks.length;
+      const refLabel = `${n} page${n === 1 ? '' : 's'}`;
+
+      const activityBlock = `<section class="entity-activity" aria-label="Activity timeline"><div class="entity-activity-track"><div class="entity-activity-node"><span class="entity-activity-label">First added</span><span class="entity-activity-value">${firstAdded}</span></div><div class="entity-activity-node"><span class="entity-activity-label">Last modified</span><span class="entity-activity-value">${lastMod}</span></div><div class="entity-activity-node"><span class="entity-activity-label">Referenced by</span><span class="entity-activity-value">${esc(refLabel)}</span></div></div></section>`;
+
+      const tagsRow = `<div class="entity-infobox-dl-row"><dt>Tags</dt><dd class="entity-infobox-tags">${tags}<button type="button" class="meta-add-tag entity-tag-add" onclick="addTagToPage('${esc(title)}')" title="Add tag">+</button></dd></div>`;
+
+      return `<div class="entity-profile-layout">
+        <aside class="page-infobox entity-infobox" aria-label="Entity profile">
+          <div class="entity-infobox-brand"><span class="entity-type-badge entity-type-badge--${typeSafe}">${typeLabel}</span></div>
+          <h2 class="entity-infobox-title">${esc(title)}</h2>
+          <dl class="entity-infobox-dl">
+            ${tagsRow}
+            ${fm.created ? `<div class="entity-infobox-dl-row"><dt>Created</dt><dd><time class="entity-infobox-time" datetime="${esc(String(fm.created))}">${esc(String(fm.created))}</time></dd></div>` : ''}
+            ${fm.updated ? `<div class="entity-infobox-dl-row"><dt>Updated</dt><dd><time class="entity-infobox-time" datetime="${esc(String(fm.updated))}">${esc(String(fm.updated))}</time></dd></div>` : ''}
+            ${(fm.sources || []).length ? `<div class="entity-infobox-dl-row"><dt>Sources</dt><dd><ul class="entity-source-ul">${sourceItems}</ul></dd></div>` : ''}
+            ${(fm.related || []).length ? `<div class="entity-infobox-dl-row"><dt>Related</dt><dd class="entity-infobox-related">${related}</dd></div>` : ''}
+          </dl>
+        </aside>
+        ${ledeHtml}
+        <div class="entity-profile-sections">${mentionedBlock}${activityBlock}</div>
+      </div>`;
+    }
+
     // ── Open page ──
     async function openPage(title, fromTab) {
       try {
@@ -2829,31 +3076,37 @@
             <div class="meta-row"><span class="meta-key">Stats</span><div class="meta-val"><span class="meta-stat">${page.wordCount}w</span><span class="meta-stat">${estimateReadingMinutes(page.wordCount)} min read</span><span class="meta-stat">${page.wikilinks.length} links</span></div></div>
           </div>`;
 
-        // Entity info box (UX-031)
-        const infobox = document.getElementById('page-infobox');
-        if(infobox) {
-          const fm = page.frontmatter || {};
-          const type = (fm.type || '').toLowerCase();
-          if(type === 'entity' || type === 'concept' || type === 'source') {
-            const rows = [];
-            if(fm.type) rows.push(['Type', `<span class="meta-badge meta-type">${esc(fm.type)}</span>`]);
-            if(fm.created) rows.push(['Created', esc(fm.created)]);
-            if(fm.updated) rows.push(['Updated', esc(fm.updated)]);
-            if((fm.tags||[]).length) rows.push(['Tags', (fm.tags||[]).map(t=>`<span class="meta-badge meta-tag">${esc(t)}</span>`).join(' ')]);
-            if((fm.sources||[]).length) rows.push(['Sources', (fm.sources||[]).map(s=>`<code style="font-size:11px">${esc(s)}</code>`).join(', ')]);
-            if((fm.related||[]).length) rows.push(['Related', (fm.related||[]).map(r=>`<span class="backlink-item" onclick="openPage('${esc(r.replace(/^\[\[|\]\]$/g,''))}')">${esc(r.replace(/^\[\[|\]\]$/g,''))}</span>`).join(' ')]);
-            if(rows.length > 0) {
-              infobox.innerHTML = `<div class="page-infobox">
-                <div class="infobox-title">${esc(page.title)}</div>
-                ${rows.map(([k,v])=>`<div class="infobox-row"><span class="infobox-key">${k}</span><span class="infobox-val">${v}</span></div>`).join('')}
-              </div>`;
-            } else infobox.innerHTML = '';
-          } else infobox.innerHTML = '';
-        }
-
         let stripped = (page.content || '').replace(/^---[\s\S]*?---\s*/m, '');
         stripped = stripped.replace(new RegExp('^\\s*#\\s+' + page.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\n', 'm'), '');
-        const rendered = renderWikilinks(renderMarkdown(stripped));
+
+        const typeLower = (fm.type || '').toLowerCase();
+        const isEntityProfile = typeLower === 'entity' || typeLower === 'concept';
+        const backlinks = findBacklinks(title);
+
+        let bodyMd = stripped;
+        let ledeMd = '';
+        if (isEntityProfile) {
+          if (fm.summary && String(fm.summary).trim()) {
+            ledeMd = String(fm.summary).trim();
+          } else {
+            const ex = extractEntityLede(stripped);
+            if (ex.lede) {
+              ledeMd = ex.lede;
+              bodyMd = ex.rest !== '' ? ex.rest : '';
+            }
+          }
+        }
+
+        const entityProfileEl = document.getElementById('page-entity-profile');
+        if (entityProfileEl) {
+          if (isEntityProfile) {
+            entityProfileEl.innerHTML = buildEntityProfileHtml(page, backlinks, ledeMd);
+          } else {
+            entityProfileEl.innerHTML = '';
+          }
+        }
+
+        const rendered = renderWikilinks(renderMarkdown(bodyMd));
         const body = document.getElementById('page-body');
         body.innerHTML = rendered;
         body.classList.add('fade-in');
@@ -2864,9 +3117,10 @@
 
         renderEncyclopediaChrome(page);
 
-        const backlinks = findBacklinks(title);
         const blContainer = document.getElementById('page-backlinks');
-        if (backlinks.length) {
+        if (isEntityProfile) {
+          blContainer.innerHTML = '';
+        } else if (backlinks.length) {
           blContainer.innerHTML = `<div class="backlinks-title">Linked from (${backlinks.length})</div>` +
             backlinks.map(b => `<span class="backlink-item" onclick="openPage('${esc(b)}')">${esc(b)}</span>`).join('');
         } else {
@@ -2930,6 +3184,8 @@
         document.getElementById('page-toc').innerHTML = '';
         const enc = document.getElementById('page-encyclopedia-chrome');
         if (enc) enc.innerHTML = '';
+        const entityProf = document.getElementById('page-entity-profile');
+        if (entityProf) entityProf.innerHTML = '';
 
         const body = document.getElementById('page-body');
         let html = '';
@@ -3104,6 +3360,8 @@
       state.editPageSlug = pageSlug;
       state.wysiwygDirty = false;
 
+      document.getElementById('page-view')?.classList.add('wiki-editing');
+
       const body = document.getElementById('page-body');
       body.contentEditable = 'true';
       body.classList.add('editing-hint-hidden');
@@ -3139,6 +3397,7 @@
       }
       document.getElementById('wysiwyg-bar').classList.remove('visible');
       document.getElementById('wysiwyg-dirty').classList.remove('visible');
+      document.getElementById('page-view')?.classList.remove('wiki-editing');
       const editBtn = document.getElementById('page-edit-btn');
       if (editBtn) editBtn.style.display = '';
       state.editing = false;

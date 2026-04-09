@@ -430,10 +430,10 @@ export function createServer(vaultRoot: string, port: number): void {
       if (autoIngest) {
         try {
           const { ingestSource } = await import('../core/ingest.js');
-          const { createProvider } = await import('../providers/index.js');
+          const { createProviderFromUserConfig } = await import('../providers/index.js');
           const { loadConfig } = await import('../core/config.js');
           const userConfig = loadConfig(config.configPath);
-          const provider = createProvider(userConfig.provider ?? 'claude');
+          const provider = createProviderFromUserConfig(userConfig);
           const result = await ingestSource(dest, config, provider, { verbose: false });
           res.json({ status: 'ingested', path: dest, ...result });
         } catch (err) {
@@ -700,10 +700,12 @@ export function createServer(vaultRoot: string, port: number): void {
       }
       // Dynamic import to avoid circular deps
       const { queryWiki } = await import('../core/query.js');
-      const { createProvider } = await import('../providers/index.js');
+      const { createProviderFromUserConfig } = await import('../providers/index.js');
       const { loadConfig } = await import('../core/config.js');
       const userConfig = loadConfig(config.configPath);
-      const provider = createProvider(providerName ?? userConfig.provider ?? 'claude');
+      const provider = createProviderFromUserConfig(userConfig, {
+        providerOverride: providerName,
+      });
       const result = await queryWiki(question, config, provider, { fileBack: false });
       res.json(result);
     } catch (err) {
@@ -721,10 +723,10 @@ export function createServer(vaultRoot: string, port: number): void {
         return;
       }
       const { ingestSource } = await import('../core/ingest.js');
-      const { createProvider } = await import('../providers/index.js');
+      const { createProviderFromUserConfig } = await import('../providers/index.js');
       const { loadConfig } = await import('../core/config.js');
       const userConfig = loadConfig(config.configPath);
-      const provider = createProvider(userConfig.provider ?? 'claude');
+      const provider = createProviderFromUserConfig(userConfig);
       const result = await ingestSource(source, config, provider, { verbose: false });
       res.json(result);
     } catch (err) {
@@ -1186,11 +1188,11 @@ export function createServer(vaultRoot: string, port: number): void {
       webhookIngestingFiles.add(filePath);
 
       const { ingestSource } = await import('../core/ingest.js');
-      const { createProvider } = await import('../providers/index.js');
+      const { createProviderFromUserConfig } = await import('../providers/index.js');
       const { loadConfig } = await import('../core/config.js');
       const { appendAuditEntry } = await import('../core/audit-trail.js');
       const userConfig = loadConfig(config.configPath);
-      const provider = createProvider(userConfig.provider ?? 'claude');
+      const provider = createProviderFromUserConfig(userConfig);
 
       let result;
       try {
@@ -1486,10 +1488,10 @@ export function createServer(vaultRoot: string, port: number): void {
       let pagesCreated = 0, linksAdded = 0, ingested = 0;
       const errors: string[] = [];
 
-      const { createProvider } = await import('../providers/index.js');
+      const { createProviderFromUserConfig } = await import('../providers/index.js');
       const { loadConfig } = await import('../core/config.js');
       const userConfig = loadConfig(config.configPath);
-      const provider = createProvider(userConfig.provider ?? 'claude');
+      const provider = createProviderFromUserConfig(userConfig);
 
       for (const filePath of files.slice(0, 50)) { // cap at 50 per sync
         try {
@@ -1540,7 +1542,7 @@ export function createServer(vaultRoot: string, port: number): void {
   (async () => {
     const { getConnectorManager } = await import('../core/connectors.js');
     const { ingestSource } = await import('../core/ingest.js');
-    const { createProvider } = await import('../providers/index.js');
+    const { createProviderFromUserConfig } = await import('../providers/index.js');
     const { loadConfig } = await import('../core/config.js');
     const mgr = getConnectorManager(vaultRoot);
     mgr.on('file-detected', async ({ connectorId, filePath }: { connectorId: string; filePath: string }) => {
@@ -1549,7 +1551,7 @@ export function createServer(vaultRoot: string, port: number): void {
       mgr.updateStatus(connectorId, 'syncing');
       try {
         const userConfig = loadConfig(config.configPath);
-        const provider = createProvider(userConfig.provider ?? 'claude');
+        const provider = createProviderFromUserConfig(userConfig);
         await ingestSource(filePath, config, provider, { verbose: false });
         mgr.updateStatus(connectorId, 'active', { lastSyncAt: new Date().toISOString() });
       } catch {
@@ -1569,7 +1571,7 @@ export function createServer(vaultRoot: string, port: number): void {
     try {
       const chokidar = await import('chokidar');
       const { ingestSource } = await import('../core/ingest.js');
-      const { createProvider } = await import('../providers/index.js');
+      const { createProviderFromUserConfig } = await import('../providers/index.js');
       const { loadConfig } = await import('../core/config.js');
       const rawDir = config.rawDir;
       if (!existsSync(rawDir)) return;
@@ -1592,7 +1594,7 @@ export function createServer(vaultRoot: string, port: number): void {
         console.log(`[watcher] New file detected: ${filePath}`);
         try {
           const userConfig = loadConfig(config.configPath);
-          const provider = createProvider(userConfig.provider ?? 'claude');
+          const provider = createProviderFromUserConfig(userConfig);
           await ingestSource(filePath, config, provider, { verbose: false });
           console.log(`[watcher] Ingested: ${filePath}`);
         } catch (err) {

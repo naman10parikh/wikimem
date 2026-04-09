@@ -51,18 +51,9 @@ function shouldIncludeInChain(id: ProviderChainId, config: ProviderChainConfig):
 
 function createConcreteProvider(id: ProviderChainId, config: ProviderChainConfig): LLMProvider {
   const model = config.model;
-  switch (id) {
-    case 'claude':
-      return new ClaudeProvider(model, resolveAnthropicKey(config));
-    case 'openai':
-      return new OpenAIProvider(model, resolveOpenaiKey(config));
-    case 'ollama':
-      return new OllamaProvider(model, resolveOllamaBaseUrl(config));
-    default: {
-      const _exhaustive: never = id;
-      throw new Error(`Unknown provider: ${_exhaustive}`);
-    }
-  }
+  if (id === 'claude') return new ClaudeProvider(model, resolveAnthropicKey(config));
+  if (id === 'openai') return new OpenAIProvider(model, resolveOpenaiKey(config));
+  return new OllamaProvider(model, resolveOllamaBaseUrl(config));
 }
 
 /**

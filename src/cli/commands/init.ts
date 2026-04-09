@@ -198,13 +198,13 @@ async function initFromFolder(root: string, template: string, folderPath: string
   try {
     const { getVaultConfig } = await import('../../core/vault.js');
     const { ingestSource } = await import('../../core/ingest.js');
-    const { createProvider } = await import('../../providers/index.js');
+    const { createProviderFromUserConfig } = await import('../../providers/index.js');
     const { loadConfig } = await import('../../core/config.js');
     const { recordSnapshot } = await import('../../core/history.js');
 
     const vaultConfig = getVaultConfig(root);
     const userConfig = loadConfig(vaultConfig.configPath);
-    const provider = createProvider(userConfig.provider ?? 'claude');
+    const provider = createProviderFromUserConfig(userConfig);
 
     let ingested = 0;
     let skipped = 0;

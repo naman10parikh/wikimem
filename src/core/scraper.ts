@@ -285,8 +285,8 @@ async function ingestFile(
   userConfig: UserConfig,
 ): Promise<{ pagesCreated: number }> {
   const { ingestSource } = await import('./ingest.js');
-  const { createProvider } = await import('../providers/index.js');
-  const provider = createProvider(userConfig.provider ?? 'claude');
+  const { createProviderFromUserConfig } = await import('../providers/index.js');
+  const provider = createProviderFromUserConfig(userConfig);
   const result = await ingestSource(filePath, config, provider, {
     verbose: false,
     addedBy: 'agent',

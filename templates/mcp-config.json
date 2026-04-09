@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "wikimem": {
-      "command": "wikimem",
-      "args": ["mcp", "--vault", "./"],
+      "command": "wikimem-mcp",
+      "args": ["--vault", "/path/to/your/vault"],
       "env": {}
     }
   }

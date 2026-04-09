@@ -1,10 +1,11 @@
 {
   "name": "wikimem",
-  "version": "0.6.0",
-  "description": "Build self-improving knowledge bases with LLMs. Ingest anything, query everything, auto-evolve.",
+  "version": "0.7.0",
+  "description": "Self-improving wiki IDE. Ingest anything (13 formats), query with any LLM, three automations: ingest, scrape, improve.",
   "type": "module",
   "bin": {
-    "wikimem": "./dist/index.js"
+    "wikimem": "./dist/index.js",
+    "wikimem-mcp": "./dist/mcp-entry.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

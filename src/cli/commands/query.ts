@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { queryWiki } from '../../core/query.js';
 import { getVaultConfig } from '../../core/vault.js';
-import { createProvider } from '../../providers/index.js';
+import { createProviderFromUserConfig } from '../../providers/index.js';
 import { loadConfig } from '../../core/config.js';
 
 interface QueryOptions {
@@ -33,9 +33,10 @@ export function registerQueryCommand(program: Command): void {
         process.exit(1);
       }
 
-      const providerName = options.provider ?? userConfig.provider ?? 'claude';
-      const model = options.model ?? userConfig.model;
-      const provider = createProvider(providerName, { model });
+      const provider = createProviderFromUserConfig(userConfig, {
+        providerOverride: options.provider,
+        model: options.model,
+      });
 
       const spinner = ora('Searching wiki and synthesizing answer...').start();
 

@@ -7,7 +7,7 @@ import { createInterface } from 'node:readline';
 import { ingestSource, collectFiles, isAlreadyIngested } from '../../core/ingest.js';
 import type { IngestOptions, BatchIngestResult } from '../../core/ingest.js';
 import { getVaultConfig } from '../../core/vault.js';
-import { createProvider } from '../../providers/index.js';
+import { createProviderFromUserConfig } from '../../providers/index.js';
 import { loadConfig } from '../../core/config.js';
 
 interface CliIngestOptions {
@@ -86,9 +86,10 @@ export function registerIngestCommand(program: Command): void {
         process.exit(1);
       }
 
-      const providerName = options.provider ?? userConfig.provider ?? 'claude';
-      const model = options.model ?? userConfig.model;
-      const provider = createProvider(providerName, { model });
+      const provider = createProviderFromUserConfig(userConfig, {
+        providerOverride: options.provider,
+        model: options.model,
+      });
 
       // Parse tags from CLI flag
       const cliTags = options.tags

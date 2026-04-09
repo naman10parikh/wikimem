@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { lintWiki } from '../../core/lint.js';
 import { getVaultConfig } from '../../core/vault.js';
-import { createProvider } from '../../providers/index.js';
+import { createProviderFromUserConfig } from '../../providers/index.js';
 import { loadConfig } from '../../core/config.js';
 
 interface LintOptions {
@@ -30,8 +30,9 @@ export function registerLintCommand(program: Command): void {
         process.exit(1);
       }
 
-      const providerName = options.provider ?? userConfig.provider ?? 'claude';
-      const provider = createProvider(providerName);
+      const provider = createProviderFromUserConfig(userConfig, {
+        providerOverride: options.provider,
+      });
 
       console.log(chalk.blue('Running wiki health check...'));
       console.log();

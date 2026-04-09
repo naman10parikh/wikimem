@@ -4,7 +4,7 @@ import ora from 'ora';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { getVaultConfig } from '../../core/vault.js';
-import { createProvider } from '../../providers/index.js';
+import { createProviderFromUserConfig } from '../../providers/index.js';
 import { loadConfig } from '../../core/config.js';
 import { improveWiki } from '../../core/improve.js';
 
@@ -33,8 +33,9 @@ export function registerImproveCommand(program: Command): void {
         process.exit(1);
       }
 
-      const providerName = options.provider ?? userConfig.provider ?? 'claude';
-      const provider = createProvider(providerName);
+      const provider = createProviderFromUserConfig(userConfig, {
+        providerOverride: options.provider,
+      });
       const threshold = parseInt(options.threshold ?? '80', 10);
 
       const spinner = ora('Evaluating wiki quality...').start();

@@ -2,10 +2,21 @@ export function getDefaultConfig(template: string): string {
   return `# wikimem configuration
 # Docs: https://github.com/naman10parikh/wikimem
 
-# LLM Provider
+# LLM Provider (legacy single provider — ignored when a providers block is set)
 provider: claude          # claude | openai | ollama
 model: ~                  # Leave empty for provider default
 # api_key: ~              # Set via ANTHROPIC_API_KEY or OPENAI_API_KEY env var
+
+# Optional: fallback chain (SUP-003) — try primary, then each fallback on failure
+# providers:
+#   primary: claude
+#   fallback:
+#     - openai
+#     - ollama
+#   keys:
+#     anthropic: sk-ant-...
+#     openai: sk-...
+#     ollama_url: http://localhost:11434
 
 # Embeddings (for semantic search)
 embeddings:
