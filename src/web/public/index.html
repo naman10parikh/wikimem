@@ -2344,7 +2344,7 @@
     async function viewRawFile(filepath) {
       try {
         if(state.editing) exitEditMode(true);
-        const meta = await api('/api/raw/meta/' + encodeURIComponent(filepath));
+        const meta = await api('/api/raw/meta?path=' + encodeURIComponent(filepath));
         const filename = filepath.split('/').pop() || filepath;
 
         openTab('raw:'+filepath, filename, 'raw');
@@ -2378,14 +2378,14 @@
             <div class="raw-preview-name">${esc(filename)}</div>
             <div class="raw-preview-meta">${sizeStr} · ${meta.extension} · Modified ${new Date(meta.modified).toLocaleDateString()}</div>
           </div>
-          <a class="raw-download-btn" href="/api/raw/file/${encodeURIComponent(filepath)}" download="${esc(filename)}">
+          <a class="raw-download-btn" href="/api/raw/file?path=${encodeURIComponent(filepath)}" download="${esc(filename)}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download
           </a>
         </div>`;
 
         // Content based on type
-        const fileUrl = '/api/raw/file/' + encodeURIComponent(filepath);
+        const fileUrl = '/api/raw/file?path=' + encodeURIComponent(filepath);
         switch(meta.previewType) {
           case 'pdf':
             html += `<div class="pdf-container"><iframe src="${fileUrl}" title="PDF Preview"></iframe></div>`;
@@ -2420,12 +2420,23 @@
                   html += `<div class="md">${renderWikilinks(renderMarkdown(data.content))}</div>`;
                 } else {
                   const lang = ({'.json':'json','.yaml':'yaml','.yml':'yaml','.xml':'xml','.html':'html','.ts':'typescript','.js':'javascript','.py':'python','.go':'go','.rs':'rust','.sh':'bash'})[meta.extension] || '';
-                  html += `<pre style="background:var(--bg-surface);padding:16px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.6"><code>${esc(data.content)}</code></pre>`;
+                  html += `<pre style="background:var(--bg-surface);padding:16px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.6;white-space:pre-wrap;word-wrap:break-word"><code>${esc(data.content)}</code></pre>`;
                 }
               }
             } catch { html += '<p>Failed to load file</p>'; }
             break;
           }
+          case 'document':
+            html += `<div style="text-align:center;padding:32px;color:var(--text-muted)">
+              <div style="font-size:48px;margin-bottom:12px">${rawFileEmoji(meta.extension)}</div>
+              <p style="font-size:14px;color:var(--text-secondary);margin-bottom:8px">${meta.extension.toUpperCase().replace('.','')} Document</p>
+              <p style="font-size:12px;margin-bottom:16px">This file has been ingested into the wiki. View the generated pages below.</p>
+              <a class="raw-download-btn" href="${fileUrl}" download="${esc(filename)}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download Original
+              </a>
+            </div>`;
+            break;
           default:
             html += `<div style="text-align:center;padding:40px;color:var(--text-muted)">
               <div style="font-size:48px;margin-bottom:12px">${rawFileEmoji(meta.extension)}</div>

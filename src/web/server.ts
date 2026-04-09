@@ -882,10 +882,11 @@ export function createServer(vaultRoot: string, port: number): void {
   // === RAW FILE PREVIEW ENDPOINTS ===
 
   // API: serve raw file with correct content-type (for PDF, images, video, audio)
-  app.get('/api/raw/file/{*filePath}', (req, res) => {
+  app.get('/api/raw/file', (req, res) => {
     try {
-      const filePath = String(req.params['filePath'] ?? '');
-      if (!filePath) { res.status(400).json({ error: 'Missing file path' }); return; }
+      let filePath = String(req.query['path'] ?? '');
+      if (filePath.startsWith('/')) filePath = filePath.slice(1);
+      if (!filePath) { res.status(400).json({ error: 'Missing path query param' }); return; }
       const decoded = decodeURIComponent(filePath);
       const fullPath = join(config.rawDir, decoded);
       const resolved = resolve(fullPath);
@@ -923,10 +924,11 @@ export function createServer(vaultRoot: string, port: number): void {
   });
 
   // API: raw file metadata (for preview header)
-  app.get('/api/raw/meta/{*filePath}', (req, res) => {
+  app.get('/api/raw/meta', (req, res) => {
     try {
-      const filePath = String(req.params['filePath'] ?? '');
-      if (!filePath) { res.status(400).json({ error: 'Missing file path' }); return; }
+      let filePath = String(req.query['path'] ?? '');
+      if (filePath.startsWith('/')) filePath = filePath.slice(1);
+      if (!filePath) { res.status(400).json({ error: 'Missing path query param' }); return; }
       const decoded = decodeURIComponent(filePath);
       const fullPath = join(config.rawDir, decoded);
       const resolved = resolve(fullPath);
@@ -949,6 +951,8 @@ export function createServer(vaultRoot: string, port: number): void {
       const spreadsheetExts = ['.csv', '.xlsx', '.xls'];
       const textExts = ['.md', '.txt', '.json', '.yaml', '.yml', '.xml', '.html', '.htm', '.ts', '.js', '.py', '.go', '.rs', '.toml', '.ini', '.cfg', '.env', '.sh', '.bash', '.zsh'];
 
+      const documentExts = ['.docx', '.doc', '.pptx', '.ppt', '.rtf', '.odt', '.odp'];
+
       let previewType: string;
       if (imageExts.includes(ext)) previewType = 'image';
       else if (videoExts.includes(ext)) previewType = 'video';
@@ -956,6 +960,7 @@ export function createServer(vaultRoot: string, port: number): void {
       else if (pdfExts.includes(ext)) previewType = 'pdf';
       else if (spreadsheetExts.includes(ext)) previewType = 'spreadsheet';
       else if (textExts.includes(ext)) previewType = 'text';
+      else if (documentExts.includes(ext)) previewType = 'document';
       else previewType = 'binary';
 
       // Find wiki pages that were generated from this raw file
