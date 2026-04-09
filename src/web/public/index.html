@@ -1726,27 +1726,30 @@
 
           <!-- Pipeline Factory Line View -->
           <div id="pipeline-view">
-            <!-- Header with upload -->
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:20px;flex-wrap:wrap">
-              <div>
-                <h2 style="margin:0;font-size:18px;font-weight:600">Ingestion Pipeline</h2>
-                <p style="margin:4px 0 0;color:var(--text-muted);font-size:12px">Watch your documents flow through the knowledge factory</p>
-              </div>
-              <div style="display:flex;gap:8px;flex-shrink:0">
-                <button class="settings-btn" onclick="document.getElementById('pipe-file-input').click()" style="display:flex;align-items:center;gap:6px">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  Upload File
-                </button>
-                <input type="file" id="pipe-file-input" style="display:none" onchange="handlePipeUpload(this)" multiple accept=".md,.txt,.pdf,.csv,.json,.yaml,.html,.docx,.xlsx,.mp3,.mp4,.wav" />
+            <!-- Header -->
+            <div style="margin-bottom:16px">
+              <h2 style="margin:0;font-size:18px;font-weight:600">Add to Your Wiki</h2>
+              <p style="margin:4px 0 0;color:var(--text-muted);font-size:12px">Drop files, paste text, or enter a URL to grow your knowledge base</p>
+            </div>
+
+            <!-- Hidden file input -->
+            <input type="file" id="pipe-file-input" style="display:none" onchange="handlePipeUpload(this)" multiple accept=".md,.txt,.pdf,.csv,.json,.yaml,.html,.docx,.xlsx,.pptx,.mp3,.mp4,.wav,.png,.jpg,.jpeg" />
+
+            <!-- Drop zone (clickable — no separate button needed) -->
+            <div id="pipe-dropzone" class="pipe-dropzone" onclick="document.getElementById('pipe-file-input').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');handlePipeDrop(event)">
+              <div class="pipe-dropzone-inner">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted);margin-bottom:8px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <div style="font-size:13px;color:var(--text-secondary)">Drop files or click to upload</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Markdown, PDF, CSV, JSON, DOCX, XLSX, PPTX, Audio, Video, Images</div>
               </div>
             </div>
 
-            <!-- Drop zone (inline, part of pipeline) -->
-            <div id="pipe-dropzone" class="pipe-dropzone" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');handlePipeDrop(event)">
-              <div class="pipe-dropzone-inner">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted);margin-bottom:8px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <div style="font-size:13px;color:var(--text-secondary)">Drop files here to ingest</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Supports: Markdown, PDF, CSV, JSON, DOCX, Audio, Video</div>
+            <!-- Raw text input area -->
+            <div style="margin-top:12px">
+              <textarea id="pipe-text-input" placeholder="Or paste raw text here to add to your wiki..." style="width:100%;min-height:60px;max-height:200px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font);font-size:13px;resize:vertical;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <button class="settings-btn settings-btn-primary" onclick="ingestRawText()" style="font-size:12px;padding:5px 14px">Ingest Text</button>
+                <span style="font-size:11px;color:var(--text-muted)">Paste notes, transcripts, or any text content</span>
               </div>
             </div>
 
@@ -4358,10 +4361,22 @@
     async function handlePipeUpload(input) {
       if (!input.files?.length) return;
       for (const file of input.files) {
-        const formData = new FormData();
-        formData.append('file', file);
         try {
-          await fetch('/api/upload', { method: 'POST', body: formData });
+          const buf = await file.arrayBuffer();
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'x-filename': file.name, 'Content-Type': 'application/octet-stream' },
+            body: buf,
+          });
+          const data = await res.json();
+          if (data.status === 'ingested') {
+            showToast(`✓ ${file.name}: ${data.pagesUpdated || 0} pages created`);
+            loadTree(); loadHome();
+          } else if (data.ingestError) {
+            showToast(`⚠ ${file.name} uploaded but ingest failed: ${data.ingestError}`);
+          } else {
+            showToast(`✓ ${file.name} uploaded`);
+          }
         } catch (err) {
           showToast('Upload failed: ' + (err.message || 'unknown error'));
         }
@@ -4369,35 +4384,67 @@
       input.value = '';
     }
 
+    async function uploadFile(file) {
+      const buf = await file.arrayBuffer();
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'x-filename': file.name, 'Content-Type': 'application/octet-stream' },
+        body: buf,
+      });
+      return await res.json();
+    }
+
     async function handleTreeDrop(event) {
       const files = event.dataTransfer?.files;
       if (!files?.length) return;
       for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
         try {
-          await fetch('/api/upload', { method: 'POST', body: formData });
-          showToast(`✓ Uploaded ${file.name}`);
+          const data = await uploadFile(file);
+          showToast(`✓ ${file.name}: ${data.pagesUpdated || 0} pages`);
         } catch (err) {
           showToast('Upload failed: ' + (err.message || 'unknown'));
         }
       }
-      loadTree();
-      loadHome();
+      loadTree(); loadHome();
     }
 
     async function handlePipeDrop(event) {
       const files = event.dataTransfer?.files;
       if (!files?.length) return;
       for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
         try {
-          await fetch('/api/upload', { method: 'POST', body: formData });
+          const data = await uploadFile(file);
+          showToast(`✓ ${file.name}: ${data.pagesUpdated || 0} pages`);
         } catch (err) {
           showToast('Upload failed: ' + (err.message || 'unknown error'));
         }
       }
+      loadTree(); loadHome();
+    }
+
+    async function ingestRawText() {
+      const textarea = document.getElementById('pipe-text-input');
+      const text = textarea?.value?.trim();
+      if (!text) { showToast('Enter some text first'); return; }
+      const title = prompt('Title for this text:', 'Untitled Note') || 'Untitled Note';
+      const filename = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.md';
+      try {
+        const content = `# ${title}\n\n${text}`;
+        const buf = new TextEncoder().encode(content);
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'x-filename': filename, 'Content-Type': 'application/octet-stream' },
+          body: buf,
+        });
+        const data = await res.json();
+        if (data.status === 'ingested') {
+          showToast(`✓ ${data.pagesUpdated || 0} pages created from "${title}"`);
+          textarea.value = '';
+          loadTree(); loadHome();
+        } else {
+          showToast('Text saved but ingest pending');
+        }
+      } catch (err) { showToast('Failed: ' + (err.message || 'unknown')); }
     }
 
     function showStageDetail(stepId) {
