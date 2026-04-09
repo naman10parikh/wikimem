@@ -9,10 +9,22 @@ export interface SourceConfig {
   schedule?: string;
 }
 
+export interface ProvidersYamlConfig {
+  primary?: string;
+  fallback?: string[];
+  keys?: {
+    anthropic?: string;
+    openai?: string;
+    ollama_url?: string;
+  };
+}
+
 export interface UserConfig {
   provider?: string;
   model?: string;
   api_key?: string;
+  /** Multi-provider fallback chain (SUP-003). When set, overrides single `provider` for LLM calls. */
+  providers?: ProvidersYamlConfig;
   vault?: {
     name?: string;
     template?: string;

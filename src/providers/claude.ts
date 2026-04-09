@@ -5,16 +5,18 @@ export class ClaudeProvider implements LLMProvider {
   name = 'claude';
   private client: Anthropic;
   private defaultModel: string;
+  private readonly resolvedApiKey: string | undefined;
 
   constructor(model?: string, apiKey?: string) {
+    this.resolvedApiKey = apiKey ?? process.env['ANTHROPIC_API_KEY'];
     this.client = new Anthropic({
-      apiKey: apiKey ?? process.env['ANTHROPIC_API_KEY'],
+      apiKey: this.resolvedApiKey,
     });
     this.defaultModel = model ?? 'claude-sonnet-4-20250514';
   }
 
   async chat(messages: LLMMessage[], options?: LLMOptions): Promise<LLMResponse> {
-    if (!process.env['ANTHROPIC_API_KEY'] && !this.client.apiKey) {
+    if (!this.resolvedApiKey) {
       throw new Error(
         'Anthropic API key not found.\n' +
         'Set it via:  export ANTHROPIC_API_KEY=sk-ant-...\n' +
@@ -80,6 +82,6 @@ export class ClaudeProvider implements LLMProvider {
   }
 
   async isAvailable(): Promise<boolean> {
-    return !!process.env['ANTHROPIC_API_KEY'];
+    return !!this.resolvedApiKey;
   }
 }

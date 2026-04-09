@@ -35,3 +35,24 @@ export interface ProviderConfig {
   apiKey?: string;
   baseUrl?: string;
 }
+
+/** Canonical IDs used in fallback chains */
+export type ProviderChainId = 'claude' | 'openai' | 'ollama';
+
+export interface ProviderChainKeys {
+  anthropic?: string;
+  openai?: string;
+  /** Base URL for Ollama (e.g. http://localhost:11434) */
+  ollama_url?: string;
+}
+
+/**
+ * Config for createProviderChain — primary + fallbacks with optional per-provider keys.
+ */
+export interface ProviderChainConfig {
+  primary: ProviderChainId;
+  fallback: ProviderChainId[];
+  keys?: ProviderChainKeys;
+  /** Default model passed to each concrete provider */
+  model?: string;
+}

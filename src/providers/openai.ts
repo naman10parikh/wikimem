@@ -5,16 +5,18 @@ export class OpenAIProvider implements LLMProvider {
   name = 'openai';
   private client: OpenAI;
   private defaultModel: string;
+  private readonly resolvedApiKey: string | undefined;
 
   constructor(model?: string, apiKey?: string) {
+    this.resolvedApiKey = apiKey ?? process.env['OPENAI_API_KEY'];
     this.client = new OpenAI({
-      apiKey: apiKey ?? process.env['OPENAI_API_KEY'],
+      apiKey: this.resolvedApiKey,
     });
     this.defaultModel = model ?? 'gpt-4o';
   }
 
   async chat(messages: LLMMessage[], options?: LLMOptions): Promise<LLMResponse> {
-    if (!process.env['OPENAI_API_KEY'] && !this.client.apiKey) {
+    if (!this.resolvedApiKey) {
       throw new Error(
         'OpenAI API key not found.\n' +
         'Set it via:  export OPENAI_API_KEY=sk-...\n' +
@@ -73,6 +75,6 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   async isAvailable(): Promise<boolean> {
-    return !!process.env['OPENAI_API_KEY'];
+    return !!this.resolvedApiKey;
   }
 }

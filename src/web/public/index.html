@@ -225,6 +225,114 @@
     #sidebar-tree::-webkit-scrollbar-track { background: transparent; }
     #sidebar-tree::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
 
+    .sidebar-tabs {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 2px;
+      padding: 4px 8px 0;
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+    .sidebar-tab-btn {
+      flex: 1;
+      max-width: 72px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.12s, background 0.12s, border-color 0.12s;
+    }
+    .sidebar-tab-btn:hover { color: var(--text); background: var(--bg-hover); }
+    .sidebar-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--accent-surface); }
+    .sidebar-tab-btn svg { flex-shrink: 0; }
+
+    #sidebar-panels {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-panel {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .sidebar-panel.active { display: flex; }
+
+    .sidebar-inline-search {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+    .sidebar-inline-search input {
+      width: 100%;
+      background: var(--bg-inset);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 12px;
+      padding: 6px 8px;
+      outline: none;
+      font-family: var(--font);
+    }
+    .sidebar-inline-search input:focus { border-color: var(--accent); }
+    .sidebar-inline-search input::placeholder { color: var(--text-muted); }
+
+    #sidebar-search-results {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 4px;
+    }
+    #sidebar-search-results::-webkit-scrollbar { width: 5px; }
+    #sidebar-search-results::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
+
+    #sidebar-bookmarks-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+    #sidebar-bookmarks-list::-webkit-scrollbar { width: 5px; }
+    #sidebar-bookmarks-list::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
+    .sidebar-empty-hint {
+      padding: 16px 12px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .bookmark-row { position: relative; padding-right: 28px; }
+    .bookmark-remove {
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      line-height: 1;
+      opacity: 0;
+      transition: opacity 0.1s, color 0.1s;
+    }
+    .bookmark-row:hover .bookmark-remove { opacity: 1; }
+    .bookmark-remove:hover { color: var(--text-bright); background: var(--bg-hover); }
+
     .tree-item {
       display: flex;
       align-items: center;
@@ -1025,7 +1133,76 @@
     .graph-search-bar input { background:none; border:none; outline:none; font-size:13px; color:var(--text); width:200px; }
     .graph-search-bar input::placeholder { color:var(--text-muted); }
     #graph-svg { width: 100%; height: 100%; }
-    .graph-controls { position: absolute; top: 10px; right: 10px; display: flex; gap: 3px; z-index: 10; }
+    .graph-view-floating {
+      position: absolute;
+      top: 44px;
+      right: 10px;
+      z-index: 11;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .graph-view-floating > * { pointer-events: auto; }
+    .graph-floating-row { display: flex; flex-direction: row; align-items: center; gap: 4px; }
+    .graph-controls { display: flex; gap: 3px; }
+    .graph-settings-panel {
+      width: 260px;
+      max-height: min(70vh, 520px);
+      overflow-y: auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      padding: 12px 14px;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .graph-settings-panel.collapsed { display: none; }
+    .graph-settings-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+    .graph-settings-section { margin-bottom: 14px; }
+    .graph-settings-section:last-child { margin-bottom: 0; }
+    .graph-settings-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .graph-settings-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .graph-settings-row input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
+    .graph-settings-value {
+      min-width: 36px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+    .graph-settings-radios label,
+    .graph-settings-checks label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      color: var(--text-dim);
+    }
+    .graph-settings-radios label:last-child,
+    .graph-settings-checks label:last-child { margin-bottom: 0; }
+    .graph-settings-radios input,
+    .graph-settings-checks input { accent-color: var(--accent); }
     .graph-btn {
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
@@ -1784,7 +1961,31 @@
             </button>
           </div>
         </div>
-        <div id="sidebar-tree" ondragover="event.preventDefault();this.style.outline='2px solid var(--accent)'" ondragleave="this.style.outline=''" ondrop="event.preventDefault();this.style.outline='';handleTreeDrop(event)"></div>
+        <div class="sidebar-tabs" role="tablist" aria-label="Sidebar sections">
+          <button type="button" class="sidebar-tab-btn active" id="sidebar-tab-files" title="Files" aria-selected="true" role="tab">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </button>
+          <button type="button" class="sidebar-tab-btn" id="sidebar-tab-search" title="Search" role="tab">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+          <button type="button" class="sidebar-tab-btn" id="sidebar-tab-bookmarks" title="Bookmarks" role="tab">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </button>
+        </div>
+        <div id="sidebar-panels">
+          <div id="sidebar-panel-files" class="sidebar-panel active" role="tabpanel">
+            <div id="sidebar-tree" ondragover="event.preventDefault();this.style.outline='2px solid var(--accent)'" ondragleave="this.style.outline=''" ondrop="event.preventDefault();this.style.outline='';handleTreeDrop(event)"></div>
+          </div>
+          <div id="sidebar-panel-search" class="sidebar-panel" role="tabpanel">
+            <div class="sidebar-inline-search">
+              <input type="text" id="sidebar-search-input" placeholder="Search pages…" autocomplete="off" />
+            </div>
+            <div id="sidebar-search-results"></div>
+          </div>
+          <div id="sidebar-panel-bookmarks" class="sidebar-panel" role="tabpanel">
+            <div id="sidebar-bookmarks-list"></div>
+          </div>
+        </div>
         <div id="sidebar-upload">
           <div id="sidebar-drop-zone">Drop files or click to upload</div>
         </div>
@@ -1863,7 +2064,7 @@
                 </button>
               </div>
               <div id="page-meta"></div>
-              <div id="page-infobox"></div>
+              <div id="page-entity-profile" class="page-entity-profile"></div>
               <div id="page-toc"></div>
               <div id="page-body" class="md"></div>
               <div id="page-encyclopedia-chrome"></div>
@@ -1894,11 +2095,66 @@
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--text-muted)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input id="graph-search" type="text" placeholder="Search graph…" autocomplete="off" />
             </div>
-            <div class="graph-controls">
-              <button class="graph-btn" id="graph-export-btn" title="Export graph" onclick="exportGraph()">⬇</button>
-              <button class="graph-btn" id="graph-zoom-in" title="Zoom in">+</button>
-              <button class="graph-btn" id="graph-zoom-out" title="Zoom out">−</button>
-              <button class="graph-btn" id="graph-reset" title="Reset">⟲</button>
+            <div class="graph-view-floating">
+              <div class="graph-floating-row">
+                <button type="button" class="graph-btn" id="graph-panel-toggle" title="Graph display settings" aria-expanded="false" aria-controls="graph-settings-panel">⚙</button>
+                <div class="graph-controls">
+                  <button class="graph-btn" id="graph-export-btn" title="Export graph" onclick="exportGraph()">⬇</button>
+                  <button class="graph-btn" id="graph-zoom-in" title="Zoom in">+</button>
+                  <button class="graph-btn" id="graph-zoom-out" title="Zoom out">−</button>
+                  <button class="graph-btn" id="graph-reset" title="Reset">⟲</button>
+                </div>
+              </div>
+              <aside id="graph-settings-panel" class="graph-settings-panel collapsed" aria-label="Graph display settings" aria-hidden="true">
+                <div class="graph-settings-title">Display</div>
+                <div class="graph-settings-section">
+                  <label class="graph-settings-label" for="graph-force-range">Force strength</label>
+                  <div class="graph-settings-row">
+                    <input type="range" id="graph-force-range" min="-500" max="-50" step="5" value="-220" />
+                    <span class="graph-settings-value" id="graph-force-value">−220</span>
+                  </div>
+                </div>
+                <div class="graph-settings-section">
+                  <label class="graph-settings-label" for="graph-link-dist-range">Link distance</label>
+                  <div class="graph-settings-row">
+                    <input type="range" id="graph-link-dist-range" min="30" max="200" step="5" value="80" />
+                    <span class="graph-settings-value" id="graph-link-dist-value">80</span>
+                  </div>
+                </div>
+                <div class="graph-settings-section">
+                  <span class="graph-settings-label">Node size</span>
+                  <div class="graph-settings-radios">
+                    <label><input type="radio" name="graph-node-size" value="links" checked /> By links</label>
+                    <label><input type="radio" name="graph-node-size" value="uniform" /> Uniform</label>
+                    <label><input type="radio" name="graph-node-size" value="wordcount" /> By word count</label>
+                  </div>
+                </div>
+                <div class="graph-settings-section">
+                  <span class="graph-settings-label">Labels</span>
+                  <div class="graph-settings-radios">
+                    <label><input type="radio" name="graph-labels" value="hubs" checked /> Hubs only</label>
+                    <label><input type="radio" name="graph-labels" value="all" /> All</label>
+                    <label><input type="radio" name="graph-labels" value="none" /> None</label>
+                  </div>
+                </div>
+                <div class="graph-settings-section">
+                  <span class="graph-settings-label">Color by</span>
+                  <div class="graph-settings-radios">
+                    <label><input type="radio" name="graph-color" value="community" checked /> Community</label>
+                    <label><input type="radio" name="graph-color" value="category" /> Category</label>
+                    <label><input type="radio" name="graph-color" value="none" /> None</label>
+                  </div>
+                </div>
+                <div class="graph-settings-section">
+                  <span class="graph-settings-label">Filter by category</span>
+                  <div class="graph-settings-checks">
+                    <label><input type="checkbox" id="graph-filter-concepts" checked data-cat="concepts" /> Concepts</label>
+                    <label><input type="checkbox" id="graph-filter-entities" checked data-cat="entities" /> Entities</label>
+                    <label><input type="checkbox" id="graph-filter-sources" checked data-cat="sources" /> Sources</label>
+                    <label><input type="checkbox" id="graph-filter-syntheses" checked data-cat="syntheses" /> Syntheses</label>
+                  </div>
+                </div>
+              </aside>
             </div>
             <div class="node-tooltip" id="tooltip"></div>
             <svg id="graph-svg"></svg>
@@ -2107,6 +2363,45 @@
     function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function formatBytes(b) { if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
     async function api(path) { const r=await fetch(path); return r.json(); }
+
+    const BOOKMARKS_STORAGE_KEY = 'wikimem-bookmarks';
+    function getBookmarks() {
+      try {
+        const raw = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+      } catch { return []; }
+    }
+    function saveBookmarks(titles) {
+      try { localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(titles)); } catch {}
+    }
+    function isBookmarked(title) {
+      return getBookmarks().includes(title);
+    }
+    function toggleBookmarkTitle(title) {
+      const b = [...getBookmarks()];
+      const i = b.indexOf(title);
+      if (i >= 0) { b.splice(i, 1); showToast('Removed from bookmarks'); }
+      else { b.push(title); showToast('Bookmarked'); }
+      saveBookmarks(b);
+      renderBookmarks();
+    }
+    function renderBookmarks() {
+      const el = document.getElementById('sidebar-bookmarks-list');
+      if (!el) return;
+      const titles = getBookmarks();
+      if (!titles.length) {
+        el.innerHTML = '<div class="sidebar-empty-hint">No bookmarks yet. Right-click a wiki page in the tree and choose Add Bookmark.</div>';
+        return;
+      }
+      el.innerHTML = titles.map(title =>
+        `<div class="tree-item bookmark-row" onclick="openPage(${JSON.stringify(title)})">
+          <span style="margin-right:6px;opacity:0.85">★</span>
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(title)}</span>
+          <button type="button" class="bookmark-remove" onclick="event.stopPropagation();toggleBookmarkTitle(${JSON.stringify(title)})" title="Remove">×</button>
+        </div>`
+      ).join('');
+    }
 
     function catClass(cat) {
       const c = (cat||'').toLowerCase();
@@ -2945,6 +3240,7 @@
       const isWiki = type === 'wiki';
       const items = [
         { label: 'Open in New Tab', icon: '↗', action: () => isWiki ? openPage(title) : viewRawFile(path) },
+        ...(isWiki ? [{ label: isBookmarked(title) ? 'Remove Bookmark' : 'Add Bookmark', icon: '★', action: () => toggleBookmarkTitle(title) }] : []),
         { sep: true },
         { label: 'Rename', icon: '✏', action: () => renameFile(title, path, type) },
         { label: 'Duplicate', icon: '⧉', action: () => duplicateFile(title, path, type) },
@@ -3750,16 +4046,30 @@
         loadPipelineConfig();
       } else if(section === 'hotkeys') {
         const shortcuts = [
-          ['⌘K','Search pages'],['⌘G','Toggle graph'],['⌘,','Open settings'],
-          ['⌘W','Close tab'],['⌘N','New note'],['Esc','Close overlay']
+          ['⌘K','Search pages','Navigate'],
+          ['⌘P','Command palette','Navigate'],
+          ['⌘G','Toggle graph view','Navigate'],
+          ['⌘,','Open settings','Navigate'],
+          ['⌘E','Toggle edit mode','Edit'],
+          ['⌘S','Save current edit','Edit'],
+          ['⌘N','New note','Edit'],
+          ['⌘W','Close current tab','Tabs'],
+          ['⌘Tab','Next tab','Tabs'],
+          ['Esc','Close overlay/cancel edit','General'],
         ];
-        el.innerHTML = `
-          <div class="settings-section-title">Hotkeys</div>
-          <div class="settings-section-desc">Keyboard shortcuts for quick navigation.</div>
-          ${shortcuts.map(([k,d]) => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-subtle)">
-            <span style="color:var(--text)">${d}</span>
-            <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);background:var(--bg);padding:2px 8px;border-radius:4px">${k}</span>
-          </div>`).join('')}`;
+        const groups = {};
+        shortcuts.forEach(([k,d,g]) => { if(!groups[g]) groups[g]=[]; groups[g].push([k,d]); });
+        let hotkeysHtml = `<div class="settings-section-title">Keyboard Shortcuts</div>
+          <div class="settings-section-desc">All keyboard shortcuts. More can be configured in future versions.</div>`;
+        for(const [group, items] of Object.entries(groups)) {
+          hotkeysHtml += `<div style="margin-top:16px"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:6px">${group}</div>`;
+          hotkeysHtml += items.map(([k,d]) => `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border-subtle)">
+            <span style="color:var(--text);font-size:13px">${d}</span>
+            <kbd style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);background:var(--bg);padding:2px 8px;border-radius:4px;border:1px solid var(--border-subtle)">${k}</kbd>
+          </div>`).join('');
+          hotkeysHtml += `</div>`;
+        }
+        el.innerHTML = hotkeysHtml;
       } else if(section === 'about') {
         el.innerHTML = `
           <div class="settings-section-title">About</div>
