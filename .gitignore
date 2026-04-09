@@ -4,3 +4,15 @@ dist/
 .DS_Store
 .llmwiki-cache/
 coverage/
+
+# User wiki data (never track personal content)
+raw/
+config.yaml
+.wikimem/
+.wikimem-connectors.json
+.wikimem-repos/
+*.env
+
+# Test/personal wikis
+my-wiki/
+test-wiki/

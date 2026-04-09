@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, statSync } from 'node:fs';
 import { join, basename, extname, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
-import type { LLMProvider } from '../providers/types.js';
+import type { LLMProvider, LLMResponse } from '../providers/types.js';
 import type { VaultConfig } from './vault.js';
 import { readWikiPage, writeWikiPage, listWikiPages, slugify } from './vault.js';
 import { updateIndex } from './index-manager.js';
@@ -236,12 +236,24 @@ async function _ingestSourceInner(
   const systemPrompt = `You are a wiki maintainer. You process source documents and produce structured wiki pages in markdown with YAML frontmatter and [[wikilinks]]. Follow the schema in AGENTS.md exactly. Be concise, factual, and thorough in cross-referencing.`;
 
   const llmStart = Date.now();
-  const response = await provider.chat([
-    { role: 'user', content: prompt },
-  ], {
-    systemPrompt,
-    maxTokens: 8192,
-  });
+
+  const { loadConfig } = await import('./config.js');
+  const userConfig = loadConfig(config.configPath);
+  let response: LLMResponse;
+
+  if (userConfig.llm_mode === 'claude-code') {
+    const { runClaudeCode } = await import('./claude-code.js');
+    const text = await runClaudeCode(systemPrompt, prompt, { maxTokens: 8192 });
+    response = { content: text, model: 'claude-code-cli', tokensUsed: { input: 0, output: 0 } };
+  } else {
+    response = await provider.chat([
+      { role: 'user', content: prompt },
+    ], {
+      systemPrompt,
+      maxTokens: 8192,
+    });
+  }
+
   const llmDuration = Date.now() - llmStart;
 
   pipelineEvents.setLLMTrace({

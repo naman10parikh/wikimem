@@ -1,7 +1,8 @@
 import express from 'express';
-import { readFileSync, existsSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'node:fs';
-import { join, resolve, extname, basename } from 'node:path';
+import { readFileSync, existsSync, writeFileSync, mkdirSync, readdirSync, statSync, renameSync, unlinkSync as fsUnlinkSync } from 'node:fs';
+import { join, resolve, extname, basename, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomBytes } from 'node:crypto';
 import { getVaultConfig, getVaultStats, listWikiPages, readWikiPage, writeWikiPage } from '../core/vault.js';
 import type { VaultConfig } from '../core/vault.js';
 
@@ -617,6 +618,15 @@ export function createServer(vaultRoot: string, port: number): void {
   app.post('/api/config/test-provider', async (req, res) => {
     try {
       const { provider: providerName, apiKey } = req.body as { provider?: string; apiKey?: string };
+      if (providerName === 'claude-code') {
+        const { isClaudeCodeAvailable } = await import('../core/claude-code.js');
+        if (isClaudeCodeAvailable()) {
+          res.json({ status: 'ok', provider: 'claude-code' });
+        } else {
+          res.json({ status: 'error', error: 'Claude Code CLI not found in PATH' });
+        }
+        return;
+      }
       if (!apiKey) { res.status(400).json({ error: 'Missing apiKey' }); return; }
       if (providerName === 'claude' || !providerName) {
         const { default: Anthropic } = await import('@anthropic-ai/sdk');
@@ -633,6 +643,16 @@ export function createServer(vaultRoot: string, port: number): void {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.json({ status: 'error', error: msg });
+    }
+  });
+
+  // API: Claude Code CLI availability
+  app.get('/api/claude-code/status', async (_req, res) => {
+    try {
+      const { isClaudeCodeAvailable, getClaudeCodePath } = await import('../core/claude-code.js');
+      res.json({ available: isClaudeCodeAvailable(), path: getClaudeCodePath() });
+    } catch {
+      res.json({ available: false, path: null });
     }
   });
 
@@ -693,18 +713,18 @@ export function createServer(vaultRoot: string, port: number): void {
   // API: query the wiki
   app.post('/api/query', async (req, res) => {
     try {
-      const { question, provider: providerName } = req.body as { question?: string; provider?: string };
+      const { question, provider: providerName, model: modelName } = req.body as { question?: string; provider?: string; model?: string };
       if (!question) {
         res.status(400).json({ error: 'Missing question field' });
         return;
       }
-      // Dynamic import to avoid circular deps
       const { queryWiki } = await import('../core/query.js');
       const { createProviderFromUserConfig } = await import('../providers/index.js');
       const { loadConfig } = await import('../core/config.js');
       const userConfig = loadConfig(config.configPath);
       const provider = createProviderFromUserConfig(userConfig, {
         providerOverride: providerName,
+        model: modelName,
       });
       const result = await queryWiki(question, config, provider, { fileBack: false });
       res.json(result);
@@ -952,6 +972,113 @@ export function createServer(vaultRoot: string, port: number): void {
     }
   });
 
+  // API: list branches (dedicated endpoint)
+  app.get('/api/git/branches', async (_req, res) => {
+    try {
+      const { getBranches, isGitRepo } = await import('../core/git.js');
+      if (!(await isGitRepo(config.root))) {
+        res.json({ current: '', branches: [], isDetached: false });
+        return;
+      }
+      const info = await getBranches(config.root);
+      res.json({ current: info.current, branches: info.all, isDetached: info.isDetached });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Failed to list branches: ${msg}` });
+    }
+  });
+
+  // API: create session branch (auto-naming with wiki/session-<timestamp> or custom name)
+  app.post('/api/git/branches', async (req, res) => {
+    try {
+      const { name, session } = req.body as { name?: string; session?: boolean };
+      const { createBranch } = await import('../core/git.js');
+      let branchName = name;
+      if (!branchName || session) {
+        const ts = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+        branchName = name ? `wiki/${name}` : `wiki/session-${ts}`;
+      }
+      const result = await createBranch(config.root, branchName);
+      res.json(result);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Create branch failed: ${msg}` });
+    }
+  });
+
+  // API: push current branch to remote
+  app.post('/api/git/push', async (req, res) => {
+    try {
+      const { remote } = req.body as { remote?: string };
+      const { pushBranch } = await import('../core/git.js');
+      const result = await pushBranch(config.root, remote || 'origin');
+      res.json(result);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Push failed: ${msg}` });
+    }
+  });
+
+  // API: submit for review (PR workflow: diff summary, auto-branch, push)
+  app.post('/api/git/pr', async (req, res) => {
+    try {
+      const { description } = req.body as { description?: string };
+      const { submitForReview } = await import('../core/git.js');
+      const result = await submitForReview(config.root, description);
+      res.json(result);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Submit for review failed: ${msg}` });
+    }
+  });
+
+  // API: get diff summary (working branch vs base)
+  app.get('/api/git/diff-summary', async (req, res) => {
+    try {
+      const baseBranch = req.query['base'] as string | undefined;
+      const { getDiffSummary, isGitRepo } = await import('../core/git.js');
+      if (!(await isGitRepo(config.root))) {
+        res.json({ filesAdded: [], filesModified: [], filesDeleted: [], totalAdditions: 0, totalDeletions: 0 });
+        return;
+      }
+      const summary = await getDiffSummary(config.root, baseBranch);
+      res.json(summary);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Diff summary failed: ${msg}` });
+    }
+  });
+
+  // API: parsed diff for a commit (rich diff view with per-file hunks)
+  app.get('/api/git/diff/:hash/parsed', async (req, res) => {
+    try {
+      const hash = req.params['hash'];
+      if (!hash) { res.status(400).json({ error: 'Missing hash' }); return; }
+      const { getParsedDiff, isGitRepo } = await import('../core/git.js');
+      if (!(await isGitRepo(config.root))) {
+        res.json({ files: [], stats: { additions: 0, deletions: 0, filesChanged: 0 } });
+        return;
+      }
+      const result = await getParsedDiff(config.root, hash);
+      res.json(result);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Parsed diff failed: ${msg}` });
+    }
+  });
+
+  // API: migrate .wikimem/history snapshots to git commits
+  app.post('/api/git/migrate-history', async (_req, res) => {
+    try {
+      const { migrateHistoryToGit } = await import('../core/git.js');
+      const result = await migrateHistoryToGit(config);
+      res.json(result);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Migration failed: ${msg}` });
+    }
+  });
+
   // === RAW FILE PREVIEW ENDPOINTS ===
 
   // API: serve raw file with correct content-type (for PDF, images, video, audio)
@@ -1067,6 +1194,350 @@ export function createServer(vaultRoot: string, port: number): void {
     }
   });
 
+  // ─── Raw File Operations (Cursor-Parity) ──────────────────────────────────
+
+  // POST /api/raw/rename — rename a raw file
+  app.post('/api/raw/rename', async (req, res) => {
+    try {
+      const { oldPath, newPath } = req.body as { oldPath?: string; newPath?: string };
+      if (!oldPath || !newPath) { res.status(400).json({ error: 'Missing oldPath or newPath' }); return; }
+      const resolvedOld = resolve(config.rawDir, oldPath);
+      const resolvedNew = resolve(config.rawDir, newPath);
+      if (!resolvedOld.startsWith(resolve(config.rawDir)) || !resolvedNew.startsWith(resolve(config.rawDir))) {
+        res.status(403).json({ error: 'Access denied: path outside raw directory' }); return;
+      }
+      if (!existsSync(resolvedOld)) { res.status(404).json({ error: 'File not found' }); return; }
+      mkdirSync(dirname(resolvedNew), { recursive: true });
+      renameSync(resolvedOld, resolvedNew);
+      try {
+        const { autoCommit, isGitRepo } = await import('../core/git.js');
+        if (await isGitRepo(config.root)) {
+          await autoCommit(config.root, 'manual', `rename raw "${basename(oldPath)}" → "${basename(newPath)}"`);
+        }
+      } catch { /* non-fatal */ }
+      res.json({ status: 'renamed', oldPath, newPath });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Rename failed: ${msg}` });
+    }
+  });
+
+  // DELETE /api/raw/file — delete a raw file
+  app.delete('/api/raw/file', async (req, res) => {
+    try {
+      const filePath = req.query['path'] as string | undefined;
+      if (!filePath) { res.status(400).json({ error: 'Missing path query param' }); return; }
+      const resolved = resolve(config.rawDir, filePath);
+      if (!resolved.startsWith(resolve(config.rawDir))) {
+        res.status(403).json({ error: 'Access denied: path outside raw directory' }); return;
+      }
+      if (!existsSync(resolved)) { res.status(404).json({ error: 'File not found' }); return; }
+      fsUnlinkSync(resolved);
+      try {
+        const { autoCommit, isGitRepo } = await import('../core/git.js');
+        if (await isGitRepo(config.root)) {
+          await autoCommit(config.root, 'manual', `delete raw file "${basename(filePath)}"`);
+        }
+      } catch { /* non-fatal */ }
+      res.json({ status: 'deleted', path: filePath });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Delete failed: ${msg}` });
+    }
+  });
+
+  // POST /api/raw/move — move a raw file to a different directory
+  app.post('/api/raw/move', async (req, res) => {
+    try {
+      const { path: filePath, targetDir } = req.body as { path?: string; targetDir?: string };
+      if (!filePath || !targetDir) { res.status(400).json({ error: 'Missing path or targetDir' }); return; }
+      const resolvedSrc = resolve(config.rawDir, filePath);
+      const resolvedDest = resolve(config.rawDir, targetDir, basename(filePath));
+      if (!resolvedSrc.startsWith(resolve(config.rawDir)) || !resolvedDest.startsWith(resolve(config.rawDir))) {
+        res.status(403).json({ error: 'Access denied: path outside raw directory' }); return;
+      }
+      if (!existsSync(resolvedSrc)) { res.status(404).json({ error: 'Source file not found' }); return; }
+      mkdirSync(dirname(resolvedDest), { recursive: true });
+      renameSync(resolvedSrc, resolvedDest);
+      try {
+        const { autoCommit, isGitRepo } = await import('../core/git.js');
+        if (await isGitRepo(config.root)) {
+          await autoCommit(config.root, 'manual', `move raw "${basename(filePath)}" → ${targetDir}/`);
+        }
+      } catch { /* non-fatal */ }
+      res.json({ status: 'moved', from: filePath, to: targetDir + '/' + basename(filePath) });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Move failed: ${msg}` });
+    }
+  });
+
+  // POST /api/pages/:title/move — move a wiki page to a different category folder
+  app.post('/api/pages/:title/move', async (req, res) => {
+    try {
+      const title = req.params['title'];
+      const { targetCategory } = req.body as { targetCategory?: string };
+      if (!title || !targetCategory) { res.status(400).json({ error: 'Missing title or targetCategory' }); return; }
+
+      const pages = listWikiPages(config.wikiDir);
+      const titleLower = title.toLowerCase();
+      const slugified = titleLower.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const match = pages.find((p) => {
+        const fileSlug = basename(p, '.md');
+        if (fileSlug === title || fileSlug === slugified) return true;
+        try { return readWikiPage(p).title.toLowerCase() === titleLower; } catch { return false; }
+      });
+      if (!match) { res.status(404).json({ error: 'Page not found' }); return; }
+
+      const destDir = resolve(config.wikiDir, targetCategory);
+      if (!destDir.startsWith(resolve(config.wikiDir))) {
+        res.status(403).json({ error: 'Access denied: category outside wiki directory' }); return;
+      }
+      mkdirSync(destDir, { recursive: true });
+      const destPath = join(destDir, basename(match));
+      renameSync(match, destPath);
+
+      // Update frontmatter category/type
+      let content = readFileSync(destPath, 'utf-8');
+      if (content.match(/^type:\s*.+$/m)) {
+        content = content.replace(/^type:\s*.+$/m, `type: ${targetCategory}`);
+      } else if (content.match(/^category:\s*.+$/m)) {
+        content = content.replace(/^category:\s*.+$/m, `category: ${targetCategory}`);
+      }
+      writeFileSync(destPath, content, 'utf-8');
+
+      try {
+        const { autoCommit, isGitRepo } = await import('../core/git.js');
+        if (await isGitRepo(config.root)) {
+          await autoCommit(config.root, 'manual', `move page "${title}" → ${targetCategory}/`);
+        }
+      } catch { /* non-fatal */ }
+      res.json({ status: 'moved', title, targetCategory, newPath: relative(config.wikiDir, destPath) });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Move failed: ${msg}` });
+    }
+  });
+
+  // POST /api/folders — create a new folder inside wiki/ or raw/
+  app.post('/api/folders', (req, res) => {
+    try {
+      const { path: folderPath } = req.body as { path?: string };
+      if (!folderPath) { res.status(400).json({ error: 'Missing path' }); return; }
+      const resolved = resolve(config.root, folderPath);
+      const wikiBase = resolve(config.wikiDir);
+      const rawBase = resolve(config.rawDir);
+      if (!resolved.startsWith(wikiBase) && !resolved.startsWith(rawBase)) {
+        res.status(403).json({ error: 'Access denied: folder must be inside wiki/ or raw/' }); return;
+      }
+      mkdirSync(resolved, { recursive: true });
+      res.json({ status: 'created', path: folderPath });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Create folder failed: ${msg}` });
+    }
+  });
+
+  // ─── OAuth Connector System ───────────────────────────────────────────────
+
+  const OAUTH_PROVIDERS: Record<string, {
+    authorizeUrl: string;
+    tokenUrl: string;
+    scopes: string;
+    clientIdKey: string;
+    clientSecretKey: string;
+  }> = {
+    github: {
+      authorizeUrl: 'https://github.com/login/oauth/authorize',
+      tokenUrl: 'https://github.com/login/oauth/access_token',
+      scopes: 'repo read:user',
+      clientIdKey: 'github_client_id',
+      clientSecretKey: 'github_client_secret',
+    },
+    slack: {
+      authorizeUrl: 'https://slack.com/oauth/v2/authorize',
+      tokenUrl: 'https://slack.com/api/oauth.v2.access',
+      scopes: 'channels:history channels:read users:read',
+      clientIdKey: 'slack_client_id',
+      clientSecretKey: 'slack_client_secret',
+    },
+    google: {
+      authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+      tokenUrl: 'https://oauth2.googleapis.com/token',
+      scopes: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.readonly',
+      clientIdKey: 'google_client_id',
+      clientSecretKey: 'google_client_secret',
+    },
+    linear: {
+      authorizeUrl: 'https://linear.app/oauth/authorize',
+      tokenUrl: 'https://api.linear.app/oauth/token',
+      scopes: 'read',
+      clientIdKey: 'linear_client_id',
+      clientSecretKey: 'linear_client_secret',
+    },
+    jira: {
+      authorizeUrl: 'https://auth.atlassian.com/authorize',
+      tokenUrl: 'https://auth.atlassian.com/oauth/token',
+      scopes: 'read:jira-work read:jira-user offline_access',
+      clientIdKey: 'jira_client_id',
+      clientSecretKey: 'jira_client_secret',
+    },
+  };
+
+  const oauthStates = new Map<string, { provider: string; createdAt: number }>();
+
+  function getTokenStorePath(): string {
+    return join(vaultRoot, '.wikimem', 'tokens.json');
+  }
+
+  function loadOAuthTokens(): Record<string, { access_token: string; refresh_token?: string; scope?: string; connectedAt: string }> {
+    const tokenPath = getTokenStorePath();
+    if (!existsSync(tokenPath)) return {};
+    try { return JSON.parse(readFileSync(tokenPath, 'utf-8')); } catch { return {}; }
+  }
+
+  function saveOAuthToken(provider: string, tokenData: { access_token: string; refresh_token?: string; scope?: string }): void {
+    const tokenPath = getTokenStorePath();
+    mkdirSync(dirname(tokenPath), { recursive: true });
+    const tokens = loadOAuthTokens();
+    tokens[provider] = { ...tokenData, connectedAt: new Date().toISOString() };
+    writeFileSync(tokenPath, JSON.stringify(tokens, null, 2), 'utf-8');
+  }
+
+  // GET /api/auth/tokens — list which providers have tokens stored
+  app.get('/api/auth/tokens', (_req, res) => {
+    try {
+      const tokens = loadOAuthTokens();
+      const result: Record<string, { connected: boolean; connectedAt?: string }> = {};
+      for (const provider of Object.keys(OAUTH_PROVIDERS)) {
+        const token = tokens[provider];
+        result[provider] = { connected: !!token, connectedAt: token?.connectedAt };
+      }
+      res.json(result);
+    } catch { res.json({}); }
+  });
+
+  // GET /api/auth/start/:provider — generate OAuth authorize URL
+  app.get('/api/auth/start/:provider', async (req, res) => {
+    try {
+      const providerName = req.params['provider'];
+      if (!providerName) { res.status(400).json({ error: 'Missing provider' }); return; }
+      const providerConfig = OAUTH_PROVIDERS[providerName];
+      if (!providerConfig) { res.status(400).json({ error: `Unknown provider: ${providerName}` }); return; }
+
+      const { loadConfig } = await import('../core/config.js');
+      const userConfig = loadConfig(config.configPath) as Record<string, unknown>;
+      const clientId = userConfig[providerConfig.clientIdKey] as string | undefined;
+      if (!clientId) {
+        res.status(400).json({ error: `Missing ${providerConfig.clientIdKey} in config.yaml` }); return;
+      }
+
+      const state = randomBytes(24).toString('hex');
+      oauthStates.set(state, { provider: providerName, createdAt: Date.now() });
+
+      // Clean stale states (>10 min)
+      for (const [key, val] of oauthStates) {
+        if (Date.now() - val.createdAt > 600_000) oauthStates.delete(key);
+      }
+
+      const redirectUri = `http://localhost:${port}/api/auth/callback`;
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        scope: providerConfig.scopes,
+        state,
+        response_type: 'code',
+        ...(providerName === 'google' ? { access_type: 'offline', prompt: 'consent' } : {}),
+        ...(providerName === 'jira' ? { audience: 'api.atlassian.com', prompt: 'consent' } : {}),
+      });
+      const authorizeUrl = `${providerConfig.authorizeUrl}?${params.toString()}`;
+      res.json({ url: authorizeUrl, state });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `OAuth start failed: ${msg}` });
+    }
+  });
+
+  // GET /api/auth/callback — OAuth callback handler
+  app.get('/api/auth/callback', async (req, res) => {
+    try {
+      const code = req.query['code'] as string | undefined;
+      const state = req.query['state'] as string | undefined;
+      if (!code || !state) {
+        res.status(400).send('<h2>Missing code or state</h2>'); return;
+      }
+      const stateData = oauthStates.get(state);
+      if (!stateData) {
+        res.status(400).send('<h2>Invalid or expired state token</h2>'); return;
+      }
+      oauthStates.delete(state);
+
+      const providerConfig = OAUTH_PROVIDERS[stateData.provider];
+      if (!providerConfig) { res.status(400).send('<h2>Unknown provider</h2>'); return; }
+
+      const { loadConfig } = await import('../core/config.js');
+      const userConfig = loadConfig(config.configPath) as Record<string, unknown>;
+      const clientId = userConfig[providerConfig.clientIdKey] as string;
+      const clientSecret = userConfig[providerConfig.clientSecretKey] as string;
+      if (!clientId || !clientSecret) {
+        res.status(400).send('<h2>Missing client credentials in config</h2>'); return;
+      }
+
+      const redirectUri = `http://localhost:${port}/api/auth/callback`;
+      const tokenRes = await fetch(providerConfig.tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json',
+        },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          code,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }),
+      });
+      const tokenBody = await tokenRes.json() as Record<string, unknown>;
+      const accessToken = tokenBody['access_token'] as string | undefined;
+      if (!accessToken) {
+        res.status(400).send(`<h2>Token exchange failed</h2><pre>${JSON.stringify(tokenBody, null, 2)}</pre>`); return;
+      }
+
+      saveOAuthToken(stateData.provider, {
+        access_token: accessToken,
+        refresh_token: tokenBody['refresh_token'] as string | undefined,
+        scope: tokenBody['scope'] as string | undefined,
+      });
+
+      res.send(`<!DOCTYPE html><html><head><style>
+        body { font-family: Inter, system-ui, sans-serif; background: #1e1e1e; color: #ccc; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .card { background: #252526; border: 1px solid #3e3e3e; border-radius: 12px; padding: 32px 40px; text-align: center; }
+        h2 { color: #4ec9b0; margin: 0 0 8px; } p { color: #808080; font-size: 14px; }
+      </style></head><body><div class="card"><h2>Connected!</h2><p>${stateData.provider} is now linked to WikiMem.</p><p style="margin-top:12px"><small>You can close this tab.</small></p></div></body></html>`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).send(`<h2>OAuth callback failed</h2><pre>${msg}</pre>`);
+    }
+  });
+
+  // DELETE /api/auth/tokens/:provider — disconnect a provider
+  app.delete('/api/auth/tokens/:provider', (_req, res) => {
+    try {
+      const provider = _req.params['provider'];
+      if (!provider) { res.status(400).json({ error: 'Missing provider' }); return; }
+      const tokenPath = getTokenStorePath();
+      const tokens = loadOAuthTokens();
+      delete tokens[provider];
+      mkdirSync(dirname(tokenPath), { recursive: true });
+      writeFileSync(tokenPath, JSON.stringify(tokens, null, 2), 'utf-8');
+      res.json({ status: 'disconnected', provider });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Disconnect failed: ${msg}` });
+    }
+  });
+
   // Pipeline SSE endpoint — real-time step updates
   app.get('/api/pipeline/events', (_req, res) => {
     res.writeHead(200, {
@@ -1160,11 +1631,12 @@ export function createServer(vaultRoot: string, port: number): void {
   // POST /api/webhook/ingest — accept external content, run ingest pipeline
   app.post('/api/webhook/ingest', async (req, res) => {
     try {
-      const { content, title, source, tags } = req.body as {
+      const { content, title, source, tags, metadata } = req.body as {
         content?: string;
         title?: string;
         source?: string;
         tags?: string[];
+        metadata?: Record<string, string>;
       };
       if (!content || content.trim().length === 0) {
         res.status(400).json({ error: 'Missing or empty content field' });
@@ -1199,6 +1671,7 @@ export function createServer(vaultRoot: string, port: number): void {
         result = await ingestSource(filePath, config, provider, {
           verbose: false,
           tags: tags ?? [],
+          metadata,
           addedBy: 'webhook',
         });
       } catch (ingestErr) {
@@ -1224,10 +1697,128 @@ export function createServer(vaultRoot: string, port: number): void {
       });
       webhookIngestingFiles.delete(filePath);
 
-      res.json({ success: !result.rejected, pagesCreated: result.pagesUpdated });
+      res.json({
+        success: !result.rejected,
+        pagesCreated: result.pagesUpdated,
+        title: result.title,
+        rawPath: result.rawPath,
+        rejected: result.rejected ?? false,
+        rejectionReason: result.rejectionReason,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.status(500).json({ error: `Webhook ingest failed: ${msg}` });
+    }
+  });
+
+  // ─── Centralized Ingestion Gateway ───────────────────────────────────────
+
+  // POST /api/gateway/ingest — universal ingestion from any source
+  app.post('/api/gateway/ingest', async (req, res) => {
+    const runId = `gw-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    try {
+      const { content, url, source, title, tags, metadata } = req.body as {
+        content?: string;
+        url?: string;
+        source?: string;
+        title?: string;
+        tags?: string[];
+        metadata?: Record<string, string>;
+      };
+
+      const sourceLabel = source ?? 'api';
+      const validSources = new Set(['email', 'slack', 'webhook', 'api', 'web']);
+      if (source && !validSources.has(source)) {
+        res.status(400).json({ runId, error: `Invalid source. Expected one of: ${[...validSources].join(', ')}` });
+        return;
+      }
+
+      if (!content && !url) {
+        res.status(400).json({ runId, error: 'Must provide at least content or url' });
+        return;
+      }
+
+      const { ingestSource } = await import('../core/ingest.js');
+      const { createProviderFromUserConfig } = await import('../providers/index.js');
+      const { loadConfig } = await import('../core/config.js');
+      const { slugify } = await import('../core/vault.js');
+      const userConfig = loadConfig(config.configPath);
+      const provider = createProviderFromUserConfig(userConfig);
+
+      const auditActor = 'webhook' as const;
+
+      // URL-only ingestion: pass URL directly to ingestSource
+      if (url && !content) {
+        const result = await ingestSource(url, config, provider, {
+          verbose: false,
+          tags: tags ?? [],
+          metadata: { ...metadata, gateway_source: sourceLabel, gateway_run: runId },
+          addedBy: 'webhook',
+        });
+        res.json({
+          runId,
+          status: result.rejected ? 'rejected' : 'ingested',
+          pagesCreated: result.pagesUpdated ?? 0,
+          title: result.title,
+          rejected: result.rejected ?? false,
+          rejectionReason: result.rejectionReason,
+        });
+        return;
+      }
+
+      // Content-based: write to raw/ then ingest
+      const now = new Date().toISOString().split('T')[0] ?? '';
+      const pageTitle = title ?? `Gateway ${sourceLabel} ${new Date().toISOString()}`;
+      const frontmatter = [
+        `source: ${sourceLabel}`,
+        `ingested_via: gateway`,
+        `run_id: ${runId}`,
+        ...(tags?.length ? [`tags: [${tags.join(', ')}]`] : []),
+        ...(metadata ? Object.entries(metadata).map(([k, v]) => `${k}: ${v}`) : []),
+      ].join('\n');
+      const markdown = `---\ntitle: "${pageTitle}"\n${frontmatter}\n---\n\n${content}`;
+
+      const dateDir = join(config.rawDir, now);
+      mkdirSync(dateDir, { recursive: true });
+      const slug = slugify(pageTitle.substring(0, 60));
+      const filePath = join(dateDir, `${slug}-gw-${sourceLabel}.md`);
+      writeFileSync(filePath, markdown, 'utf-8');
+
+      webhookIngestingFiles.add(filePath);
+      let result;
+      try {
+        result = await ingestSource(filePath, config, provider, {
+          verbose: false,
+          tags: tags ?? [],
+          metadata: { ...metadata, gateway_source: sourceLabel, gateway_run: runId },
+          addedBy: 'webhook',
+        });
+      } finally {
+        webhookIngestingFiles.delete(filePath);
+      }
+
+      try {
+        const { appendAuditEntry } = await import('../core/audit-trail.js');
+        appendAuditEntry(vaultRoot, {
+          action: 'ingest',
+          actor: auditActor,
+          source: url ?? filePath,
+          summary: `Gateway ingest (${sourceLabel}): "${pageTitle}" — ${result.pagesUpdated} pages created.`,
+          pagesAffected: [pageTitle],
+        });
+      } catch { /* non-fatal */ }
+
+      res.json({
+        runId,
+        status: result.rejected ? 'rejected' : 'ingested',
+        pagesCreated: result.pagesUpdated ?? 0,
+        title: result.title,
+        rejected: result.rejected ?? false,
+        rejectionReason: result.rejectionReason,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ runId, status: 'error', error: `Gateway ingest failed: ${msg}` });
     }
   });
 
@@ -1239,8 +1830,10 @@ export function createServer(vaultRoot: string, port: number): void {
       const limit = parseInt(req.query['limit'] as string) || 50;
       const actor = (req.query['actor'] as string) || 'all';
       const action = (req.query['action'] as string) || 'all';
+      const since = req.query['since'] as string | undefined;
+      const before = req.query['before'] as string | undefined;
       const { readAuditTrail } = await import('../core/audit-trail.js');
-      const entries = readAuditTrail(vaultRoot, limit, actor, action);
+      const entries = readAuditTrail(vaultRoot, limit, actor, action, since, before);
       res.json({ entries, total: entries.length });
     } catch (err) {
       res.status(500).json({ error: String(err) });
@@ -1325,7 +1918,9 @@ export function createServer(vaultRoot: string, port: number): void {
         success: true,
         date: report.date,
         totalPages: report.totalPages,
+        pagesReviewed: report.pagesReviewed,
         averageScore: report.averageScore,
+        maxScore: report.maxScore,
         orphanCount: report.orphans.length,
         gapCount: report.gaps.length,
         contradictionCount: report.contradictions.length,
@@ -1385,6 +1980,71 @@ export function createServer(vaultRoot: string, port: number): void {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.status(500).json({ error: `Scrape failed: ${msg}` });
+    }
+  });
+
+  // POST /api/automations/observe — trigger observer with optional budget
+  app.post('/api/automations/observe', async (req, res) => {
+    try {
+      const { maxPagesToReview, maxCostEstimate } = req.body as {
+        maxPagesToReview?: number;
+        maxCostEstimate?: number;
+      };
+      void maxCostEstimate;
+      const { runObserver } = await import('../core/observer.js');
+      const report = await runObserver(config, { maxPagesToReview });
+      res.json({
+        success: true,
+        date: report.date,
+        totalPages: report.totalPages,
+        pagesReviewed: report.pagesReviewed,
+        averageScore: report.averageScore,
+        maxScore: report.maxScore,
+        orphanCount: report.orphans.length,
+        gapCount: report.gaps.length,
+        contradictionCount: report.contradictions.length,
+        reportPath: `.wikimem/observer-reports/${report.date}.json`,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Observer run failed: ${msg}` });
+    }
+  });
+
+  // GET /api/automations/status — status of all three automations
+  app.get('/api/automations/status', async (_req, res) => {
+    try {
+      const { readAuditTrail } = await import('../core/audit-trail.js');
+      const { isObserverCronRunning } = await import('../core/observer.js');
+      const { loadConfig } = await import('../core/config.js');
+      const userConfig = loadConfig(config.configPath);
+      const settings = loadAutomationSettings();
+
+      const recentIngest = readAuditTrail(vaultRoot, 1, undefined, 'ingest');
+      const recentScrape = readAuditTrail(vaultRoot, 1, undefined, 'scrape');
+      const recentObserve = readAuditTrail(vaultRoot, 1, undefined, 'observe');
+
+      res.json({
+        ingest: {
+          enabled: settings['ingest']?.['enabled'] !== false,
+          lastRun: recentIngest[0]?.timestamp ?? null,
+          watcherActive: true,
+        },
+        scrape: {
+          enabled: settings['scrape']?.['enabled'] !== false,
+          lastRun: recentScrape[0]?.timestamp ?? null,
+          sourcesConfigured: (userConfig.sources ?? []).length,
+        },
+        observe: {
+          enabled: settings['observe']?.['enabled'] !== false,
+          lastRun: recentObserve[0]?.timestamp ?? null,
+          cronActive: isObserverCronRunning(),
+          schedule: '0 3 * * *',
+        },
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Failed to get automation status: ${msg}` });
     }
   });
 

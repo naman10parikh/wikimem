@@ -15,8 +15,9 @@ const args = process.argv.slice(2);
 let vault = process.cwd();
 
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--vault' && args[i + 1]) {
-    vault = resolve(args[i + 1] as string);
+  const next = args[i + 1];
+  if (args[i] === '--vault' && next) {
+    vault = resolve(next);
     break;
   }
 }

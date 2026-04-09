@@ -20,6 +20,7 @@ export interface ProvidersYamlConfig {
 }
 
 export interface UserConfig {
+  llm_mode?: 'api' | 'claude-code';
   provider?: string;
   model?: string;
   api_key?: string;

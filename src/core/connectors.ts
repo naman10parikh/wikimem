@@ -10,7 +10,19 @@ import { join, extname, basename } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import chokidar from 'chokidar';
 
-export type ConnectorType = 'folder' | 'git-repo' | 'github';
+/**
+ * Simple glob matching for patterns like *.md, *.txt, test-*.json.
+ * Handles * as wildcard; no ** or brace expansion needed for file-name matching.
+ */
+function simpleGlobMatch(filename: string, pattern: string): boolean {
+  const regex = new RegExp(
+    '^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$',
+    'i',
+  );
+  return regex.test(filename);
+}
+
+export type ConnectorType = 'folder' | 'git-repo' | 'github' | 'slack' | 'linear' | 'jira' | 'gmail' | 'gdrive';
 
 export interface ConnectorConfig {
   id: string;
@@ -149,8 +161,8 @@ export class ConnectorManager extends EventEmitter {
 
     // Check include globs if specified
     if (connector.includeGlobs?.length) {
-      const { minimatch } = require('minimatch');
-      return connector.includeGlobs.some((g: string) => minimatch(basename(filePath), g));
+      const name = basename(filePath);
+      return connector.includeGlobs.some((g: string) => simpleGlobMatch(name, g));
     }
     return true;
   }

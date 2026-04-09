@@ -70,12 +70,21 @@ ${pageContents.join('\n\n---\n\n').substring(0, 20000)}
 ## Instructions
 Answer the question based on the wiki content above. Use [[wikilinks]] when referencing pages. Cite your sources. If the wiki doesn't contain enough information, say so clearly.`;
 
-  const response = await provider.chat([
-    { role: 'user', content: prompt },
-  ], {
-    systemPrompt: 'You are a knowledgeable wiki assistant. Answer questions by synthesizing information from the wiki pages provided. Always cite sources using [[wikilinks]]. Be concise and accurate.',
-    maxTokens: 4096,
-  });
+  const systemPrompt = 'You are a knowledgeable wiki assistant. Answer questions by synthesizing information from the wiki pages provided. Always cite sources using [[wikilinks]]. Be concise and accurate.';
+
+  const { loadConfig } = await import('./config.js');
+  const userConfig = loadConfig(config.configPath);
+
+  let responseContent: string;
+  if (userConfig.llm_mode === 'claude-code') {
+    const { runClaudeCode } = await import('./claude-code.js');
+    responseContent = await runClaudeCode(systemPrompt, prompt, { maxTokens: 4096 });
+  } else {
+    const response = await provider.chat([
+      { role: 'user', content: prompt },
+    ], { systemPrompt, maxTokens: 4096 });
+    responseContent = response.content;
+  }
 
   // Step 4: Optionally file the answer back into the wiki
   let filedAs: string | undefined;
@@ -84,7 +93,7 @@ Answer the question based on the wiki content above. Use [[wikilinks]] when refe
     const slug = slugify(question.substring(0, 50));
     const filePath = join(config.wikiDir, 'syntheses', `${slug}.md`);
 
-    writeWikiPage(filePath, response.content, {
+    writeWikiPage(filePath, responseContent, {
       title: question,
       type: 'synthesis',
       created: now,
@@ -100,7 +109,7 @@ Answer the question based on the wiki content above. Use [[wikilinks]] when refe
   appendLog(config.logPath, `query | ${question.substring(0, 60)}`, `Consulted ${sourcesConsulted.length} pages: ${sourcesConsulted.join(', ')}`);
 
   return {
-    answer: response.content,
+    answer: responseContent,
     sourcesConsulted,
     filedAs,
   };

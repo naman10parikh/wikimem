@@ -1,5 +1,5 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { simpleGit, type SimpleGit, type StatusResult } from 'simple-git';
 import type { VaultConfig } from './vault.js';
 
@@ -343,6 +343,320 @@ export interface GraphNodeSnapshot {
 export interface GraphSnapshot {
   nodes: GraphNodeSnapshot[];
   links: Array<{ source: string; target: string }>;
+}
+
+export interface ParsedDiffFile {
+  path: string;
+  status: 'added' | 'modified' | 'deleted' | 'renamed';
+  insertions: number;
+  deletions: number;
+  hunks: Array<{
+    header: string;
+    lines: Array<{ type: 'add' | 'del' | 'ctx'; content: string }>;
+  }>;
+}
+
+export interface ParsedDiff {
+  files: ParsedDiffFile[];
+  stats: { additions: number; deletions: number; filesChanged: number };
+}
+
+export interface PushResult {
+  pushed: boolean;
+  remote: string;
+  branch: string;
+  message: string;
+}
+
+export interface PRSubmission {
+  branch: string;
+  baseBranch: string;
+  pushed: boolean;
+  pushMessage: string;
+  diff: {
+    filesAdded: string[];
+    filesModified: string[];
+    filesDeleted: string[];
+    totalAdditions: number;
+    totalDeletions: number;
+  };
+}
+
+export function parseDiffOutput(rawDiff: string): ParsedDiffFile[] {
+  const files: ParsedDiffFile[] = [];
+  const fileSections = rawDiff.split(/^diff --git /m).filter(Boolean);
+
+  for (const section of fileSections) {
+    const headerMatch = section.match(/^a\/(.+?) b\/(.+)/);
+    if (!headerMatch) continue;
+
+    const aPath = headerMatch[1]!;
+    const bPath = headerMatch[2]!;
+
+    let status: ParsedDiffFile['status'] = 'modified';
+    if (section.includes('new file mode')) status = 'added';
+    else if (section.includes('deleted file mode')) status = 'deleted';
+    else if (section.includes('rename from')) status = 'renamed';
+
+    const hunks: ParsedDiffFile['hunks'] = [];
+    const hunkRegex = /^@@\s+[^@]+@@.*$/gm;
+    let match;
+    const hunkHeaders: Array<{ header: string; index: number }> = [];
+
+    while ((match = hunkRegex.exec(section)) !== null) {
+      hunkHeaders.push({ header: match[0], index: match.index + match[0].length });
+    }
+
+    let insertions = 0;
+    let deletions = 0;
+
+    for (let i = 0; i < hunkHeaders.length; i++) {
+      const start = hunkHeaders[i]!.index;
+      const end = i + 1 < hunkHeaders.length ? section.lastIndexOf('\n@@', hunkHeaders[i + 1]!.index) : section.length;
+      const body = section.substring(start, end);
+      const lines: ParsedDiffFile['hunks'][0]['lines'] = [];
+
+      for (const line of body.split('\n')) {
+        if (line.startsWith('+')) {
+          lines.push({ type: 'add', content: line.substring(1) });
+          insertions++;
+        } else if (line.startsWith('-')) {
+          lines.push({ type: 'del', content: line.substring(1) });
+          deletions++;
+        } else if (line.startsWith(' ') || line === '') {
+          lines.push({ type: 'ctx', content: line.substring(1) || '' });
+        }
+      }
+
+      hunks.push({ header: hunkHeaders[i]!.header, lines });
+    }
+
+    files.push({ path: status === 'deleted' ? aPath : bPath, status, insertions, deletions, hunks });
+  }
+
+  return files;
+}
+
+export async function getParsedDiff(
+  vaultRoot: string,
+  commitHash: string,
+): Promise<ParsedDiff> {
+  if (!(await isGitRepo(vaultRoot))) {
+    return { files: [], stats: { additions: 0, deletions: 0, filesChanged: 0 } };
+  }
+
+  const git = getGit(vaultRoot);
+  const raw = await git.diff([`${commitHash}~1`, commitHash]);
+  const files = parseDiffOutput(raw);
+
+  return {
+    files,
+    stats: {
+      additions: files.reduce((s, f) => s + f.insertions, 0),
+      deletions: files.reduce((s, f) => s + f.deletions, 0),
+      filesChanged: files.length,
+    },
+  };
+}
+
+export async function pushBranch(
+  vaultRoot: string,
+  remote: string = 'origin',
+): Promise<PushResult> {
+  if (!(await isGitRepo(vaultRoot))) {
+    return { pushed: false, remote: '', branch: '', message: 'Not a git repository' };
+  }
+
+  const git = getGit(vaultRoot);
+  const branches = await git.branch();
+  const branch = branches.current;
+
+  try {
+    const remotes = await git.getRemotes(true);
+    const hasRemote = remotes.some(r => r.name === remote);
+    if (!hasRemote) {
+      return { pushed: false, remote, branch, message: `Remote "${remote}" not configured. Add a remote first.` };
+    }
+
+    await git.push(remote, branch, ['--set-upstream']);
+    return { pushed: true, remote, branch, message: `Pushed ${branch} to ${remote}` };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { pushed: false, remote, branch, message: `Push failed: ${msg}` };
+  }
+}
+
+export async function getDiffSummary(
+  vaultRoot: string,
+  baseBranch?: string,
+): Promise<PRSubmission['diff']> {
+  if (!(await isGitRepo(vaultRoot))) {
+    return { filesAdded: [], filesModified: [], filesDeleted: [], totalAdditions: 0, totalDeletions: 0 };
+  }
+
+  const git = getGit(vaultRoot);
+  const branches = await git.branch();
+  const current = branches.current;
+  const base = baseBranch || branches.all.find(b => b === 'main' || b === 'master') || 'main';
+
+  if (current === base) {
+    const status = await git.status();
+    return {
+      filesAdded: status.created,
+      filesModified: status.modified,
+      filesDeleted: status.deleted,
+      totalAdditions: 0,
+      totalDeletions: 0,
+    };
+  }
+
+  try {
+    const diff = await git.diffSummary([`${base}...${current}`]);
+    const filesAdded: string[] = [];
+    const filesModified: string[] = [];
+    const filesDeleted: string[] = [];
+    let totalAdditions = 0;
+    let totalDeletions = 0;
+
+    for (const f of diff.files) {
+      totalAdditions += 'insertions' in f ? f.insertions : 0;
+      totalDeletions += 'deletions' in f ? f.deletions : 0;
+
+      if (f.file.includes('=>')) {
+        filesModified.push(f.file);
+      } else if ('insertions' in f && f.insertions > 0 && ('deletions' in f ? f.deletions : 0) === 0) {
+        filesAdded.push(f.file);
+      } else if ('deletions' in f && f.deletions > 0 && ('insertions' in f ? f.insertions : 0) === 0) {
+        filesDeleted.push(f.file);
+      } else {
+        filesModified.push(f.file);
+      }
+    }
+
+    return { filesAdded, filesModified, filesDeleted, totalAdditions, totalDeletions };
+  } catch {
+    return { filesAdded: [], filesModified: [], filesDeleted: [], totalAdditions: 0, totalDeletions: 0 };
+  }
+}
+
+export async function submitForReview(
+  vaultRoot: string,
+  description?: string,
+): Promise<PRSubmission> {
+  if (!(await isGitRepo(vaultRoot))) {
+    throw new Error('Not a git repository');
+  }
+
+  const git = getGit(vaultRoot);
+  const branches = await git.branch();
+  let currentBranch = branches.current;
+  const baseBranch = branches.all.find(b => b === 'main' || b === 'master') || 'main';
+
+  if (currentBranch === baseBranch) {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+    const sessionBranch = `wiki/session-${ts}`;
+    await git.checkoutLocalBranch(sessionBranch);
+    currentBranch = sessionBranch;
+  }
+
+  if (description) {
+    const status = await git.status();
+    if (status.files.length > 0) {
+      await git.add('.');
+      await git.commit(`wiki: feat(submit): ${description}`);
+    }
+  }
+
+  const diff = await getDiffSummary(vaultRoot, baseBranch);
+
+  let pushed = false;
+  let pushMessage = 'No remote configured';
+  try {
+    const remotes = await git.getRemotes(true);
+    if (remotes.length > 0) {
+      const remote = remotes[0]!.name;
+      await git.push(remote, currentBranch, ['--set-upstream']);
+      pushed = true;
+      pushMessage = `Pushed to ${remote}/${currentBranch}`;
+    }
+  } catch (err) {
+    pushMessage = `Push failed: ${err instanceof Error ? err.message : String(err)}`;
+  }
+
+  return { branch: currentBranch, baseBranch, pushed, pushMessage, diff };
+}
+
+export async function migrateHistoryToGit(
+  config: VaultConfig,
+): Promise<{ migrated: number; skipped: number; message: string }> {
+  const historyLogPath = join(config.root, '.wikimem', 'history', 'log.json');
+  if (!existsSync(historyLogPath)) {
+    return { migrated: 0, skipped: 0, message: 'No history log found' };
+  }
+
+  const git = getGit(config.root);
+  if (!(await isGitRepo(config.root))) {
+    return { migrated: 0, skipped: 0, message: 'Not a git repository' };
+  }
+
+  const logData = JSON.parse(readFileSync(historyLogPath, 'utf-8'));
+  const entries: Array<{ id: string; timestamp: string; automation: string; summary: string; filesChanged: string[] }> = logData.entries ?? [];
+
+  if (entries.length === 0) {
+    return { migrated: 0, skipped: 0, message: 'No history entries to migrate' };
+  }
+
+  const snapshotsDir = join(config.root, '.wikimem', 'history', 'snapshots');
+  let migrated = 0;
+  let skipped = 0;
+
+  const sorted = [...entries].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+  );
+
+  for (const entry of sorted) {
+    const snapDir = join(snapshotsDir, entry.id);
+    if (!existsSync(snapDir)) {
+      skipped++;
+      continue;
+    }
+
+    const wikiSnapDir = join(snapDir, 'wiki');
+    if (!existsSync(wikiSnapDir)) {
+      skipped++;
+      continue;
+    }
+
+    const { cpSync, rmSync } = await import('node:fs');
+    const wikiDir = config.wikiDir;
+
+    const wikiFiles = readdirSync(wikiDir).filter(f => f.endsWith('.md'));
+    for (const f of wikiFiles) {
+      rmSync(join(wikiDir, f), { force: true });
+    }
+
+    const snapFiles = readdirSync(wikiSnapDir).filter(f => f.endsWith('.md'));
+    for (const f of snapFiles) {
+      cpSync(join(wikiSnapDir, f), join(wikiDir, f));
+    }
+
+    await git.add('.');
+    const commitDate = new Date(entry.timestamp).toISOString();
+    const message = `wiki: ${entry.automation}: ${entry.summary}`;
+    await git.raw([
+      'commit', '--allow-empty',
+      '-m', message,
+      '--date', commitDate,
+    ]);
+
+    migrated++;
+  }
+
+  return {
+    migrated,
+    skipped,
+    message: `Migrated ${migrated} snapshots as git commits (${skipped} skipped)`,
+  };
 }
 
 export async function getGraphAtCommit(

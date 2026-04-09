@@ -38,11 +38,13 @@ export function readAuditTrail(
   limit = 50,
   actor?: string,
   action?: string,
+  since?: string,
+  before?: string,
 ): AuditEntry[] {
-  const path = getAuditTrailPath(vaultRoot);
-  if (!existsSync(path)) return [];
+  const trailPath = getAuditTrailPath(vaultRoot);
+  if (!existsSync(trailPath)) return [];
 
-  const lines = readFileSync(path, 'utf-8').trim().split('\n').filter(Boolean);
+  const lines = readFileSync(trailPath, 'utf-8').trim().split('\n').filter(Boolean);
   let entries: AuditEntry[] = [];
 
   for (const line of lines) {
@@ -55,6 +57,8 @@ export function readAuditTrail(
 
   if (actor && actor !== 'all') entries = entries.filter((e) => e.actor === actor);
   if (action && action !== 'all') entries = entries.filter((e) => e.action === action);
+  if (since) entries = entries.filter((e) => e.timestamp >= since);
+  if (before) entries = entries.filter((e) => e.timestamp <= before);
 
   // Most-recent first
   return entries.reverse().slice(0, limit);

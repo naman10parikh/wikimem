@@ -25,6 +25,10 @@ import { registerDuplicatesCommand } from './commands/duplicates.js';
 import { registerServeCommand } from './commands/serve.js';
 import { registerHistoryCommand } from './commands/history.js';
 import { registerMcpCommand } from './commands/mcp.js';
+import { registerSearchCommand } from './commands/search.js';
+import { registerAskCommand } from './commands/ask.js';
+import { registerOpenCommand } from './commands/open.js';
+import { registerExportCommand } from './commands/export.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -37,6 +41,8 @@ export function createProgram(): Command {
   registerInitCommand(program);
   registerIngestCommand(program);
   registerQueryCommand(program);
+  registerSearchCommand(program);
+  registerAskCommand(program);
   registerLintCommand(program);
   registerStatusCommand(program);
   registerWatchCommand(program);
@@ -44,6 +50,8 @@ export function createProgram(): Command {
   registerImproveCommand(program);
   registerDuplicatesCommand(program);
   registerServeCommand(program);
+  registerOpenCommand(program);
+  registerExportCommand(program);
   registerHistoryCommand(program);
   registerMcpCommand(program);
 

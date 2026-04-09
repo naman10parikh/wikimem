@@ -21,15 +21,39 @@ export interface PageScore {
   page: string;
   title: string;
   score: number;
+  maxScore: number;
   breakdown: {
     hasSummary: boolean;
     hasLinksOut: boolean;
     hasLinksIn: boolean;
     wordCount: number;
     hasTags: boolean;
+    freshness: number;
+    readability: number;
   };
   issues: string[];
 }
+
+function scoreFreshness(frontmatter: Record<string, unknown>): number {
+  const updated = frontmatter['updated'] as string | undefined;
+  if (!updated) return 0;
+  try {
+    const daysSince = (Date.now() - new Date(updated).getTime()) / 86_400_000;
+    if (daysSince <= 7) return 2;
+    if (daysSince <= 30) return 1;
+    return 0;
+  } catch { return 0; }
+}
+
+function scoreReadability(content: string): number {
+  let r = 0;
+  if (/^#{2,3}\s/m.test(content)) r++;
+  const paragraphs = content.split(/\n\n+/).filter(p => p.trim().length > 0);
+  if (paragraphs.length >= 3) r++;
+  return r;
+}
+
+const MAX_SCORE = 14;
 
 function scorePage(pagePath: string, incomingLinks: Map<string, number>): PageScore {
   const page = readWikiPage(pagePath);
@@ -43,8 +67,9 @@ function scorePage(pagePath: string, incomingLinks: Map<string, number>): PageSc
   const hasTags = Array.isArray(page.frontmatter['tags'])
     ? (page.frontmatter['tags'] as unknown[]).length > 0
     : false;
+  const freshness = scoreFreshness(page.frontmatter);
+  const readability = scoreReadability(page.content);
 
-  // 0-10 scoring: each criterion worth up to 2 points
   let score = 0;
   if (hasSummary) score += 2;
   if (hasLinksOut) score += 2;
@@ -52,23 +77,30 @@ function scorePage(pagePath: string, incomingLinks: Map<string, number>): PageSc
   if (page.wordCount >= 50) score += 2;
   else if (page.wordCount >= 20) score += 1;
   if (hasTags) score += 2;
+  score += freshness;
+  score += readability;
 
   if (!hasSummary) issues.push('Missing or empty summary in frontmatter');
   if (!hasLinksOut) issues.push('No outbound [[wikilinks]] — isolated page');
   if (!hasLinksIn) issues.push('No pages link to this page (orphan candidate)');
   if (page.wordCount < 50) issues.push(`Very short content (${page.wordCount} words)`);
   if (!hasTags) issues.push('No tags defined');
+  if (freshness === 0) issues.push('Stale or missing updated date (>30 days)');
+  if (readability === 0) issues.push('No headings or structured paragraphs');
 
   return {
     page: pagePath,
     title: page.title,
     score,
+    maxScore: MAX_SCORE,
     breakdown: {
       hasSummary,
       hasLinksOut,
       hasLinksIn,
       wordCount: page.wordCount,
       hasTags,
+      freshness,
+      readability,
     },
     issues,
   };
@@ -246,11 +278,18 @@ function buildIncomingLinksMap(pagePaths: string[]): Map<string, number> {
 
 // ─── Report ───────────────────────────────────────────────────────────────────
 
+export interface ObserverOptions {
+  maxPagesToReview?: number;
+  maxCostEstimate?: number;
+}
+
 export interface ObserverReport {
   date: string;
   generatedAt: string;
   totalPages: number;
+  pagesReviewed: number;
   averageScore: number;
+  maxScore: number;
   scores: PageScore[];
   orphans: OrphanPage[];
   contradictions: PotentialContradiction[];
@@ -262,15 +301,19 @@ export function getObserverReportsDir(vaultRoot: string): string {
   return join(vaultRoot, '.wikimem', 'observer-reports');
 }
 
-export async function runObserver(config: VaultConfig): Promise<ObserverReport> {
+export async function runObserver(config: VaultConfig, options?: ObserverOptions): Promise<ObserverReport> {
   const startMs = Date.now();
-  const pagePaths = listWikiPages(config.wikiDir);
-  const incomingLinks = buildIncomingLinksMap(pagePaths);
+  const allPaths = listWikiPages(config.wikiDir);
+  const incomingLinks = buildIncomingLinksMap(allPaths);
 
-  const scores = pagePaths.map((p) => scorePage(p, incomingLinks));
-  const orphans = findOrphans(pagePaths, incomingLinks);
-  const contradictions = flagContradictions(pagePaths);
-  const gaps = findGaps(pagePaths);
+  const reviewPaths = options?.maxPagesToReview
+    ? allPaths.slice(0, options.maxPagesToReview)
+    : allPaths;
+
+  const scores = reviewPaths.map((p) => scorePage(p, incomingLinks));
+  const orphans = findOrphans(allPaths, incomingLinks);
+  const contradictions = flagContradictions(reviewPaths);
+  const gaps = findGaps(allPaths);
 
   const avgScore =
     scores.length > 0
@@ -293,9 +336,11 @@ export async function runObserver(config: VaultConfig): Promise<ObserverReport> 
   const report: ObserverReport = {
     date,
     generatedAt: new Date().toISOString(),
-    totalPages: pagePaths.length,
+    totalPages: allPaths.length,
+    pagesReviewed: reviewPaths.length,
     averageScore: avgScore,
-    scores: scores.sort((a, b) => a.score - b.score), // worst first
+    maxScore: MAX_SCORE,
+    scores: scores.sort((a, b) => a.score - b.score),
     orphans,
     contradictions,
     gaps,
@@ -317,7 +362,7 @@ export async function runObserver(config: VaultConfig): Promise<ObserverReport> 
         config.root,
         'observe',
         'nightly quality scan',
-        `Pages: ${pagePaths.length} | Avg score: ${avgScore}/10 | Orphans: ${orphans.length} | Gaps: ${gaps.length}`,
+        `Pages: ${allPaths.length} (reviewed: ${reviewPaths.length}) | Avg score: ${avgScore}/${MAX_SCORE} | Orphans: ${orphans.length} | Gaps: ${gaps.length}`,
       );
       commitHash = commitResult?.hash;
     }
@@ -326,8 +371,8 @@ export async function runObserver(config: VaultConfig): Promise<ObserverReport> 
       action: 'observe',
       actor: 'observer',
       source: reportPath,
-      summary: `Nightly quality scan: ${pagePaths.length} pages, avg score ${avgScore}/10, ${orphans.length} orphans, ${gaps.length} gaps, ${contradictions.length} contradictions.`,
-      pagesAffected: pagePaths.map((p) => basename(p, '.md')),
+      summary: `Quality scan: ${allPaths.length} pages (${reviewPaths.length} reviewed), avg score ${avgScore}/${MAX_SCORE}, ${orphans.length} orphans, ${gaps.length} gaps, ${contradictions.length} contradictions.`,
+      pagesAffected: reviewPaths.map((p) => basename(p, '.md')),
       commitHash,
       duration: Date.now() - startMs,
     });
@@ -373,7 +418,7 @@ export function startObserverCron(config: VaultConfig): void {
     try {
       const report = await runObserver(config);
       console.log(
-        `[observer] Done — ${report.totalPages} pages, avg score ${report.averageScore}/10, ${report.orphans.length} orphans.`,
+        `[observer] Done — ${report.totalPages} pages (${report.pagesReviewed} reviewed), avg score ${report.averageScore}/${report.maxScore}, ${report.orphans.length} orphans.`,
       );
     } catch (err) {
       console.error('[observer] Nightly scan failed:', err);
@@ -388,4 +433,8 @@ export function stopObserverCron(): void {
     scheduledJob.stop();
     scheduledJob = null;
   }
+}
+
+export function isObserverCronRunning(): boolean {
+  return scheduledJob !== null;
 }

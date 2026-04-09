@@ -34,10 +34,11 @@ if (process.argv.length <= 2) {
     console.log(chalk.bold('  Commands'));
     console.log(chalk.dim('  ─'.padEnd(40, '─')));
     console.log(`  ${chalk.cyan('wikimem ingest <file|url>')}  Add knowledge`);
-    console.log(`  ${chalk.cyan('wikimem query "question"')}   Ask the wiki`);
+    console.log(`  ${chalk.cyan('wikimem search "term"')}      BM25 keyword search`);
+    console.log(`  ${chalk.cyan('wikimem ask "question"')}     LLM-powered Q&A`);
     console.log(`  ${chalk.cyan('wikimem status')}             Full statistics`);
     console.log(`  ${chalk.cyan('wikimem lint')}               Check wiki health`);
-    console.log(`  ${chalk.cyan('wikimem improve')}            Self-improve cycle`);
+    console.log(`  ${chalk.cyan('wikimem export -f json')}     Export graph data`);
     console.log(`  ${chalk.cyan('wikimem serve')}              Web UI at :3141`);
     console.log(`  ${chalk.cyan('wikimem --help')}             All commands`);
     console.log();

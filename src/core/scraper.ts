@@ -82,12 +82,33 @@ function parseRssItems(xml: string): RssItem[] {
   }));
 }
 
+function parseAtomEntries(xml: string): RssItem[] {
+  const entries = xml.match(/<entry[\s>][\s\S]*?<\/entry>/g) ?? [];
+  return entries.map((entry) => ({
+    title: stripCdata(entry.match(/<title[^>]*>([\s\S]*?)<\/title>/)?.[1] ?? 'Untitled').trim(),
+    link: entry.match(/<link[^>]*href=["']([^"']+)["'][^>]*\/?>/)?.[1]?.trim()
+      ?? (entry.match(/<link[^>]*>([\s\S]*?)<\/link>/)?.[1] ?? '').trim(),
+    description: stripCdata(
+      entry.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)?.[1]
+        ?? entry.match(/<content[^>]*>([\s\S]*?)<\/content>/)?.[1]
+        ?? '',
+    ),
+    pubDate: entry.match(/<(?:updated|published)>([\s\S]*?)<\/(?:updated|published)>/)?.[1]?.trim() ?? '',
+  }));
+}
+
+function parseFeedItems(xml: string): RssItem[] {
+  const rssItems = parseRssItems(xml);
+  if (rssItems.length > 0) return rssItems;
+  return parseAtomEntries(xml);
+}
+
 async function fetchRssFeed(source: SourceConfig, options: ScraperOptions): Promise<RssItem[]> {
   if (!source.url) return [];
   const res = await fetch(source.url, { signal: AbortSignal.timeout(20000) });
   if (!res.ok) throw new Error(`HTTP ${res.status} from ${source.url}`);
   const xml = await res.text();
-  const items = parseRssItems(xml);
+  const items = parseFeedItems(xml);
   return items.slice(0, options.maxItems ?? 10);
 }
 
@@ -163,6 +184,28 @@ export async function runSmartScraper(
     pagesCreated: totalPagesCreated,
     actions: allActions,
   };
+}
+
+export async function runAdHocScrape(
+  config: VaultConfig,
+  userConfig: UserConfig,
+  urls: string[],
+  options: ScraperOptions & { topics?: string[] } = {},
+): Promise<SmartScrapeResult> {
+  const sources: SourceConfig[] = urls.map((url) => {
+    const isRss = /\.(xml|rss)$/i.test(url) || /\/feed\b|\/rss\b|\/atom\b/i.test(url);
+    let hostname = 'unknown';
+    try { hostname = new URL(url).hostname; } catch { /* invalid URL */ }
+    const source: SourceConfig & { topics?: string[] } = {
+      name: hostname,
+      type: isRss ? 'rss' : 'url',
+      url,
+    };
+    if (options.topics) source.topics = options.topics;
+    return source as SourceConfig;
+  });
+  const tempUserConfig: UserConfig = { ...userConfig, sources };
+  return runSmartScraper(config, tempUserConfig, options);
 }
 
 interface SourceRunResult {
