@@ -49,11 +49,13 @@ const BUNDLED: Record<string, ProviderDefaults> = {
     // },
   },
   slack: {
-    // Slack App
-    // Register: https://api.slack.com/apps → Create New App → From scratch
+    // Slack App "WikiMem" (A0ASAV3KSUA) — registered April 2026
     // OAuth & Permissions → scopes: channels:history, channels:read, users:read
-    // Redirect URL: http://localhost:3456/api/auth/callback
-    // credentials: { clientId: '...', clientSecret: '...' },
+    // Redirect URL: https://localhost:3456/api/auth/callback
+    credentials: {
+      clientId: '10733160560263.10894989672962',
+      clientSecret: '6b11c67059aa07d02c20dedd2d5af7be',
+    },
   },
   linear: {
     // Linear OAuth App
