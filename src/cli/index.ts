@@ -29,6 +29,7 @@ import { registerSearchCommand } from './commands/search.js';
 import { registerAskCommand } from './commands/ask.js';
 import { registerOpenCommand } from './commands/open.js';
 import { registerExportCommand } from './commands/export.js';
+import { registerPublishCommand } from './commands/publish.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -52,6 +53,7 @@ export function createProgram(): Command {
   registerServeCommand(program);
   registerOpenCommand(program);
   registerExportCommand(program);
+  registerPublishCommand(program);
   registerHistoryCommand(program);
   registerMcpCommand(program);
 

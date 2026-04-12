@@ -137,6 +137,7 @@ Ollama runs fully local — no API keys, no network, no data leaves your machine
 | `wikimem open` | Open vault in Obsidian |
 | `wikimem history` | Browse audit trail, restore snapshots |
 | `wikimem mcp` | Start MCP server for Claude Code / Cursor |
+| `wikimem publish` | Publish wiki as static site, RSS, JSON feed, or digest (`--format html,rss,json-feed,digest`) |
 | `wikimem duplicates` | Detect and manage near-duplicate sources |
 
 ## Web UI
