@@ -156,12 +156,22 @@ async function _ingestSourceInner(
           title = basename(source, ext);
           break;
         case '.html':
-        case '.htm':
+        case '.htm': {
           const html = readFileSync(source, 'utf-8');
           const htmlTitle = html.match(/<title>(.*?)<\/title>/i)?.[1];
-          content = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 20000);
+          // Remove script/style blocks, decode entities, strip tags
+          let cleaned = html;
+          cleaned = cleaned.replace(/<(script|style|noscript)[^>]*>[\s\S]*?<\/\1>/gi, '');
+          cleaned = cleaned.replace(/<\/?(br|p|div|li|h[1-6]|tr|blockquote)[^>]*>/gi, '\n');
+          cleaned = cleaned.replace(/<[^>]+>/g, '');
+          cleaned = cleaned.replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+          cleaned = cleaned.replace(/&#(\d+);/g, (_, dec: string) => String.fromCharCode(parseInt(dec, 10)));
+          cleaned = cleaned.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ');
+          cleaned = cleaned.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+          content = cleaned.substring(0, 20000);
           title = htmlTitle ?? basename(source, ext);
           break;
+        }
         default:
           content = readFileSync(source, 'utf-8');
           title = basename(source, ext);
@@ -253,22 +263,12 @@ async function _ingestSourceInner(
 
   const llmStart = Date.now();
 
-  const { loadConfig } = await import('./config.js');
-  const userConfig = loadConfig(config.configPath);
-  let response: LLMResponse;
-
-  if (userConfig.llm_mode === 'claude-code') {
-    const { runClaudeCode } = await import('./claude-code.js');
-    const text = await runClaudeCode(systemPrompt, prompt, { maxTokens: 8192 });
-    response = { content: text, model: 'claude-code-cli', tokensUsed: { input: 0, output: 0 } };
-  } else {
-    response = await provider.chat([
-      { role: 'user', content: prompt },
-    ], {
-      systemPrompt,
-      maxTokens: 8192,
-    });
-  }
+  const response = await provider.chat([
+    { role: 'user', content: prompt },
+  ], {
+    systemPrompt,
+    maxTokens: 8192,
+  });
 
   const llmDuration = Date.now() - llmStart;
 

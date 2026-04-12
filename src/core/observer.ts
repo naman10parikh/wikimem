@@ -367,17 +367,12 @@ Return the improved complete page content.`;
 
       let improved: string;
 
-      if (userConfig.llm_mode === 'claude-code') {
-        const { runClaudeCode } = await import('./claude-code.js');
-        improved = await runClaudeCode(IMPROVE_SYSTEM_PROMPT, prompt, { maxTokens: 4096 });
-      } else {
-        const { createProviderFromUserConfig } = await import('../providers/index.js');
-        const provider = createProviderFromUserConfig(userConfig);
-        const response = await provider.chat([
-          { role: 'user', content: prompt },
-        ], { systemPrompt: IMPROVE_SYSTEM_PROMPT, maxTokens: 4096 });
-        improved = response.content;
-      }
+      const { createProviderFromUserConfig } = await import('../providers/index.js');
+      const provider = createProviderFromUserConfig(userConfig);
+      const response = await provider.chat([
+        { role: 'user', content: prompt },
+      ], { systemPrompt: IMPROVE_SYSTEM_PROMPT, maxTokens: 4096 });
+      improved = response.content;
 
       if (improved && improved.trim().length > fullContent.length * 0.5) {
         const { writeFileSync } = await import('node:fs');

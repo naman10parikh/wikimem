@@ -61,7 +61,7 @@ export async function improveWiki(
   if (!options.dryRun) {
     for (const action of actions) {
       try {
-        applyAction(action, config, provider);
+        await applyAction(action, config, provider);
         action.applied = true;
       } catch {
         // Non-fatal: log but continue with remaining actions
@@ -191,18 +191,16 @@ function calculateFreshness(config: VaultConfig, pages: string[]): number {
   return Math.round(totalScore / pages.length);
 }
 
-function applyAction(
+async function applyAction(
   action: ImproveAction,
   config: VaultConfig,
-  _provider: LLMProvider,
-): void {
+  provider: LLMProvider,
+): Promise<void> {
   switch (action.type) {
     case 'cross-link': {
-      // Extract page name from description
       const orphanMatch = action.description.match(/orphan page: (.+)$/);
       if (orphanMatch?.[1]) {
         const orphanTitle = orphanMatch[1];
-        // Find the index page and add a link
         if (existsSync(config.indexPath)) {
           const indexContent = readFileSync(config.indexPath, 'utf-8');
           if (!indexContent.includes(`[[${orphanTitle}]]`)) {
@@ -214,7 +212,6 @@ function applyAction(
       break;
     }
     case 'cleanup': {
-      // Add missing frontmatter summary using first sentence of content
       const pageMatch = action.description.match(/to: (.+)$/);
       if (pageMatch?.[1]) {
         const targetTitle = pageMatch[1];
@@ -234,12 +231,120 @@ function applyAction(
       }
       break;
     }
-    case 'suggest-page':
-    case 'reorganize':
-    case 'flag-contradiction':
-      // These action types require LLM involvement to implement properly.
-      // For now, they remain as proposals in the output.
+    case 'suggest-page': {
+      const linkMatch = action.description.match(/broken wikilink: (.+)$/);
+      if (!linkMatch?.[1]) break;
+      const missingTitle = linkMatch[1].replace(/\[\[|\]\]/g, '');
+      const slug = missingTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const targetPath = join(config.wikiDir, 'concepts', `${slug}.md`);
+      if (existsSync(targetPath)) break;
+
+      // Gather context from pages that reference this missing link
+      const pages = listWikiPages(config.wikiDir);
+      const contextSnippets: string[] = [];
+      for (const p of pages) {
+        try {
+          const page = readWikiPage(p);
+          if (page.content.includes(`[[${missingTitle}]]`)) {
+            const lines = page.content.split('\n');
+            for (const line of lines) {
+              if (line.includes(`[[${missingTitle}]]`)) {
+                contextSnippets.push(`From "${page.title}": ${line.trim()}`);
+              }
+            }
+          }
+        } catch { /* skip */ }
+      }
+
+      const resp = await provider.chat([
+        { role: 'system', content: 'You are a wiki editor. Generate a concise wiki page (100-300 words) based on context from pages that reference this topic. Use markdown. Include a one-sentence summary. Do not include frontmatter.' },
+        { role: 'user', content: `Create a wiki page for "${missingTitle}".\n\nContext from linking pages:\n${contextSnippets.slice(0, 8).join('\n')}` },
+      ], { maxTokens: 600, temperature: 0.3 });
+
+      const today = new Date().toISOString().split('T')[0];
+      const summary = resp.content.split(/[.!?]\s/)[0]?.substring(0, 120) ?? '';
+      const fm: Record<string, unknown> = {
+        title: missingTitle,
+        type: 'concept',
+        created: today,
+        updated: today,
+        tags: [],
+        sources: [],
+        related: [],
+        summary,
+      };
+      writeWikiPage(targetPath, `\n# ${missingTitle}\n\n${resp.content}\n`, fm);
       break;
+    }
+    case 'reorganize': {
+      // Identify near-duplicate or closely related pages and suggest merges
+      const pages = listWikiPages(config.wikiDir);
+      const pageSummaries: string[] = [];
+      for (const p of pages.slice(0, 40)) {
+        try {
+          const page = readWikiPage(p);
+          const summary = (page.frontmatter['summary'] as string) || page.content.substring(0, 80);
+          pageSummaries.push(`- ${page.title}: ${summary}`);
+        } catch { /* skip */ }
+      }
+
+      const resp = await provider.chat([
+        { role: 'system', content: 'You are a wiki organizer. Analyze the page list and suggest 1-3 concrete reorganization actions. For each, output exactly: ACTION: merge|split|rename, PAGES: page1, page2, REASON: why. Keep it brief.' },
+        { role: 'user', content: `Wiki pages:\n${pageSummaries.join('\n')}` },
+      ], { maxTokens: 400, temperature: 0.2 });
+
+      // Update the action description with the LLM's suggestions
+      action.description += ` — LLM suggestions: ${resp.content.substring(0, 300)}`;
+      // Reorganize actions are advisory — they update the description but don't auto-apply file changes
+      break;
+    }
+    case 'flag-contradiction': {
+      // Find pages that discuss the same topic and check for conflicting claims
+      const pages = listWikiPages(config.wikiDir);
+      const pageContents: Array<{ title: string; excerpt: string; path: string }> = [];
+      for (const p of pages.slice(0, 30)) {
+        try {
+          const page = readWikiPage(p);
+          pageContents.push({
+            title: page.title,
+            excerpt: page.content.substring(0, 400),
+            path: p,
+          });
+        } catch { /* skip */ }
+      }
+
+      // Group by shared wikilinks to find topically related pages
+      const linkMap = new Map<string, string[]>();
+      for (const p of pageContents) {
+        const links = extractWikilinks(p.excerpt);
+        for (const link of links) {
+          if (!linkMap.has(link)) linkMap.set(link, []);
+          linkMap.get(link)!.push(p.title);
+        }
+      }
+      const overlapping = [...linkMap.entries()]
+        .filter(([, titles]) => titles.length >= 2)
+        .slice(0, 5);
+
+      if (overlapping.length === 0) break;
+
+      const pairsText = overlapping.map(([topic, titles]) =>
+        `Topic "[[${topic}]]" discussed in: ${titles.join(', ')}`
+      ).join('\n');
+
+      const excerptText = pageContents
+        .filter(p => overlapping.some(([, titles]) => titles.includes(p.title)))
+        .map(p => `## ${p.title}\n${p.excerpt}`)
+        .join('\n\n');
+
+      const resp = await provider.chat([
+        { role: 'system', content: 'You are a fact-checker for a wiki. Given overlapping pages, identify any contradictions or inconsistencies between them. For each contradiction found, output: CONFLICT: page1 vs page2 — description. If no contradictions, say "No contradictions found."' },
+        { role: 'user', content: `Pages with shared topics:\n${pairsText}\n\nExcerpts:\n${excerptText}` },
+      ], { maxTokens: 500, temperature: 0.1 });
+
+      action.description += ` — ${resp.content.substring(0, 300)}`;
+      break;
+    }
   }
 }
 

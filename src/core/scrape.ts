@@ -80,18 +80,34 @@ async function scrapeRss(source: SourceConfig, destDir: string): Promise<number>
     }
     const text = await response.text();
 
-    // Simple RSS parsing — extract <item> titles and links
-    const items = text.match(/<item>[\s\S]*?<\/item>/g) ?? [];
+    // Parse RSS/Atom items — supports <item> (RSS 2.0) and <entry> (Atom)
+    const items = text.match(/<item>[\s\S]*?<\/item>/g)
+      ?? text.match(/<entry>[\s\S]*?<\/entry>/g)
+      ?? [];
     let count = 0;
 
     for (const item of items.slice(0, 10)) {
       const rawTitle = item.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? 'Untitled';
       const title = stripCdata(rawTitle).trim();
-      const link = item.match(/<link>\s*([\s\S]*?)\s*<\/link>/)?.[1] ?? '';
-      const rawDesc = item.match(/<description>([\s\S]*?)<\/description>/)?.[1] ?? '';
-      const description = stripCdata(rawDesc);
+      // RSS uses <link>url</link>, Atom uses <link href="url"/>
+      const link = item.match(/<link>\s*([\s\S]*?)\s*<\/link>/)?.[1]
+        ?? item.match(/<link[^>]+href="([^"]+)"/)?.[1]
+        ?? '';
+      // Prefer <content:encoded> (full article) over <description> (summary)
+      const rawBody = item.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/)?.[1]
+        ?? item.match(/<content[^>]*>([\s\S]*?)<\/content>/)?.[1]
+        ?? item.match(/<description>([\s\S]*?)<\/description>/)?.[1]
+        ?? '';
+      const body = stripHtml(stripCdata(rawBody));
+      const pubDate = item.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1]
+        ?? item.match(/<published>([\s\S]*?)<\/published>/)?.[1]
+        ?? '';
 
-      const content = `# ${title}\n\nSource: ${link}\n\n${stripHtml(description)}`;
+      const header = [`# ${title}`, '', `Source: ${link}`];
+      if (pubDate) header.push(`Date: ${pubDate.trim()}`);
+      header.push('');
+
+      const content = header.join('\n') + body;
       const fileName = `${slugify(title.substring(0, 60))}.md`;
       writeFileSync(join(destDir, fileName), content, 'utf-8');
       count++;
@@ -152,6 +168,28 @@ function stripCdata(text: string): string {
   return text.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim();
 }
 
+const HTML_ENTITIES: Record<string, string> = {
+  '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'",
+  '&apos;': "'", '&nbsp;': ' ', '&mdash;': '—', '&ndash;': '–',
+  '&ldquo;': '\u201C', '&rdquo;': '\u201D', '&lsquo;': '\u2018', '&rsquo;': '\u2019',
+  '&hellip;': '…', '&bull;': '•', '&copy;': '©', '&reg;': '®', '&trade;': '™',
+};
+
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, '').replace(/&[a-z]+;/gi, ' ').trim();
+  let text = html;
+  // Remove script, style, and noscript blocks entirely
+  text = text.replace(/<(script|style|noscript)[^>]*>[\s\S]*?<\/\1>/gi, '');
+  // Convert <br>, <p>, <div>, <li>, headings to newlines
+  text = text.replace(/<\/?(br|p|div|li|h[1-6]|tr|blockquote)[^>]*>/gi, '\n');
+  // Remove remaining HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+  // Decode numeric entities (&#123; and &#x7B;)
+  text = text.replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  text = text.replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+  // Decode named entities
+  text = text.replace(/&[a-z]+;/gi, (ent) => HTML_ENTITIES[ent.toLowerCase()] ?? ent);
+  // Normalize whitespace: collapse runs of spaces, trim blank lines
+  text = text.replace(/[ \t]+/g, ' ');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  return text.trim();
 }

@@ -10,6 +10,40 @@ import { ClaudeProvider } from './claude.js';
 import { OpenAIProvider } from './openai.js';
 import { OllamaProvider } from './ollama.js';
 import type { UserConfig } from '../core/config.js';
+import { runClaudeCode, isClaudeCodeAvailable } from '../core/claude-code.js';
+
+/**
+ * LLMProvider backed by the Claude Code CLI (`claude -p`).
+ * Uses the caller's Claude Code subscription — no API key needed.
+ */
+export class ClaudeCodeProvider implements LLMProvider {
+  readonly name = 'claude-code';
+
+  async chat(messages: LLMMessage[], options?: LLMOptions): Promise<LLMResponse> {
+    const systemPrompt =
+      options?.systemPrompt ??
+      messages.find((m) => m.role === 'system')?.content ??
+      '';
+    const userContent = messages
+      .filter((m) => m.role === 'user')
+      .map((m) => m.content)
+      .join('\n\n');
+
+    const text = await runClaudeCode(systemPrompt, userContent, {
+      maxTokens: options?.maxTokens,
+    });
+
+    return {
+      content: text,
+      model: 'claude-code-cli',
+      tokensUsed: { input: 0, output: 0 },
+    };
+  }
+
+  async isAvailable(): Promise<boolean> {
+    return isClaudeCodeAvailable();
+  }
+}
 
 export function normalizeProviderId(name: string): ProviderChainId | null {
   const n = name.trim().toLowerCase();
@@ -157,6 +191,10 @@ export function createProviderFromUserConfig(
   userConfig: UserConfig,
   opts?: { providerOverride?: string; model?: string },
 ): LLMProvider {
+  if (userConfig.llm_mode === 'claude-code' && !opts?.providerOverride) {
+    return new ClaudeCodeProvider();
+  }
+
   const model = opts?.model ?? userConfig.model;
 
   if (opts?.providerOverride) {

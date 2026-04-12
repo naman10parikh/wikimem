@@ -72,19 +72,10 @@ Answer the question based on the wiki content above. Use [[wikilinks]] when refe
 
   const systemPrompt = 'You are a knowledgeable wiki assistant. Answer questions by synthesizing information from the wiki pages provided. Always cite sources using [[wikilinks]]. Be concise and accurate.';
 
-  const { loadConfig } = await import('./config.js');
-  const userConfig = loadConfig(config.configPath);
-
-  let responseContent: string;
-  if (userConfig.llm_mode === 'claude-code') {
-    const { runClaudeCode } = await import('./claude-code.js');
-    responseContent = await runClaudeCode(systemPrompt, prompt, { maxTokens: 4096 });
-  } else {
-    const response = await provider.chat([
-      { role: 'user', content: prompt },
-    ], { systemPrompt, maxTokens: 4096 });
-    responseContent = response.content;
-  }
+  const response = await provider.chat([
+    { role: 'user', content: prompt },
+  ], { systemPrompt, maxTokens: 4096 });
+  const responseContent = response.content;
 
   // Step 4: Optionally file the answer back into the wiki
   let filedAs: string | undefined;
