@@ -2383,6 +2383,293 @@
   background: rgba(79, 158, 255, 0.04);
 }
 
+/* ─── DOCX Preview ─────────────────────────────────────────────────────────── */
+.docx-preview-wrap {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.docx-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+.docx-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.docx-body {
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+  background: var(--bg-page);
+  padding: 0;
+}
+.docx-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 40px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text-primary);
+}
+.docx-content h1 { font-size: 22px; font-weight: 700; margin: 24px 0 12px; }
+.docx-content h2 { font-size: 18px; font-weight: 600; margin: 20px 0 10px; }
+.docx-content h3 { font-size: 15px; font-weight: 600; margin: 16px 0 8px; }
+.docx-content p  { margin: 0 0 10px; }
+.docx-content ul, .docx-content ol { padding-left: 24px; margin: 8px 0 12px; }
+.docx-content li { margin-bottom: 4px; }
+.docx-content table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 13px; }
+.docx-content th, .docx-content td { padding: 6px 10px; border: 1px solid var(--border); }
+.docx-content th { background: var(--bg-surface); font-weight: 600; }
+.docx-content strong { font-weight: 600; }
+.docx-content em { font-style: italic; }
+.docx-content a { color: var(--accent); text-decoration: none; }
+.docx-content a:hover { text-decoration: underline; }
+.docx-content img { max-width: 100%; border-radius: 4px; }
+
+/* ─── PPTX Slide Viewer ─────────────────────────────────────────────────────── */
+.pptx-viewer {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.pptx-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+.pptx-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.pptx-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pptx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.pptx-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-bright);
+}
+.pptx-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.pptx-counter {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 60px;
+  text-align: center;
+}
+.pptx-stage {
+  display: flex;
+  gap: 0;
+  min-height: 320px;
+  background: var(--bg-page);
+}
+.pptx-slide-wrap {
+  flex: 1;
+  padding: 32px 40px;
+  overflow-y: auto;
+  max-height: calc(100vh - 340px);
+}
+.pptx-slide {
+  max-width: 760px;
+}
+.pptx-slide-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-bottom: 20px;
+  line-height: 1.3;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--border);
+}
+.pptx-slide-body {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pptx-slide-body li {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.pptx-notes-wrap {
+  width: 240px;
+  border-left: 1px solid var(--border);
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: calc(100vh - 340px);
+}
+.pptx-notes-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+  padding: 10px 14px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.pptx-notes-body {
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+}
+.pptx-thumb-strip {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border-top: 1px solid var(--border);
+  background: var(--bg-surface);
+  scrollbar-width: thin;
+}
+.pptx-thumb-strip::-webkit-scrollbar { height: 4px; }
+.pptx-thumb-strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.pptx-thumb {
+  min-width: 80px;
+  max-width: 80px;
+  padding: 8px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  background: var(--bg-card);
+  transition: border-color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.pptx-thumb:hover { border-color: var(--accent); background: var(--bg-hover); }
+.pptx-thumb-active { border-color: var(--accent) !important; background: rgba(139, 92, 246, 0.08) !important; }
+.pptx-thumb-num {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin-bottom: 3px;
+}
+.pptx-thumb-title {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ─── Audio Waveform Player ────────────────────────────────────────────────── */
+.waveform-container {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-surface);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.waveform-canvas {
+  width: 100%;
+  min-height: 80px;
+  border-radius: 6px;
+  background: var(--bg-card);
+  overflow: hidden;
+}
+.waveform-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.waveform-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s;
+}
+.waveform-btn:hover { background: #7c3aed; transform: scale(1.05); }
+.waveform-btn:active { transform: scale(0.97); }
+.waveform-time, .waveform-dur {
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text-muted);
+  min-width: 36px;
+}
+.waveform-track {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  cursor: pointer;
+  position: relative;
+  overflow: visible;
+}
+.waveform-progress {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  width: 0%;
+  transition: width 0.1s linear;
+  pointer-events: none;
+}
+
+/* ─── Video keyboard hint ─────────────────────────────────────────────────── */
+.video-kbd-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 6px 0 2px;
+  letter-spacing: 0.2px;
+}
+
 /* Provenance breadcrumb on wiki pages */
 .provenance-bar {
   display: flex;

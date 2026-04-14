@@ -15,6 +15,9 @@ const state = {
   editPageTitle: null,
   editOriginal: "",
   editTabType: null,
+  // Page navigation history for Alt+← / Alt+→
+  navHistory: [],
+  navIndex: -1,
 };
 
 function esc(s) {
@@ -192,6 +195,122 @@ function wireWikilinks(container) {
       "onclick",
       `event.preventDefault();if(!state.editing)openPage('${target.replace(/'/g, "\\'")}')`,
     );
+  });
+}
+
+// ── Wikilink hover previews ──
+let _popoverTimer = null;
+let _popoverCache = {};
+
+function getOrCreatePopover() {
+  let el = document.getElementById("wikilink-popover");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "wikilink-popover";
+    el.setAttribute("aria-hidden", "true");
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+function hidePopover() {
+  clearTimeout(_popoverTimer);
+  const pop = document.getElementById("wikilink-popover");
+  if (pop) {
+    pop.classList.remove("popover-visible");
+  }
+}
+
+async function showPopoverForLink(anchorEl) {
+  const title = anchorEl.dataset.wikilink || anchorEl.textContent;
+  if (!title || state.editing) return;
+
+  const pop = getOrCreatePopover();
+
+  // Fetch excerpt (cached)
+  let data = _popoverCache[title];
+  if (!data) {
+    try {
+      const r = await fetch(
+        "/api/pages/" + encodeURIComponent(title) + "/excerpt",
+      );
+      if (!r.ok) return;
+      data = await r.json();
+      _popoverCache[title] = data;
+    } catch {
+      return;
+    }
+  }
+
+  // Build content
+  const catClass = data.category
+    ? "cat-" + data.category.toLowerCase().replace(/[^a-z0-9]/g, "")
+    : "cat-page";
+  pop.innerHTML = `
+    <div class="popover-header">
+      <span class="popover-title">${esc(data.title)}</span>
+      <span class="popover-cat ${catClass}">${esc(data.category || "page")}</span>
+    </div>
+    ${data.excerpt ? `<div class="popover-excerpt">${esc(data.excerpt)}</div>` : ""}
+    <div class="popover-meta">${data.wordCount} words</div>
+  `;
+
+  // Position: above or below based on viewport
+  const rect = anchorEl.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const popW = 320;
+  const estPopH = 110;
+
+  let top, left;
+  let dirClass;
+
+  if (rect.top > estPopH + 20) {
+    // Place above
+    top = rect.top - estPopH - 10;
+    dirClass = "popover-above";
+  } else {
+    // Place below
+    top = rect.bottom + 10;
+    dirClass = "popover-below";
+  }
+
+  left = Math.max(
+    8,
+    Math.min(rect.left, window.innerWidth - popW - 8),
+  );
+
+  pop.style.top = top + "px";
+  pop.style.left = left + "px";
+  pop.className = dirClass;
+  // Offset the arrow to point at the link
+  const arrowLeft = rect.left - left + rect.width / 2 - 4;
+  pop.style.setProperty("--arrow-left", Math.max(8, arrowLeft) + "px");
+  pop.querySelector("::after"); // force style update
+  // Manually set arrow via inline style on pseudo-element via CSS var
+  pop.style.cssText += `;--arrow-left:${Math.max(8, arrowLeft)}px`;
+
+  pop.classList.add("popover-visible");
+
+  // Auto-hide after 3s
+  clearTimeout(_popoverTimer);
+  _popoverTimer = setTimeout(hidePopover, 3000);
+}
+
+function attachWikilinkHoverPreviews(container) {
+  container.querySelectorAll("a.wikilink").forEach((a) => {
+    // Remove old listeners by cloning and replacing is not safe here
+    // Use a data attribute to avoid double-binding
+    if (a.dataset.hoverBound) return;
+    a.dataset.hoverBound = "1";
+
+    let hoverTimer = null;
+    a.addEventListener("mouseenter", () => {
+      hoverTimer = setTimeout(() => showPopoverForLink(a), 500);
+    });
+    a.addEventListener("mouseleave", () => {
+      clearTimeout(hoverTimer);
+      hidePopover();
+    });
   });
 }
 
@@ -1188,6 +1307,8 @@ async function openPage(title, fromTab) {
     addCopyButtons(body);
     addSourceCitations(body, page);
     setTimeout(() => body.classList.remove("fade-in"), 250);
+    // Attach hover previews to wikilinks in page body
+    attachWikilinkHoverPreviews(body);
 
     buildToc(body);
 
@@ -1196,20 +1317,15 @@ async function openPage(title, fromTab) {
 
     renderEncyclopediaChrome(page);
 
+    // Track navigation history for Alt+← / Alt+→
+    pushNavHistory(title);
+
     const blContainer = document.getElementById("page-backlinks");
     if (isEntityProfile) {
       blContainer.innerHTML = "";
-    } else if (backlinks.length) {
-      blContainer.innerHTML =
-        `<div class="backlinks-title">Linked from (${backlinks.length})</div>` +
-        backlinks
-          .map(
-            (b) =>
-              `<span class="backlink-item" onclick="openPage('${esc(b)}')">${esc(b)}</span>`,
-          )
-          .join("");
     } else {
-      blContainer.innerHTML = "";
+      // Render plain backlinks immediately, then upgrade async with context
+      renderRichBacklinks(blContainer, title, backlinks);
     }
 
     highlightActiveTreeItem(title);
@@ -1552,6 +1668,211 @@ async function viewRawFile(filepath) {
     console.error("Failed to view raw file:", err);
   }
 }
+
+// ─── PPTX slide viewer helpers ────────────────────────────────────────────────
+
+function renderPptxSlide(index) {
+  const slides = window._pptxSlides;
+  if (!slides || index < 0 || index >= slides.length) return;
+  window._pptxCurrent = index;
+  const slide = slides[index];
+  const wrap = document.getElementById("pptx-slide-wrap");
+  const counter = document.getElementById("pptx-counter");
+  const prevBtn = document.getElementById("pptx-prev");
+  const nextBtn = document.getElementById("pptx-next");
+  const notesWrap = document.getElementById("pptx-notes-wrap");
+  const notesBody = document.getElementById("pptx-notes-body");
+  const thumbs = document.querySelectorAll(".pptx-thumb");
+
+  if (counter) counter.textContent = `${index + 1} / ${slides.length}`;
+  if (prevBtn) prevBtn.disabled = index === 0;
+  if (nextBtn) nextBtn.disabled = index === slides.length - 1;
+
+  // Render slide body
+  if (wrap) {
+    let bodyHtml = "";
+    if (slide.title) {
+      bodyHtml += `<div class="pptx-slide-title">${esc(slide.title)}</div>`;
+    }
+    if (slide.body && slide.body.length > 0) {
+      bodyHtml += `<ul class="pptx-slide-body">`;
+      for (const line of slide.body) {
+        bodyHtml += `<li>${esc(line)}</li>`;
+      }
+      bodyHtml += `</ul>`;
+    }
+    if (!slide.title && (!slide.body || slide.body.length === 0)) {
+      bodyHtml = `<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:48px 24px">No text content on this slide</div>`;
+    }
+    wrap.innerHTML = `<div class="pptx-slide">${bodyHtml}</div>`;
+  }
+
+  // Notes
+  if (notesWrap && notesBody) {
+    if (slide.notes && slide.notes.length > 0) {
+      notesBody.textContent = slide.notes.join("\n");
+      notesWrap.style.display = "";
+    } else {
+      notesWrap.style.display = "none";
+    }
+  }
+
+  // Highlight active thumb
+  thumbs.forEach((t, i) => {
+    t.classList.toggle("pptx-thumb-active", i === index);
+  });
+}
+
+function renderPptxThumbs() {
+  const slides = window._pptxSlides;
+  const strip = document.getElementById("pptx-thumb-strip");
+  if (!slides || !strip) return;
+  strip.innerHTML = slides.map((s, i) =>
+    `<div class="pptx-thumb ${i === 0 ? "pptx-thumb-active" : ""}" onclick="renderPptxSlide(${i})" title="${esc(s.title || "Slide " + (i + 1))}">
+      <div class="pptx-thumb-num">${i + 1}</div>
+      <div class="pptx-thumb-title">${esc((s.title || "").slice(0, 30))}</div>
+    </div>`
+  ).join("");
+}
+
+function pptxPrev() {
+  const cur = window._pptxCurrent ?? 0;
+  if (cur > 0) renderPptxSlide(cur - 1);
+}
+
+function pptxNext() {
+  const slides = window._pptxSlides;
+  const cur = window._pptxCurrent ?? 0;
+  if (slides && cur < slides.length - 1) renderPptxSlide(cur + 1);
+}
+
+// Keyboard nav for PPTX (attached when viewer is visible)
+document.addEventListener("keydown", function pptxKeyNav(e) {
+  if (!document.getElementById("pptx-viewer")) return;
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") pptxNext();
+  if (e.key === "ArrowLeft" || e.key === "ArrowUp") pptxPrev();
+});
+
+// ─── Audio waveform helpers (wavesurfer.js via CDN) ────────────────────────────
+
+function initWaveform(containerId, audioUrl) {
+  const container = document.getElementById(containerId);
+  const audioEl = document.getElementById(containerId + "-audio");
+  if (!container || !audioEl) return;
+
+  // Attempt to load wavesurfer.js from CDN if not already loaded
+  function bootstrapWavesurfer() {
+    if (typeof WaveSurfer !== "undefined") {
+      mountWaveSurfer(containerId, audioUrl);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js";
+    script.onload = () => mountWaveSurfer(containerId, audioUrl);
+    script.onerror = () => fallbackAudioPlayer(containerId, audioUrl);
+    document.head.appendChild(script);
+  }
+
+  bootstrapWavesurfer();
+}
+
+function mountWaveSurfer(containerId, audioUrl) {
+  const container = document.getElementById(containerId);
+  if (!container || typeof WaveSurfer === "undefined") {
+    fallbackAudioPlayer(containerId, audioUrl);
+    return;
+  }
+  try {
+    const ws = WaveSurfer.create({
+      container,
+      waveColor: "rgba(139, 92, 246, 0.5)",
+      progressColor: "rgba(139, 92, 246, 1)",
+      cursorColor: "#8B5CF6",
+      barWidth: 2,
+      barRadius: 2,
+      height: 80,
+      url: audioUrl,
+    });
+    window["_ws_" + containerId] = ws;
+
+    const playBtn = document.getElementById(containerId + "-play");
+    const timeEl = document.getElementById(containerId + "-time");
+    const durEl = document.getElementById(containerId + "-dur");
+    const progress = document.getElementById(containerId + "-progress");
+    const track = document.getElementById(containerId + "-track");
+
+    ws.on("ready", (dur) => {
+      if (durEl) durEl.textContent = fmtAudioTime(dur);
+    });
+    ws.on("timeupdate", (t) => {
+      if (timeEl) timeEl.textContent = fmtAudioTime(t);
+      const dur = ws.getDuration();
+      if (progress && dur) {
+        progress.style.width = ((t / dur) * 100).toFixed(1) + "%";
+      }
+    });
+    ws.on("play", () => {
+      if (playBtn) playBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
+    });
+    ws.on("pause", () => {
+      if (playBtn) playBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>`;
+    });
+    if (track) {
+      track.addEventListener("click", (e) => {
+        const rect = track.getBoundingClientRect();
+        const pct = (e.clientX - rect.left) / rect.width;
+        ws.seekTo(pct);
+      });
+    }
+  } catch (e) {
+    fallbackAudioPlayer(containerId, audioUrl);
+  }
+}
+
+function fallbackAudioPlayer(containerId, audioUrl) {
+  const container = document.getElementById(containerId);
+  if (container) {
+    container.innerHTML = `<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:8px">Waveform unavailable</div>`;
+  }
+  const audioEl = document.getElementById(containerId + "-audio");
+  if (audioEl) audioEl.style.display = "";
+}
+
+function waveformToggle(containerId) {
+  const ws = window["_ws_" + containerId];
+  if (ws) {
+    ws.playPause();
+  } else {
+    const audio = document.getElementById(containerId + "-audio");
+    if (audio) audio.paused ? audio.play() : audio.pause();
+  }
+}
+
+function fmtAudioTime(seconds) {
+  const s = Math.floor(seconds % 60);
+  const m = Math.floor(seconds / 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+// ─── Video keyboard shortcuts ────────────────────────────────────────────────
+
+document.addEventListener("keydown", function videoKeyNav(e) {
+  const video = document.getElementById("raw-video-player");
+  if (!video) return;
+  // Only fire when not typing in an input
+  if (["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)) return;
+  if (e.key === " " || e.code === "Space") {
+    e.preventDefault();
+    video.paused ? video.play() : video.pause();
+  } else if (e.key === "ArrowRight") {
+    video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
+  } else if (e.key === "ArrowLeft") {
+    video.currentTime = Math.max(0, video.currentTime - 5);
+  } else if (e.key === "f" || e.key === "F") {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else video.requestFullscreen?.();
+  }
+});
 
 function rawFileEmoji(ext) {
   const map = {
@@ -4718,6 +5039,318 @@ async function openContradictionCompare(idx) {
   }
 }
 
+// ── Observer Report Modal ─────────────────────────────────────────────────────
+
+let _lastObserverReport = null;
+
+function closeObsModal() {
+  const o = document.getElementById("obs-modal-overlay");
+  if (o) o.style.display = "none";
+}
+
+function toggleObsSection(id) {
+  const body = document.getElementById("obs-sec-body-" + id);
+  const chev = document.getElementById("obs-chev-" + id);
+  if (!body) return;
+  const open = body.classList.toggle("open");
+  if (chev) chev.classList.toggle("open", open);
+}
+
+function showObserverReport(reportData) {
+  if (!reportData) {
+    if (_lastObserverReport) {
+      reportData = _lastObserverReport;
+    } else {
+      return;
+    }
+  }
+  _lastObserverReport = reportData;
+
+  const overlay = document.getElementById("obs-modal-overlay");
+  const body = document.getElementById("obs-modal-body");
+  const dateEl = document.getElementById("obs-modal-date");
+  if (!overlay || !body) return;
+
+  if (dateEl) dateEl.textContent = reportData.date ? "— " + reportData.date : "";
+
+  const pct = reportData.maxScore > 0
+    ? Math.round((reportData.averageScore / reportData.maxScore) * 100)
+    : 0;
+  const ringColor = pct >= 80 ? "var(--green)" : pct >= 50 ? "var(--amber)" : "var(--red)";
+  const r = 32;
+  const circ = 2 * Math.PI * r;
+  const dash = (pct / 100) * circ;
+
+  const orphans = reportData.orphans || [];
+  const contradictions = reportData.contradictions || [];
+  const gaps = reportData.gaps || [];
+  const improvements = reportData.improvements || [];
+  const pageSuggestions = reportData.pageSuggestions || [];
+  const crossLinks = reportData.crossLinks || [];
+  const unexpectedPatterns = reportData.unexpectedPatterns || [];
+  const experimentInsights = reportData.experimentInsights || [];
+  const budget = reportData.budget || {};
+
+  const improveMade = improvements.filter(i => i.improved);
+  const improveFailed = improvements.filter(i => !i.improved);
+
+  // ── Section 1: Summary card ──
+  const beforeScore = improveMade.length > 0
+    ? improvements.reduce((s, i) => s + i.originalScore, 0) / improvements.length
+    : null;
+  const afterScore = improveMade.length > 0 && improveMade.every(i => i.newScore != null)
+    ? improveMade.reduce((s, i) => s + (i.newScore || 0), 0) / improveMade.length
+    : null;
+
+  const durationMs = reportData.generatedAt && reportData.date
+    ? null // we don't have startMs in the report directly
+    : null;
+
+  let html = `<div class="obs-summary-card">
+    <div class="obs-ring-wrap">
+      <svg width="80" height="80" viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r="${r}" fill="none" stroke="var(--border)" stroke-width="7"/>
+        <circle cx="40" cy="40" r="${r}" fill="none" stroke="${ringColor}" stroke-width="7"
+          stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}"
+          stroke-linecap="round"/>
+      </svg>
+      <div class="obs-ring-label">
+        <span class="obs-ring-pct">${pct}%</span>
+        <span class="obs-ring-sub">Quality</span>
+      </div>
+    </div>
+    <div class="obs-summary-meta">
+      <div class="obs-summary-stats">
+        <span class="obs-stat-chip">${reportData.totalPages || 0} pages total</span>
+        <span class="obs-stat-chip">${reportData.pagesReviewed || 0} reviewed</span>
+        ${orphans.length > 0 ? `<span class="obs-stat-chip amber">${orphans.length} orphan${orphans.length !== 1 ? "s" : ""}</span>` : ""}
+        ${gaps.length > 0 ? `<span class="obs-stat-chip amber">${gaps.length} gap${gaps.length !== 1 ? "s" : ""}</span>` : ""}
+        ${contradictions.length > 0 ? `<span class="obs-stat-chip red">${contradictions.length} contradiction flag${contradictions.length !== 1 ? "s" : ""}</span>` : ""}
+        ${improveMade.length > 0 ? `<span class="obs-stat-chip green">✓ ${improveMade.length} improved</span>` : ""}
+      </div>
+      ${beforeScore !== null && afterScore !== null
+        ? `<div style="font-size:11px;color:var(--text-muted)">Before/after avg: <span style="color:var(--red)">${beforeScore.toFixed(1)}</span> → <span style="color:var(--green)">${afterScore.toFixed(1)}</span> / ${reportData.maxScore}</div>`
+        : `<div style="font-size:11px;color:var(--text-muted)">Avg score: <strong style="color:var(--text-secondary)">${reportData.averageScore || 0} / ${reportData.maxScore || 14}</strong></div>`}
+      <div class="obs-budget-row">
+        ${budget.estimatedCostUsd != null ? `<span><strong>Budget used:</strong> ~$${budget.estimatedCostUsd.toFixed(2)}</span>` : ""}
+        ${budget.pagesEligible != null ? `<span><strong>Eligible for improvement:</strong> ${budget.pagesEligible} pages</span>` : ""}
+        ${reportData.generatedAt ? `<span><strong>Generated:</strong> ${new Date(reportData.generatedAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>` : ""}
+      </div>
+    </div>
+  </div>`;
+
+  // Helper: collapsible section
+  const section = (id, icon, title, count, countClass, bodyHtml, startOpen) => {
+    const hasItems = count > 0;
+    return `<div class="obs-section">
+      <div class="obs-section-head${hasItems ? "" : " empty"}" ${hasItems ? `onclick="toggleObsSection('${id}')"` : ""}>
+        <span class="obs-section-title">${icon} ${title}</span>
+        <span class="obs-section-right">
+          <span class="obs-section-count ${countClass}">${count}</span>
+          ${hasItems ? `<span class="obs-chevron${startOpen ? " open" : ""}" id="obs-chev-${id}">▶</span>` : ""}
+        </span>
+      </div>
+      <div class="obs-section-body${startOpen ? " open" : ""}" id="obs-sec-body-${id}">${bodyHtml}</div>
+    </div>`;
+  };
+
+  // ── Section 2: Issues ──
+
+  // Orphan pages
+  let orphanHtml = orphans.length === 0
+    ? `<div class="obs-empty">No orphan pages — every page has at least one inbound link.</div>`
+    : orphans.slice(0, 30).map(o =>
+        `<div class="obs-issue-row">
+          <div class="obs-issue-text">
+            <strong>${esc(o.title || o.slug)}</strong>
+            <div class="obs-issue-sub">No inbound links from other pages</div>
+          </div>
+          <button class="settings-btn" style="font-size:10px;padding:2px 8px" onclick="navigateTo('${esc(o.slug)}');closeObsModal()">Open</button>
+        </div>`
+      ).join("") + (orphans.length > 30 ? `<div class="obs-empty">…and ${orphans.length - 30} more</div>` : "");
+
+  // Contradictions
+  let cxHtml = contradictions.length === 0
+    ? `<div class="obs-empty">No contradictions detected.</div>`
+    : contradictions.slice(0, 20).map((c, i) =>
+        `<div class="obs-issue-row">
+          <div class="obs-issue-text">
+            <strong>${esc(c.titleA)}</strong> vs <strong>${esc(c.titleB)}</strong>
+            <div class="obs-issue-sub">${esc(c.reason)}</div>
+          </div>
+          <button class="settings-btn" style="font-size:10px;padding:2px 8px" onclick="openContradictionCompare(${i})">Compare</button>
+        </div>`
+      ).join("");
+
+  // Unexpected patterns (stale hubs, tag orphans, isolated clusters)
+  const staleHubs = unexpectedPatterns.filter(p => p.type === "stale-hub");
+  const tagOrphans = unexpectedPatterns.filter(p => p.type === "tag-orphan");
+  const isolated = unexpectedPatterns.filter(p => p.type === "isolated-cluster");
+  const otherPatterns = unexpectedPatterns.filter(p => !["stale-hub","tag-orphan","isolated-cluster"].includes(p.type));
+
+  let patternsHtml = "";
+  if (unexpectedPatterns.length === 0) {
+    patternsHtml = `<div class="obs-empty">No structural anomalies detected.</div>`;
+  } else {
+    patternsHtml = unexpectedPatterns.slice(0, 20).map(p => {
+      const sigClass = p.significance === "high" ? "high" : p.significance === "medium" ? "medium" : "low";
+      const typeLabel = p.type.replace(/-/g, " ");
+      return `<div class="obs-issue-row">
+        <div class="obs-issue-text">
+          <strong style="text-transform:capitalize">${typeLabel}</strong>
+          <div class="obs-issue-sub">${esc(p.description)}</div>
+        </div>
+        <span class="obs-badge ${sigClass}">${p.significance}</span>
+      </div>`;
+    }).join("");
+  }
+
+  const issueCount = orphans.length + contradictions.length + unexpectedPatterns.length;
+
+  // Combine into a tabbed issues section (sub-groups)
+  let issuesBodyHtml = "";
+  if (orphans.length > 0) {
+    issuesBodyHtml += `<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);padding:10px 0 4px">Orphan Pages (${orphans.length})</div>${orphanHtml}`;
+  }
+  if (contradictions.length > 0) {
+    issuesBodyHtml += `<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);padding:10px 0 4px">Contradictions (${contradictions.length})</div>${cxHtml}`;
+  }
+  if (unexpectedPatterns.length > 0) {
+    issuesBodyHtml += `<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);padding:10px 0 4px">Structural Anomalies (${unexpectedPatterns.length})</div>${patternsHtml}`;
+  }
+  if (!issuesBodyHtml) issuesBodyHtml = `<div class="obs-empty">No issues found.</div>`;
+
+  html += section("issues", "🔍", "Issues Found", issueCount,
+    issueCount > 0 ? "red" : "", issuesBodyHtml, issueCount > 0);
+
+  // ── Section 3: Suggestions ──
+  const suggestCount = pageSuggestions.length + crossLinks.length;
+
+  // Weakest pages from scores
+  const weakest = (reportData.scores || [])
+    .filter(s => s.score != null && s.maxScore != null)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 8);
+
+  let suggBodyHtml = "";
+
+  if (pageSuggestions.length > 0) {
+    suggBodyHtml += `<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);padding:10px 0 4px">Recommended New Pages (${pageSuggestions.length})</div>`;
+    suggBodyHtml += pageSuggestions.slice(0, 15).map(s =>
+      `<div class="obs-sugg-row">
+        <div class="obs-sugg-text">
+          <strong>${esc(s.topic)}</strong>
+          <div class="obs-sugg-sub">${esc(s.reason)}${s.referencedBy && s.referencedBy.length ? ` · Referenced by: ${s.referencedBy.slice(0,3).map(esc).join(", ")}` : ""}</div>
+        </div>
+        <div class="obs-sugg-actions">
+          <span class="obs-badge ${s.priority}">${s.priority}</span>
+        </div>
+      </div>`
+    ).join("");
+  }
+
+  if (crossLinks.length > 0) {
+    suggBodyHtml += `<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);padding:10px 0 4px">Cross-Link Opportunities (${crossLinks.length})</div>`;
+    suggBodyHtml += crossLinks.slice(0, 10).map(cl =>
+      `<div class="obs-sugg-row">
+        <div class="obs-sugg-text">
+          <strong>${esc(cl.titleA)}</strong> ↔ <strong>${esc(cl.titleB)}</strong>
+          <div class="obs-sugg-sub">${esc(cl.reason)} · confidence ${Math.round((cl.confidence || 0) * 100)}%</div>
+        </div>
+        <div class="obs-sugg-actions">
+          <button class="settings-btn" style="font-size:10px;padding:2px 8px" onclick="navigateTo('${esc(cl.titleA.toLowerCase().replace(/[^a-z0-9]+/g,"-"))}');closeObsModal()">Open A</button>
+        </div>
+      </div>`
+    ).join("");
+  }
+
+  if (weakest.length > 0) {
+    suggBodyHtml += `<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);padding:10px 0 4px">Weakest Pages</div>`;
+    suggBodyHtml += weakest.map(p => {
+      const wpct = p.maxScore > 0 ? Math.round((p.score / p.maxScore) * 100) : 0;
+      const wcolor = wpct >= 80 ? "green" : wpct >= 50 ? "amber" : "red";
+      const title = p.title || p.page || p.slug || "Untitled";
+      const issueList = (p.issues || []).slice(0, 3).join(", ");
+      return `<div class="obs-sugg-row">
+        <div class="obs-sugg-text">
+          <strong>${esc(title)}</strong>
+          ${issueList ? `<div class="obs-sugg-sub">${esc(issueList)}</div>` : ""}
+        </div>
+        <span class="obs-badge ${wcolor}">${p.score}/${p.maxScore}</span>
+      </div>`;
+    }).join("");
+  }
+
+  if (!suggBodyHtml) suggBodyHtml = `<div class="obs-empty">No suggestions available.</div>`;
+
+  html += section("suggestions", "💡", "Suggestions", pageSuggestions.length + crossLinks.length,
+    suggestCount > 0 ? "blue" : "", suggBodyHtml, false);
+
+  // ── Section 4: Improvements made ──
+  let impBodyHtml = "";
+  if (improvements.length === 0) {
+    impBodyHtml = `<div class="obs-empty">No pages were improved in this run.</div>`;
+  } else {
+    impBodyHtml = improvements.map(imp => {
+      const icon = imp.improved ? "✅" : "❌";
+      const scoreStr = imp.newScore != null
+        ? `<span class="was">${imp.originalScore}</span> → <span class="now">${imp.newScore}</span>/${reportData.maxScore}`
+        : `was ${imp.originalScore}/${reportData.maxScore}`;
+      return `<div class="obs-imp-row">
+        <span class="obs-imp-icon">${icon}</span>
+        <div class="obs-imp-text">
+          <strong>${esc(imp.title)}</strong>
+          <div class="obs-action">${esc(imp.action || "")}${imp.error ? " · Error: " + esc(imp.error) : ""}</div>
+        </div>
+        <span class="obs-score-arrow">${scoreStr}</span>
+      </div>`;
+    }).join("");
+  }
+
+  html += section("improvements", "⚡", "Improvements Made", improveMade.length,
+    improveMade.length > 0 ? "green" : "", impBodyHtml, improveMade.length > 0);
+
+  // ── Section 5: Experiment insights ──
+  const topIssues = reportData.topIssues || [];
+  let expBodyHtml = "";
+
+  if (experimentInsights.length > 0) {
+    expBodyHtml += `<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);padding:10px 0 4px">Patterns from Past Runs</div>`;
+    expBodyHtml += experimentInsights.map(ins =>
+      `<div class="obs-exp-row">• ${esc(ins)}</div>`
+    ).join("");
+  }
+
+  if (topIssues.length > 0) {
+    expBodyHtml += `<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);padding:10px 0 4px">Most Common Issues</div>`;
+    expBodyHtml += topIssues.slice(0, 8).map(iss =>
+      `<div class="obs-exp-row"><span style="color:var(--amber);font-weight:600">${esc(String(iss.count))}×</span> ${esc(iss.issue)}</div>`
+    ).join("");
+  }
+
+  if (!expBodyHtml) expBodyHtml = `<div class="obs-empty">Not enough runs yet to extract patterns.</div>`;
+
+  const expCount = experimentInsights.length + topIssues.length;
+  html += section("experiments", "🧪", "Experiment Insights", expCount,
+    expCount > 0 ? "blue" : "", expBodyHtml, false);
+
+  // ── Section 6: Next run preview ──
+  const weakEligible = (reportData.scores || []).filter(s => s.score < (s.maxScore || 14) * 0.5).length;
+  const nextRunHtml = `<div class="obs-next-card">
+    <div class="obs-next-text">
+      <strong>${weakEligible} page${weakEligible !== 1 ? "s" : ""}</strong> eligible for improvement in the next run.
+      ${budget.estimatedCostUsd != null ? ` Estimated cost: <strong>~$${budget.estimatedCostUsd.toFixed(2)}</strong>.` : ""}
+      ${gaps.length > 0 ? ` ${gaps.length} knowledge gap${gaps.length !== 1 ? "s" : ""} could be filled.` : ""}
+    </div>
+    <button class="settings-btn settings-btn-primary" style="white-space:nowrap" onclick="closeObsModal();setTimeout(()=>runObserverWithImprove(),100)">Run Now</button>
+  </div>`;
+
+  html += `<div>${nextRunHtml}</div>`;
+
+  body.innerHTML = html;
+  overlay.style.display = "flex";
+}
+
 function renderContradictionRows(contradictions) {
   const container = document.getElementById("observer-cx-list");
   if (!container) return;
@@ -4777,7 +5410,8 @@ async function refreshObserverReportPanel(partial) {
         : report.contradictions
           ? report.contradictions.length
           : 0;
-    summaryEl.innerHTML = `Latest <span style="color:var(--text-secondary)">${esc(report.date || "")}</span> — avg score <strong>${avg}/${maxS}</strong>, ${orphans} orphans, ${gaps} gaps, <strong style="color:var(--amber)">${cx}</strong> contradiction flags`;
+    _lastObserverReport = report;
+    summaryEl.innerHTML = `Latest <span style="color:var(--text-secondary)">${esc(report.date || "")}</span> — avg score <strong>${avg}/${maxS}</strong>, ${orphans} orphans, ${gaps} gaps, <strong style="color:var(--amber)">${cx}</strong> contradiction flags <button class="obs-view-report-btn" onclick="showObserverReport(_lastObserverReport)">View Full Report \u2192</button>`;
     renderContradictionRows(report.contradictions || []);
   } catch (e) {
     summaryEl.textContent = "Could not load observer reports.";

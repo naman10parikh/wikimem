@@ -251,7 +251,12 @@ async function _ingestSourceInner(
     ? readFileSync(config.indexPath, 'utf-8')
     : '';
 
-  const prompt = buildIngestPrompt(content, title, schema, indexContent);
+  // Load prompt overrides from config.yaml (UXO-077)
+  const { loadConfig } = await import('./config.js');
+  const userConfig = loadConfig(config.configPath);
+  const promptOverrides = userConfig.pipeline?.prompts ?? {};
+
+  const prompt = buildIngestPrompt(content, title, schema, indexContent, getPrompt('llm-compile-user', promptOverrides));
 
   // Detect source type and enhance system prompt accordingly
   const { detectSourceType, getSourceTypePrompt } = await import('../templates/source-types.js');
@@ -260,7 +265,8 @@ async function _ingestSourceInner(
   const detectedType = detectSourceType(content, title, mimeGuess);
   const sourceTypeAddition = getSourceTypePrompt(detectedType);
 
-  const systemPrompt = `You are a wiki maintainer. You process source documents and produce structured wiki pages in markdown with YAML frontmatter and [[wikilinks]]. Follow the schema in AGENTS.md exactly. Be concise, factual, and thorough in cross-referencing.${sourceTypeAddition}`;
+  const systemPromptBase = getPrompt('llm-compile-system', promptOverrides);
+  const systemPrompt = `${systemPromptBase}${sourceTypeAddition}`;
 
   const llmStart = Date.now();
 
@@ -549,6 +555,7 @@ function buildIngestPrompt(
   title: string,
   schema: string,
   indexContent: string,
+  userInstructions: string,
 ): string {
   return `# Task: Ingest Source Document
 
@@ -563,23 +570,7 @@ ${content.substring(0, 12000)}
 
 ## Instructions
 
-Process this source document and produce wiki pages. For each page, output in this exact format:
-
-\`\`\`page
-TITLE: Page Title
-CATEGORY: sources | entities | concepts | syntheses
-TAGS: tag1, tag2, tag3
-SUMMARY: One-line summary for the index
----
-Page content in markdown with [[wikilinks]] to other pages.
-\`\`\`
-
-Produce:
-1. A source summary page (in sources/)
-2. Entity pages for any notable people, tools, organizations mentioned (in entities/)
-3. Concept pages for key ideas or frameworks discussed (in concepts/)
-
-Use [[wikilinks]] extensively to connect pages. Every claim should reference its source.`;
+${userInstructions}`;
 }
 
 interface ParsedPage {

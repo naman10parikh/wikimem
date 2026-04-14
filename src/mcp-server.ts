@@ -4,17 +4,23 @@
  * Implements the Model Context Protocol without the SDK dependency.
  * Reads newline-delimited JSON from stdin, writes responses to stdout.
  *
- * Tools exposed (10):
- *   wikimem_search      — BM25 keyword search over wiki pages
- *   wikimem_read        — Read a specific wiki page by title or filename
- *   wikimem_list        — List all wiki pages with metadata
- *   wikimem_status      — Vault statistics (page count, words, orphans, …)
- *   wikimem_ingest      — Ingest a file or URL into the vault (async)
- *   wikimem_observe     — Quality observer: scores, orphans, contradictions, gaps
- *   wikimem_improve     — LLM-powered improvement suggestions for weak pages
- *   wikimem_pipeline    — Pipeline status: recent runs, connector health
- *   wikimem_scrape      — Scrape a URL and ingest into the vault
- *   wikimem_connectors  — Manage data source connectors (list/add/remove/sync)
+ * Tools exposed (16):
+ *   wikimem_search           — BM25 keyword search over wiki pages
+ *   wikimem_read             — Read a specific wiki page by title or filename
+ *   wikimem_list             — List all wiki pages with metadata
+ *   wikimem_status           — Vault statistics (page count, words, orphans, …)
+ *   wikimem_ingest           — Ingest a file or URL into the vault (async)
+ *   wikimem_observe          — Quality observer: scores, orphans, contradictions, gaps
+ *   wikimem_improve          — LLM-powered improvement suggestions for weak pages
+ *   wikimem_pipeline         — Pipeline status: recent runs, connector health
+ *   wikimem_scrape           — Scrape a URL and ingest into the vault
+ *   wikimem_connectors       — Manage data source connectors (list/add/remove/sync)
+ *   wikimem_list_connectors  — List all connectors (OAuth + folder) with status
+ *   wikimem_connect          — Start OAuth connection flow for a provider
+ *   wikimem_sync             — Sync a connected provider with optional filters
+ *   wikimem_preview          — Preview what would be synced without writing files
+ *   wikimem_run_observer     — Trigger the observer/self-improvement engine
+ *   wikimem_get_report       — Get latest (or specific date) observer report
  */
 
 import { createInterface } from 'node:readline';
@@ -23,7 +29,11 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getVaultConfig, getVaultStats, listWikiPages, readWikiPage } from './core/vault.js';
 import { searchPages } from './search/index.js';
-import { handleObserve, handleImprove, handlePipeline, handleScrape, handleConnectors } from './mcp-tools-extended.js';
+import {
+  handleObserve, handleImprove, handlePipeline, handleScrape, handleConnectors,
+  handleListConnectors, handleConnect, handleSyncProvider, handlePreview,
+  handleRunObserver, handleGetReport,
+} from './mcp-tools-extended.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -177,6 +187,114 @@ const TOOLS = [
         },
       },
       required: ['action'],
+    },
+  },
+  {
+    name: 'wikimem_list_connectors',
+    description: 'List all connectors (OAuth platform integrations + local folder/repo connectors) with their connection status. Shows which providers are connected and when they last synced.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'wikimem_connect',
+    description: 'Start the OAuth connection flow for a platform provider (github, slack, google, gmail, gdrive, linear, notion, jira). Returns OAuth URL and instructions, or accepts credentials directly for automated setups.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        provider: {
+          type: 'string',
+          description: 'Provider to connect: github | slack | google | gmail | gdrive | linear | notion | jira',
+        },
+        credentials: {
+          type: 'object',
+          description: 'Optional — pass { access_token, refresh_token?, scope? } directly to skip the OAuth UI flow.',
+          properties: {
+            access_token: { type: 'string' },
+            refresh_token: { type: 'string' },
+            scope: { type: 'string' },
+          },
+        },
+      },
+      required: ['provider'],
+    },
+  },
+  {
+    name: 'wikimem_sync',
+    description: 'Sync a connected OAuth provider into the wiki vault. Accepts optional filters to limit scope (date range, specific channels, labels, repos, etc.).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        provider: {
+          type: 'string',
+          description: 'Provider to sync: github | slack | google | gmail | gdrive | linear | notion | jira',
+        },
+        filters: {
+          type: 'object',
+          description: 'Optional sync filters',
+          properties: {
+            maxItems: { type: 'number', description: 'Max number of items to sync' },
+            since: { type: 'string', description: 'ISO date — only sync items after this date' },
+            query: { type: 'string', description: 'Free-text search applied at the API level' },
+            labels: { type: 'array', items: { type: 'string' }, description: 'Gmail: label IDs to include' },
+            channels: { type: 'array', items: { type: 'string' }, description: 'Slack: channel IDs or names' },
+            repos: { type: 'array', items: { type: 'string' }, description: 'GitHub: repos in owner/name format' },
+            projectKeys: { type: 'array', items: { type: 'string' }, description: 'Jira: project keys' },
+            databaseIds: { type: 'array', items: { type: 'string' }, description: 'Notion: database IDs' },
+            folderId: { type: 'string', description: 'Google Drive: folder ID to restrict sync' },
+          },
+        },
+      },
+      required: ['provider'],
+    },
+  },
+  {
+    name: 'wikimem_preview',
+    description: 'Preview what would be synced from a provider without writing any files. Returns item list, counts, and LLM cost estimates.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        provider: {
+          type: 'string',
+          description: 'Provider to preview: github | slack | google | gmail | gdrive | linear | notion | jira',
+        },
+        filters: {
+          type: 'object',
+          description: 'Optional filters (same as wikimem_sync)',
+          properties: {
+            maxItems: { type: 'number' },
+            since: { type: 'string' },
+            query: { type: 'string' },
+            labels: { type: 'array', items: { type: 'string' } },
+            channels: { type: 'array', items: { type: 'string' } },
+            repos: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+      required: ['provider'],
+    },
+  },
+  {
+    name: 'wikimem_run_observer',
+    description: 'Trigger the self-improvement observer: scores all pages, finds orphans, flags contradictions, identifies knowledge gaps, discovers cross-link opportunities. Optionally auto-improves weak pages.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        budget: { type: 'number', description: 'Maximum LLM cost budget in USD (default 1.0). Set 0 to disable auto-improve.' },
+        autoImprove: { type: 'boolean', description: 'When true, automatically improve weak pages using LLM (default false)' },
+        maxPages: { type: 'number', description: 'Maximum pages to review (omit for all pages)' },
+      },
+    },
+  },
+  {
+    name: 'wikimem_get_report',
+    description: 'Get the latest observer report (or a specific date\'s report). Returns page scores, orphans, gaps, and improvement results.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'ISO date string YYYY-MM-DD to get a specific report (omit for latest)' },
+      },
     },
   },
 ];
@@ -395,6 +513,24 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
 
     case 'wikimem_connectors':
       return handleConnectors(vaultRoot, args);
+
+    case 'wikimem_list_connectors':
+      return handleListConnectors(vaultRoot, args);
+
+    case 'wikimem_connect':
+      return handleConnect(vaultRoot, args);
+
+    case 'wikimem_sync':
+      return handleSyncProvider(vaultRoot, args);
+
+    case 'wikimem_preview':
+      return handlePreview(vaultRoot, args);
+
+    case 'wikimem_run_observer':
+      return handleRunObserver(config, args);
+
+    case 'wikimem_get_report':
+      return handleGetReport(vaultRoot, args);
 
     default:
       throw { code: -32601, message: `Unknown tool: ${name}` };

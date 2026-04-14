@@ -7,6 +7,7 @@ import { getVaultConfig, getVaultStats, ensureVaultDirs, listWikiPages, readWiki
 import type { VaultConfig } from '../core/vault.js';
 import { getBundledCredentials, getBundledDeviceFlowClientId, hasBundledDefaults } from '../core/oauth-defaults.js';
 import type { UserConfig } from '../core/config.js';
+import { isPrivacyAccepted, markPrivacyAccepted, deleteAllVaultData, ensureVaultGitignore } from '../core/privacy.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -117,6 +118,9 @@ export function createServer(vaultRoot: string, port: number): void {
   // Ensure vault directories exist before accepting any requests.
   // Without this, a fresh vault hits ENOENT on the first /api/status call.
   ensureVaultDirs(config);
+
+  // Ensure .gitignore protects sensitive files on every server start
+  ensureVaultGitignore(vaultRoot);
 
   // Load persisted pipeline runs so they survive server restarts
   import('../core/pipeline-events.js').then(({ pipelineEvents }) => {
@@ -955,6 +959,184 @@ export function createServer(vaultRoot: string, port: number): void {
     }
   });
 
+  // API: page excerpt (for hover previews on wikilinks)
+  app.get('/api/pages/:title/excerpt', (req, res) => {
+    try {
+      const targetTitle = decodeURIComponent(req.params['title'] ?? '');
+      if (!targetTitle) {
+        res.status(400).json({ error: 'Missing title' });
+        return;
+      }
+
+      const pages = listWikiPages(config.wikiDir);
+      const titleLower = targetTitle.toLowerCase();
+      const slugified = titleLower
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      const match = pages.find((p) => {
+        const fileSlug = basename(p, '.md');
+        if (fileSlug === targetTitle || fileSlug === slugified) return true;
+        try {
+          const page = readWikiPage(p);
+          return page.title.toLowerCase() === titleLower;
+        } catch {
+          return false;
+        }
+      });
+
+      if (!match) {
+        res.status(404).json({ error: 'Page not found' });
+        return;
+      }
+      const page = readWikiPage(match);
+      const category =
+        (page.frontmatter['category'] as string) ??
+        (page.frontmatter['type'] as string) ??
+        'uncategorized';
+      const tags =
+        (page.frontmatter['tags'] as string[] | undefined) ?? [];
+
+      // Strip frontmatter and markup for clean excerpt
+      const rawBody = (page.content ?? '')
+        .replace(/^---[\s\S]*?---\s*/m, '')
+        .replace(/\[\[([^\]]+)\]\]/g, '$1')
+        .replace(/#{1,6}\s*/g, '')
+        .replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')
+        .replace(/`[^`]+`/g, (m) => m.slice(1, -1))
+        .replace(/\n+/g, ' ')
+        .trim();
+
+      res.json({
+        title: page.title,
+        category,
+        tags,
+        excerpt: rawBody.slice(0, 160),
+        wordCount: page.wordCount,
+      });
+    } catch {
+      res.status(500).json({ error: 'Failed to get excerpt' });
+    }
+  });
+
+  // API: backlinks with context snippets + related-by-tags
+  app.get('/api/backlinks/:title/context', (req, res) => {
+    try {
+      const targetTitle = decodeURIComponent(req.params['title'] ?? '');
+      if (!targetTitle) {
+        res.status(400).json({ error: 'Missing title' });
+        return;
+      }
+
+      const pages = listWikiPages(config.wikiDir);
+      const titleLower = targetTitle.toLowerCase();
+
+      interface FullPageInfo {
+        title: string;
+        category: string;
+        tags: string[];
+        wikilinks: string[];
+        rawContent: string;
+      }
+      const allLoaded: FullPageInfo[] = [];
+      let targetTags: string[] = [];
+
+      for (const p of pages) {
+        try {
+          const page = readWikiPage(p);
+          const tags =
+            (page.frontmatter['tags'] as string[] | undefined) ?? [];
+          const category =
+            (page.frontmatter['category'] as string) ??
+            (page.frontmatter['type'] as string) ??
+            'uncategorized';
+          const rawContent = (page.content ?? '').replace(
+            /^---[\s\S]*?---\s*/m,
+            '',
+          );
+          allLoaded.push({
+            title: page.title,
+            category,
+            tags,
+            wikilinks: page.wikilinks,
+            rawContent,
+          });
+          if (page.title.toLowerCase() === titleLower) {
+            targetTags = tags;
+          }
+        } catch {
+          /* skip unreadable */
+        }
+      }
+
+      // Backlinks with context snippets
+      interface BacklinkContext {
+        title: string;
+        category: string;
+        snippet: string;
+      }
+      const backlinkContexts: BacklinkContext[] = [];
+
+      for (const p of allLoaded) {
+        if (p.title.toLowerCase() === titleLower) continue;
+        const linked = p.wikilinks.some(
+          (l) => l.toLowerCase() === titleLower,
+        );
+        if (!linked) continue;
+
+        // Grab context around the [[TargetTitle]] mention
+        const escaped = targetTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const wikilinkPattern = new RegExp(
+          `(.{0,80})\\[\\[${escaped}\\]\\](.{0,80})`,
+          'i',
+        );
+        const m = wikilinkPattern.exec(p.rawContent);
+        let snippet = '';
+        if (m) {
+          const before = (m[1] ?? '').replace(/\n/g, ' ').trimStart();
+          const after = (m[2] ?? '').replace(/\n/g, ' ').trimEnd();
+          snippet = `...${before}${targetTitle}${after}...`.trim();
+        }
+        backlinkContexts.push({
+          title: p.title,
+          category: p.category,
+          snippet,
+        });
+      }
+
+      // Related by tags (share ≥2 tags)
+      interface RelatedByTag {
+        title: string;
+        category: string;
+        sharedTags: string[];
+      }
+      const relatedByTags: RelatedByTag[] = [];
+      if (targetTags.length >= 1) {
+        const targetTagsLower = targetTags.map((t) => t.toLowerCase());
+        for (const p of allLoaded) {
+          if (p.title.toLowerCase() === titleLower) continue;
+          const shared = p.tags.filter((t) =>
+            targetTagsLower.includes(t.toLowerCase()),
+          );
+          if (shared.length >= 2) {
+            relatedByTags.push({
+              title: p.title,
+              category: p.category,
+              sharedTags: shared,
+            });
+          }
+        }
+        relatedByTags.sort((a, b) => b.sharedTags.length - a.sharedTags.length);
+      }
+
+      res.json({
+        backlinks: backlinkContexts,
+        relatedByTags: relatedByTags.slice(0, 8),
+      });
+    } catch {
+      res.status(500).json({ error: 'Failed to get backlink context' });
+    }
+  });
+
   // API: wiki history (audit trail)
   app.get('/api/history', async (_req, res) => {
     try {
@@ -1518,6 +1700,106 @@ export function createServer(vaultRoot: string, port: number): void {
     }
   });
 
+  // API: date-folder summary — lists all files in a date-stamped raw directory
+  app.get('/api/raw/date-summary', (req, res) => {
+    try {
+      const DATE_DIR_RE = /^\d{4}-\d{2}-\d{2}$/;
+      let dateParam = String(req.query['date'] ?? '');
+      if (!dateParam || !DATE_DIR_RE.test(dateParam)) {
+        res.status(400).json({ error: 'Missing or invalid date (expected YYYY-MM-DD)' });
+        return;
+      }
+      const dateDir = join(config.rawDir, dateParam);
+      const resolvedDate = resolve(dateDir);
+      if (!resolvedDate.startsWith(resolve(config.rawDir))) {
+        res.status(403).json({ error: 'Access denied' });
+        return;
+      }
+      if (!existsSync(resolvedDate)) {
+        res.json({ date: dateParam, files: [], uncataloged: [] });
+        return;
+      }
+
+      interface DateFileMeta {
+        name: string;
+        path: string;
+        size: number;
+        mtime: string;
+        ext: string;
+        wikiPages: string[];
+      }
+
+      function collectFiles(dir: string, relPrefix: string): DateFileMeta[] {
+        const result: DateFileMeta[] = [];
+        for (const entry of readdirSync(dir).sort()) {
+          if (entry.startsWith('.') || entry.endsWith('.meta.json')) continue;
+          const full = join(dir, entry);
+          const st = statSync(full);
+          const relPath = relPrefix ? `${relPrefix}/${entry}` : entry;
+          if (st.isDirectory()) {
+            result.push(...collectFiles(full, relPath));
+          } else {
+            // Read wiki links from .meta.json if present
+            const metaPath = full + '.meta.json';
+            let wikiPages: string[] = [];
+            if (existsSync(metaPath)) {
+              try {
+                const meta = JSON.parse(readFileSync(metaPath, 'utf-8')) as Record<string, unknown>;
+                const pages = meta['wikiPages'] ?? meta['pages'] ?? meta['wiki_pages'];
+                if (Array.isArray(pages)) wikiPages = pages.map(String);
+              } catch { /* ignore */ }
+            }
+            result.push({
+              name: entry,
+              path: `${dateParam}/${relPath}`,
+              size: st.size,
+              mtime: st.mtime.toISOString(),
+              ext: extname(entry).toLowerCase().replace('.', ''),
+              wikiPages,
+            });
+          }
+        }
+        return result;
+      }
+
+      // Also collect uncataloged files (root-level raw files not in any date dir)
+      const uncataloged: DateFileMeta[] = [];
+      for (const entry of readdirSync(config.rawDir).sort()) {
+        if (entry.startsWith('.') || entry.endsWith('.meta.json')) continue;
+        const full = join(config.rawDir, entry);
+        const st = statSync(full);
+        if (!st.isDirectory()) {
+          const metaPath = full + '.meta.json';
+          let wikiPages: string[] = [];
+          if (existsSync(metaPath)) {
+            try {
+              const meta = JSON.parse(readFileSync(metaPath, 'utf-8')) as Record<string, unknown>;
+              const pages = meta['wikiPages'] ?? meta['pages'] ?? meta['wiki_pages'];
+              if (Array.isArray(pages)) wikiPages = pages.map(String);
+            } catch { /* ignore */ }
+          }
+          uncataloged.push({
+            name: entry,
+            path: entry,
+            size: st.size,
+            mtime: st.mtime.toISOString(),
+            ext: extname(entry).toLowerCase().replace('.', ''),
+            wikiPages,
+          });
+        }
+      }
+
+      res.json({
+        date: dateParam,
+        files: collectFiles(resolvedDate, ''),
+        uncataloged,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Date summary failed: ${msg}` });
+    }
+  });
+
   // API: render DOCX to HTML using mammoth (for rich preview)
   app.get('/api/raw/docx-html', async (req, res) => {
     try {
@@ -1873,6 +2155,69 @@ export function createServer(vaultRoot: string, port: number): void {
       scopes: 'read:jira-work read:jira-user offline_access',
       clientIdKey: 'jira_client_id',
       clientSecretKey: 'jira_client_secret',
+    },
+    notion: {
+      authorizeUrl: 'https://api.notion.com/v1/oauth/authorize',
+      tokenUrl: 'https://api.notion.com/v1/oauth/token',
+      scopes: '',
+      clientIdKey: 'notion_client_id',
+      clientSecretKey: 'notion_client_secret',
+    },
+    discord: {
+      authorizeUrl: 'https://discord.com/api/oauth2/authorize',
+      tokenUrl: 'https://discord.com/api/oauth2/token',
+      scopes: 'identify guilds messages.read',
+      clientIdKey: 'discord_client_id',
+      clientSecretKey: 'discord_client_secret',
+    },
+    dropbox: {
+      authorizeUrl: 'https://www.dropbox.com/oauth2/authorize',
+      tokenUrl: 'https://api.dropboxapi.com/oauth2/token',
+      scopes: 'files.metadata.read files.content.read',
+      clientIdKey: 'dropbox_client_id',
+      clientSecretKey: 'dropbox_client_secret',
+    },
+    gitlab: {
+      authorizeUrl: 'https://gitlab.com/oauth/authorize',
+      tokenUrl: 'https://gitlab.com/oauth/token',
+      scopes: 'read_user read_repository read_api',
+      clientIdKey: 'gitlab_client_id',
+      clientSecretKey: 'gitlab_client_secret',
+    },
+    asana: {
+      authorizeUrl: 'https://app.asana.com/-/oauth_authorize',
+      tokenUrl: 'https://app.asana.com/-/oauth_token',
+      scopes: 'default',
+      clientIdKey: 'asana_client_id',
+      clientSecretKey: 'asana_client_secret',
+    },
+    figma: {
+      authorizeUrl: 'https://www.figma.com/oauth',
+      tokenUrl: 'https://www.figma.com/api/oauth/token',
+      scopes: 'file_read',
+      clientIdKey: 'figma_client_id',
+      clientSecretKey: 'figma_client_secret',
+    },
+    hubspot: {
+      authorizeUrl: 'https://app.hubspot.com/oauth/authorize',
+      tokenUrl: 'https://api.hubapi.com/oauth/v1/token',
+      scopes: 'content crm.objects.contacts.read crm.objects.companies.read',
+      clientIdKey: 'hubspot_client_id',
+      clientSecretKey: 'hubspot_client_secret',
+    },
+    intercom: {
+      authorizeUrl: 'https://app.intercom.com/oauth',
+      tokenUrl: 'https://api.intercom.io/auth/eagle/token',
+      scopes: '',
+      clientIdKey: 'intercom_client_id',
+      clientSecretKey: 'intercom_client_secret',
+    },
+    airtable: {
+      authorizeUrl: 'https://airtable.com/oauth2/v1/authorize',
+      tokenUrl: 'https://airtable.com/oauth2/v1/token',
+      scopes: 'data.records:read schema.bases:read',
+      clientIdKey: 'airtable_client_id',
+      clientSecretKey: 'airtable_client_secret',
     },
   };
 
@@ -2336,6 +2681,95 @@ export function createServer(vaultRoot: string, port: number): void {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.status(500).json({ error: `Failed to save pipeline config: ${msg}` });
+    }
+  });
+
+  // ─── Pipeline Prompt Overrides (UXO-077) ──────────────────────────────────
+
+  // GET /api/pipeline/prompts — returns all prompts (defaults merged with user overrides)
+  app.get('/api/pipeline/prompts', async (_req, res) => {
+    try {
+      const { loadConfig } = await import('../core/config.js');
+      const { DEFAULT_PROMPTS, PROMPT_STEP_LABELS } = await import('../core/pipeline-prompts.js');
+      const userConfig = loadConfig(config.configPath);
+      const overrides = userConfig.pipeline?.prompts ?? {};
+      const result: Record<string, { label: string; value: string; isDefault: boolean }> = {};
+      for (const [step, defaultValue] of Object.entries(DEFAULT_PROMPTS)) {
+        const override = overrides[step];
+        result[step] = {
+          label: PROMPT_STEP_LABELS[step] ?? step,
+          value: (override && override.trim().length > 0) ? override : defaultValue,
+          isDefault: !(override && override.trim().length > 0),
+        };
+      }
+      res.json(result);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Failed to load prompts: ${msg}` });
+    }
+  });
+
+  // PUT /api/pipeline/prompts — saves user overrides for one or more steps
+  app.put('/api/pipeline/prompts', async (req, res) => {
+    try {
+      const { loadConfig } = await import('../core/config.js');
+      const { DEFAULT_PROMPTS } = await import('../core/pipeline-prompts.js');
+      const YAML = await import('yaml');
+      const body = req.body as Record<string, string>;
+
+      // Validate: only accept known step IDs and non-empty values
+      for (const [step, value] of Object.entries(body)) {
+        if (!(step in DEFAULT_PROMPTS)) {
+          res.status(400).json({ error: `Unknown prompt step: "${step}"` });
+          return;
+        }
+        if (typeof value !== 'string' || value.trim().length === 0) {
+          res.status(400).json({ error: `Prompt for "${step}" must be a non-empty string` });
+          return;
+        }
+      }
+
+      const current = loadConfig(config.configPath) as Record<string, unknown>;
+      const pipeline = (current['pipeline'] as Record<string, unknown>) ?? {};
+      const existingPrompts = (pipeline['prompts'] as Record<string, string>) ?? {};
+      pipeline['prompts'] = { ...existingPrompts, ...body };
+      current['pipeline'] = pipeline;
+      writeFileSync(config.configPath, YAML.stringify(current), 'utf-8');
+      res.json({ status: 'saved' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Failed to save prompts: ${msg}` });
+    }
+  });
+
+  // POST /api/pipeline/prompts/:step/reset — restore a step to its default prompt
+  app.post('/api/pipeline/prompts/:step/reset', async (req, res) => {
+    try {
+      const { loadConfig } = await import('../core/config.js');
+      const { DEFAULT_PROMPTS } = await import('../core/pipeline-prompts.js');
+      const YAML = await import('yaml');
+      const step = req.params['step'] ?? '';
+
+      if (!(step in DEFAULT_PROMPTS)) {
+        res.status(400).json({ error: `Unknown prompt step: "${step}"` });
+        return;
+      }
+
+      const current = loadConfig(config.configPath) as Record<string, unknown>;
+      const pipeline = (current['pipeline'] as Record<string, unknown>) ?? {};
+      const prompts = (pipeline['prompts'] as Record<string, string>) ?? {};
+      delete prompts[step];
+      if (Object.keys(prompts).length > 0) {
+        pipeline['prompts'] = prompts;
+      } else {
+        delete pipeline['prompts'];
+      }
+      current['pipeline'] = pipeline;
+      writeFileSync(config.configPath, YAML.stringify(current), 'utf-8');
+      res.json({ status: 'reset', defaultValue: DEFAULT_PROMPTS[step] });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Failed to reset prompt: ${msg}` });
     }
   });
 
@@ -3490,6 +3924,47 @@ export function createServer(vaultRoot: string, port: number): void {
       const standard = STANDARD_FIELDS.filter((f) => allFields.includes(f));
       const custom = allFields.filter((f) => !STANDARD_FIELDS.includes(f));
       res.json({ fields: [...standard, ...custom], standard, custom });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  // ── Privacy API ───────────────────────────────────────────────────────────
+
+  // GET /api/privacy/accepted — check if first-run privacy notice was accepted
+  app.get('/api/privacy/accepted', (_req, res) => {
+    try {
+      const accepted = isPrivacyAccepted(vaultRoot);
+      res.json({ accepted });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  // POST /api/privacy/accept — record user acceptance of the privacy notice
+  app.post('/api/privacy/accept', (_req, res) => {
+    try {
+      markPrivacyAccepted(vaultRoot);
+      res.json({ accepted: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  // DELETE /api/privacy/data — delete ALL vault data (with confirmation token)
+  // Requires body: { confirm: "DELETE ALL DATA" }
+  app.delete('/api/privacy/data', (req, res) => {
+    try {
+      const body = req.body as { confirm?: string };
+      if (body.confirm !== 'DELETE ALL DATA') {
+        res.status(400).json({ error: 'Must include { confirm: "DELETE ALL DATA" } in request body' });
+        return;
+      }
+      const deleted = deleteAllVaultData(vaultRoot);
+      res.json({ deleted, count: deleted.length });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.status(500).json({ error: msg });

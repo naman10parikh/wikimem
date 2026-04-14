@@ -8091,19 +8091,108 @@
         max-width: 260px;
       }
       .tl-commit-info {
-        padding: 8px 24px;
+        padding: 10px 24px;
         font-size: 12px;
         color: var(--text-secondary);
         border-top: 1px solid var(--border);
         flex-shrink: 0;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 12px;
+        flex-wrap: wrap;
+        min-height: 48px;
+      }
+      .tl-commit-info .tl-commit-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .tl-commit-info .tl-commit-message {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .tl-commit-info .tl-commit-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
       }
       .tl-commit-info .tl-hash {
         font-family: var(--font-mono);
         color: var(--accent);
         font-size: 11px;
+      }
+      .tl-commit-info .tl-commit-author {
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+      .tl-commit-info .tl-commit-date {
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+      .tl-commit-info .tl-commit-stats {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+      }
+      .tl-commit-info .tl-files-changed {
+        color: var(--text-muted);
+      }
+      .tl-commit-info .tl-stat-add {
+        color: #4caf50;
+        font-family: var(--font-mono);
+      }
+      .tl-commit-info .tl-stat-del {
+        color: #f44336;
+        font-family: var(--font-mono);
+      }
+      .tl-commit-info .tl-commit-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+        flex-shrink: 0;
+      }
+      .tl-commit-progress {
+        font-size: 11px;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+      .tl-speed-badge {
+        display: none;
+        align-items: center;
+        gap: 3px;
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--accent);
+        background: rgba(99, 102, 241, 0.12);
+        border: 1px solid rgba(99, 102, 241, 0.25);
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-family: var(--font-mono);
+        white-space: nowrap;
+      }
+      .tl-speed-badge.visible {
+        display: flex;
+      }
+
+      /* Glow flash animation for changed file highlight */
+      @keyframes tl-glow-pulse {
+        0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); background: transparent; }
+        20%  { box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4), 0 0 12px rgba(99, 102, 241, 0.25); background: rgba(99, 102, 241, 0.08); }
+        60%  { box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3), 0 0 8px rgba(99, 102, 241, 0.15); background: rgba(99, 102, 241, 0.05); }
+        100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); background: transparent; }
+      }
+      .tl-glow-flash {
+        animation: tl-glow-pulse 2s ease-out forwards;
+        border-radius: 4px;
       }
       .tl-controls {
         display: flex;
@@ -9580,6 +9669,14 @@
                       />
                     </svg>
                   </button>
+                  <button
+                    id="page-bookmark-btn"
+                    onclick="togglePageBookmark()"
+                    title="Bookmark this page"
+                    style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;color:var(--text-dim);opacity:0.7"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  </button>
                 </div>
                 <!-- Reading time bar (UXO-011) -->
                 <div id="page-reading-bar">
@@ -9864,7 +9961,7 @@
                   Models
                 </div>
                 <div class="settings-nav-item" data-section="sources">
-                  Sources & Connectors
+                  Connectors
                 </div>
                 <div class="settings-nav-item" data-section="appearance">
                   Appearance
@@ -10341,28 +10438,24 @@
                   </div>
                 </div>
 
-                <div
-                  style="
-                    margin-bottom: 8px;
-                    font-size: 11px;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    color: var(--text-muted);
-                  "
+                <button
+                  onclick="(function(btn){var block=document.getElementById('gw-curl-collapse');var shown=block.style.display!=='none';block.style.display=shown?'none':'block';btn.textContent=shown?'Show example':'Hide example';})(this)"
+                  style="background:none;border:none;padding:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);cursor:pointer;margin-bottom:8px;display:block"
                 >
-                  cURL Example
-                </div>
-                <div class="gw-curl" id="gw-curl-block">
-                  curl -X POST http://localhost:3456/api/gateway/ingest \ -H
-                  "Content-Type: application/json" \ -d '{ "content": "Your text
-                  content here", "source": "api", "title": "My Note", "tags":
-                  ["inbox"] }'<button
-                    class="gw-curl-copy"
-                    onclick="copyGatewayCurl()"
-                  >
-                    Copy
-                  </button>
+                  Show example
+                </button>
+                <div id="gw-curl-collapse" style="display:none">
+                  <div class="gw-curl" id="gw-curl-block">
+                    curl -X POST http://localhost:3456/api/gateway/ingest \ -H
+                    "Content-Type: application/json" \ -d '{ "content": "Your text
+                    content here", "source": "api", "title": "My Note", "tags":
+                    ["inbox"] }'<button
+                      class="gw-curl-copy"
+                      onclick="copyGatewayCurl()"
+                    >
+                      Copy
+                    </button>
+                  </div>
                 </div>
 
                 <div class="gw-integrations">
@@ -10887,6 +10980,11 @@
     </div>
 
     <script>
+      // Connector state — hoisted to top to prevent TDZ when router fires early (#connectors hash on load)
+      var _connectorTokenStatus = {};
+      var _connectorCat = "all";
+      var _connectorViewInit = false;
+
       const state = {
         viewMode: "home",
         tabs: [],
@@ -10945,44 +11043,57 @@
         return r.json();
       }
 
-      const BOOKMARKS_STORAGE_KEY = "wikimem-bookmarks";
-      function getBookmarks() {
+      // ── UXO-038: Bookmarks (server-side, .wikimem/bookmarks.json) ──
+      // In-memory cache so isBookmarked() stays synchronous for tree rendering
+      let _bookmarksCache = null;
+
+      async function loadBookmarksFromServer() {
         try {
-          const raw = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
-          const arr = raw ? JSON.parse(raw) : [];
-          return Array.isArray(arr) ? arr : [];
+          const data = await api("/api/bookmarks");
+          _bookmarksCache = Array.isArray(data.pages) ? data.pages : [];
         } catch {
-          return [];
+          if (_bookmarksCache === null) _bookmarksCache = [];
         }
+        return _bookmarksCache;
       }
-      function saveBookmarks(titles) {
-        try {
-          localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(titles));
-        } catch {}
+
+      function getBookmarks() {
+        // Synchronous read from cache (may be null on first paint)
+        return _bookmarksCache || [];
       }
+
       function isBookmarked(title) {
         return getBookmarks().includes(title);
       }
-      function toggleBookmarkTitle(title) {
-        const b = [...getBookmarks()];
-        const i = b.indexOf(title);
-        if (i >= 0) {
-          b.splice(i, 1);
+
+      async function toggleBookmarkTitle(title) {
+        const current = await loadBookmarksFromServer();
+        if (current.includes(title)) {
+          await fetch("/api/bookmarks/" + encodeURIComponent(title), { method: "DELETE" });
           showToast("Removed from bookmarks");
         } else {
-          b.push(title);
+          await fetch("/api/bookmarks/" + encodeURIComponent(title), { method: "POST" });
           showToast("Bookmarked");
         }
-        saveBookmarks(b);
+        await loadBookmarksFromServer();
         renderBookmarks();
+        // Refresh star icons in tree without full re-render
+        document.querySelectorAll(".tree-file[data-page-title]").forEach((el) => {
+          const t = el.getAttribute("data-page-title");
+          const star = el.querySelector(".bookmark-star");
+          if (star) star.innerHTML = isBookmarked(t) ? starFilled : starOutline;
+        });
+        // Update header bookmark button if this page is open
+        updatePageBookmarkBtn(title);
       }
+
       function renderBookmarks() {
         const el = document.getElementById("sidebar-bookmarks-list");
         if (!el) return;
         const titles = getBookmarks();
         if (!titles.length) {
           el.innerHTML =
-            '<div class="sidebar-empty-hint">No bookmarks yet. Right-click a wiki page in the tree and choose Add Bookmark.</div>';
+            '<div class="sidebar-empty-hint">No bookmarks yet. Star a wiki page to bookmark it.</div>';
           return;
         }
         el.innerHTML = titles
@@ -10995,6 +11106,47 @@
         </div>`,
           )
           .join("");
+      }
+
+      function updatePageBookmarkBtn(title) {
+        const btn = document.getElementById("page-bookmark-btn");
+        if (!btn) return;
+        const active = title ? isBookmarked(title) : false;
+        btn.setAttribute("title", active ? "Remove bookmark" : "Bookmark this page");
+        btn.innerHTML = active ? starFilled : starOutline;
+        btn.style.color = active ? "var(--accent)" : "";
+      }
+
+      const starOutline = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+      const starFilled = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+
+      // Toggle bookmark for the currently open page
+      function togglePageBookmark() {
+        const title = state.currentTab?.id?.startsWith("page:") ? state.currentTab.id.slice(5) : null;
+        if (!title) return;
+        toggleBookmarkTitle(title);
+      }
+
+      // Toggle the git history advanced-actions dropdown
+      function toggleHistoryAdvancedMenu() {
+        const el = document.getElementById("history-advanced-dropdown");
+        if (!el) return;
+        el.style.display = el.style.display === "none" ? "" : "none";
+        // Close when clicking outside
+        if (el.style.display !== "none") {
+          const closeOutside = (e) => {
+            if (!el.contains(e.target) && e.target.id !== "history-advanced-btn") {
+              el.style.display = "none";
+              document.removeEventListener("click", closeOutside);
+            }
+          };
+          setTimeout(() => document.addEventListener("click", closeOutside), 0);
+        }
+      }
+
+      function closeHistoryAdvancedMenu() {
+        const el = document.getElementById("history-advanced-dropdown");
+        if (el) el.style.display = "none";
       }
 
       function catClass(cat) {
@@ -11025,6 +11177,8 @@
         text: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
         wiki: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
         file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+        calendar:
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
       };
       function fileIcon(type, name) {
         if (type === "dir") return SVG_ICONS.folder;
@@ -11178,6 +11332,11 @@
         refsSection.className = "page-references-section";
         refsSection.innerHTML = `<h2 class="page-encyclopedia-heading">References</h2><ol class="page-references-list">${refsHtml}</ol>`;
         container.appendChild(refsSection);
+      }
+
+      // Alias: source citations use openRawFile, which is the same as viewRawFile
+      function openRawFile(filepath) {
+        viewRawFile(filepath);
       }
 
       // ── Views ──
@@ -11493,21 +11652,94 @@
         renderTree();
       }
 
+      if (!window._rawSortOrder) window._rawSortOrder = "newest";
+
+      function sortedRawNodes(nodes) {
+        if (!nodes) return [];
+        const order = window._rawSortOrder || "newest";
+        const clone = [...nodes];
+        if (order === "newest") {
+          clone.sort((a, b) => {
+            const aDate = a.isDateDir ? a.name : null;
+            const bDate = b.isDateDir ? b.name : null;
+            if (aDate && bDate) return bDate.localeCompare(aDate);
+            if (aDate) return -1;
+            if (bDate) return 1;
+            return (b.mtime || "").localeCompare(a.mtime || "");
+          });
+        } else if (order === "oldest") {
+          clone.sort((a, b) => {
+            const aDate = a.isDateDir ? a.name : null;
+            const bDate = b.isDateDir ? b.name : null;
+            if (aDate && bDate) return aDate.localeCompare(bDate);
+            if (aDate) return -1;
+            if (bDate) return 1;
+            return (a.mtime || "").localeCompare(b.mtime || "");
+          });
+        } else {
+          clone.sort((a, b) => {
+            if (a.type === "dir" && b.type !== "dir") return -1;
+            if (a.type !== "dir" && b.type === "dir") return 1;
+            const extA = (a.name || "").split(".").pop().toLowerCase();
+            const extB = (b.name || "").split(".").pop().toLowerCase();
+            if (extA !== extB) return extA.localeCompare(extB);
+            return (a.name || "").localeCompare(b.name || "");
+          });
+        }
+        return clone;
+      }
+
+      function setRawSort(order) {
+        window._rawSortOrder = order;
+        renderTree();
+      }
+
       function renderTree() {
         const container = document.getElementById("sidebar-tree");
         let html = "";
         const wikiCount = countFiles(state.treeData.wiki);
         const rawCount = countFiles(state.treeData.raw);
 
+        const rawNodes = state.treeData.raw || [];
+        const dateDirNodes = rawNodes.filter(
+          (n) => n.type === "dir" && n.isDateDir,
+        );
+        const otherDirNodes = rawNodes.filter(
+          (n) => n.type === "dir" && !n.isDateDir,
+        );
+        const uncatalogedNodes = rawNodes.filter((n) => n.type !== "dir");
+
         html += `<div class="sidebar-section-header" onclick="toggleTreeSection('wiki-tree')">
         <span>Wiki</span><span class="count">${wikiCount}</span>
       </div>`;
         html += `<div id="wiki-tree" class="tree-children">${renderTreeNodes(state.treeData.wiki, 0, "wiki")}</div>`;
 
+        const sortOrder = window._rawSortOrder || "newest";
         html += `<div class="sidebar-section-header" onclick="toggleTreeSection('raw-tree')">
         <span>Raw Sources</span><span class="count">${rawCount}</span>
       </div>`;
-        html += `<div id="raw-tree" class="tree-children">${renderTreeNodes(state.treeData.raw, 0, "raw")}</div>`;
+        html += `<div id="raw-tree" class="tree-children">`;
+        html += `<div class="raw-sort-bar">
+          <span class="raw-sort-label">Sort:</span>
+          <button class="raw-sort-btn${sortOrder === "newest" ? " active" : ""}" onclick="event.stopPropagation();setRawSort('newest')">Newest</button>
+          <button class="raw-sort-btn${sortOrder === "oldest" ? " active" : ""}" onclick="event.stopPropagation();setRawSort('oldest')">Oldest</button>
+          <button class="raw-sort-btn${sortOrder === "type" ? " active" : ""}" onclick="event.stopPropagation();setRawSort('type')">Type</button>
+        </div>`;
+        html += renderTreeNodes(sortedRawNodes(dateDirNodes), 0, "raw");
+        if (otherDirNodes.length) {
+          html += renderTreeNodes(sortedRawNodes(otherDirNodes), 0, "raw");
+        }
+        if (uncatalogedNodes.length) {
+          const uncatId = "tree-raw-uncataloged";
+          html += `<div class="tree-item tree-folder raw-uncataloged-header" style="padding-left:8px" onclick="toggleFolder('${uncatId}', this)">
+            <span class="tree-chevron" id="chev-${uncatId}">${chevronSvg}</span>
+            <span class="tree-icon" style="color:var(--amber)">${SVG_ICONS.folder}</span>
+            <span class="tree-label" style="color:var(--amber)">Uncataloged</span>
+            <span class="tree-badge">${uncatalogedNodes.length}</span>
+          </div>`;
+          html += `<div class="tree-children collapsed" id="${uncatId}" style="border-left:1px solid var(--amber);opacity:0.7;margin-left:20px">${renderTreeNodes(uncatalogedNodes, 1, "raw")}</div>`;
+        }
+        html += `</div>`;
 
         html += `<div class="sidebar-section-header" onclick="toggleTreeSection('connectors-tree');loadSidebarConnectors()">
         <span>Connected Sources</span><span class="count" id="connectors-count">⟳</span>
@@ -11519,7 +11751,15 @@
       </div>`;
         html += `<div id="history-tree" class="tree-children collapsed"><div id="sidebar-history" style="padding:4px 8px;"></div></div>`;
 
+        const bookmarkCount = getBookmarks().length;
+        html += `<div class="sidebar-section-header" onclick="toggleTreeSection('bookmarks-tree')">
+        <span>Bookmarks</span><span class="count" id="bookmarks-count">${bookmarkCount || ""}</span>
+      </div>`;
+        html += `<div id="bookmarks-tree" class="tree-children"><div id="sidebar-bookmarks-list" style="padding:0;"></div></div>`;
+
         container.innerHTML = html;
+        // Populate bookmarks list after DOM insertion
+        renderBookmarks();
       }
 
       function countFiles(nodes) {
@@ -11542,6 +11782,19 @@
             const id =
               "tree-" + rootType + "-" + node.path.replace(/[^a-z0-9]/gi, "-");
             const chevClass = isEmpty ? "" : "open";
+
+            // Date-stamp directories get special calendar treatment
+            if (node.isDateDir) {
+              html += `<div class="tree-item tree-folder tree-date-dir" style="padding-left:${8 + indent}px" oncontextmenu="showTreeContextMenu(event,'${esc(node.name)}','${esc(node.path || "")}','dir'); return false;">
+                <span class="tree-chevron ${chevClass}" id="chev-${id}" onclick="event.stopPropagation();toggleFolder('${id}', this.closest('.tree-item'))">${chevronSvg}</span>
+                <span class="tree-icon tree-date-icon">${SVG_ICONS.calendar}</span>
+                <span class="tree-label tree-date-label" onclick="event.stopPropagation();viewDateFolder('${esc(node.name)}')">${esc(node.name)}</span>
+                <span class="tree-badge tree-date-badge">${childCount}</span>
+              </div>`;
+              html += `<div class="tree-children collapsed" id="${id}">${renderTreeNodes(node.children, depth + 1, rootType)}</div>`;
+              continue;
+            }
+
             const folderIcons = {
               concepts: "💡",
               entities: "🏷",
@@ -11565,10 +11818,14 @@
               node.type === "wiki"
                 ? `openPage('${esc(label)}')`
                 : `viewRawFile('${esc(node.path)}')`;
+            const starIcon = node.type === "wiki"
+              ? `<span class="bookmark-star" style="margin-left:auto;padding:0 4px;opacity:0.4;cursor:pointer;display:flex;align-items:center;flex-shrink:0" title="${isBookmarked(label) ? "Remove bookmark" : "Bookmark"}" onclick="event.stopPropagation();toggleBookmarkTitle('${esc(label)}')">${isBookmarked(label) ? starFilled : starOutline}</span>`
+              : "";
             html += `<div class="tree-item tree-file" style="padding-left:${8 + indent}px" onclick="${click}" oncontextmenu="showTreeContextMenu(event,'${esc(label)}','${esc(node.path || "")}','${node.type}'); return false;" data-page-title="${esc(label)}" data-page-path="${esc(node.path || "")}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain',JSON.stringify({title:'${esc(label)}',path:'${esc(node.path || "")}',type:'${node.type}'}));event.dataTransfer.effectAllowed='move'">
             <span class="tree-chevron-spacer"></span>
             <span class="tree-icon">${icon}</span>
             <span class="tree-label">${esc(label)}</span>
+            ${starIcon}
           </div>`;
           }
         }
@@ -11987,10 +12244,22 @@
       </div>`;
       }
 
+      // ── UXO-038: Page header bookmark toggle ──
+      async function togglePageBookmark() {
+        const title = state.editPageTitle;
+        if (!title) return;
+        await toggleBookmarkTitle(title);
+        updatePageBookmarkBtn(title);
+        // Refresh bookmark count in sidebar header
+        const countEl = document.getElementById("bookmarks-count");
+        if (countEl) countEl.textContent = getBookmarks().length || "";
+      }
+
       // ── Open page ──
       async function openPage(title, fromTab) {
         try {
           if (state.editing) exitEditMode(true);
+          pushRecentPage(title);
           const page = await api("/api/pages/" + encodeURIComponent(title));
           if (!fromTab) openTab(title, page.title, "wiki");
           state.activeTabId = title;
@@ -12095,7 +12364,7 @@
             <div class="meta-row"><span class="meta-key">Sources</span><div class="meta-val">${sourcePaths}<span class="meta-add-chip" onclick="startInlineSourceAdd(this,'${esc(page.title)}')">+</span></div></div>
             <div class="meta-row"><span class="meta-key">Related</span><div class="meta-val">${related}<span class="meta-add-chip" onclick="startInlineRelatedAdd(this,'${esc(page.title)}')">+</span></div></div>
             ${customRows}
-            <div class="meta-row"><span class="meta-key">Stats</span><div class="meta-val"><span class="meta-stat">${page.wordCount}w</span><span class="meta-stat">${estimateReadingMinutes(page.wordCount)} min read</span><span class="meta-stat">${page.wikilinks.length} links</span></div></div>
+            <div class="meta-row"><span class="meta-key">Stats</span><div class="meta-val"><span class="meta-stat">${[`${page.wordCount} words`, `${estimateReadingMinutes(page.wordCount)} min read`, `${page.wikilinks.length} links`].join(' · ')}</span></div></div>
             <div><span class="meta-add-prop" onclick="startAddProperty(this,'${esc(page.title)}')">+ Add property</span></div>
           </div>`;
 
@@ -12205,6 +12474,83 @@
           html += `<a class="toc-item toc-${level}" onclick="document.getElementById('${id}').scrollIntoView({behavior:'smooth',block:'start'})">${esc(text)}</a>`;
         });
         tocEl.innerHTML = html;
+      }
+
+      // COMP-MP-002: Fact timeline — shows page version history from git
+      async function renderFactTimeline(title, _fm) {
+        const el = document.getElementById("page-fact-timeline");
+        if (!el) return;
+        try {
+          const data = await api(
+            "/api/pages/" + encodeURIComponent(title) + "/versions"
+          );
+          const versions = data.versions || [];
+          const current = data.current;
+          if (!versions.length) {
+            el.style.display = "none";
+            return;
+          }
+          const allEntries = [
+            { ...current, isCurrent: true },
+            ...versions.map((v) => ({ ...v, isCurrent: false })),
+          ];
+          const rows = allEntries
+            .map((v, i) => {
+              const ts = v.timestamp
+                ? new Date(v.timestamp).toLocaleDateString(undefined, {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })
+                : "";
+              const badge = v.isCurrent
+                ? `<span class="ft-version-badge">current</span>`
+                : `<span class="ft-version-badge ft-old">v${allEntries.length - i}</span>`;
+              const summary = v.summary
+                ? `<div class="ft-source">${esc(String(v.summary).substring(0, 80))}</div>`
+                : "";
+              return `<div class="ft-entry${v.isCurrent ? " ft-current" : ""}">
+                <div class="ft-entry-header">${badge}<span class="ft-timestamp">${esc(ts)}</span></div>
+                ${summary}
+              </div>`;
+            })
+            .join("");
+          el.innerHTML =
+            `<div class="fact-timeline-toggle" onclick="this.querySelector('.ft-chevron').classList.toggle('open');this.nextElementSibling.classList.toggle('open')">` +
+            `<span class="ft-chevron">&#x25B6;</span>` +
+            `<span>History (${allEntries.length} version${allEntries.length !== 1 ? "s" : ""})</span>` +
+            `</div>` +
+            `<div class="fact-timeline-body"><div class="ft-entries">${rows}</div></div>`;
+          el.style.display = "";
+        } catch {
+          el.style.display = "none";
+        }
+      }
+
+      // Load and render similar pages in the encyclopedia chrome section
+      async function loadSimilarPages(title) {
+        const section = document.getElementById("similar-pages-section");
+        const list = document.getElementById("similar-pages-list");
+        if (!section || !list) return;
+        try {
+          const data = await api(
+            "/api/pages/" + encodeURIComponent(title) + "/similar"
+          );
+          const similar = (data.similar || []).slice(0, 6);
+          if (!similar.length) {
+            section.style.display = "none";
+            return;
+          }
+          list.innerHTML = similar
+            .map(
+              (p) =>
+                `<span class="backlink-item" onclick="openPage('${esc(p.title)}')">${esc(p.title)}</span>`
+            )
+            .join("");
+          section.style.display = "";
+        } catch {
+          if (section) section.style.display = "none";
+        }
       }
 
       function findBacklinks(title) {
@@ -12401,6 +12747,151 @@
           document.getElementById("sb-path").textContent = "raw/" + filepath;
         } catch (err) {
           console.error("Failed to view raw file:", err);
+        }
+      }
+
+      // ── Date folder cover page ──
+      async function viewDateFolder(date) {
+        try {
+          if (state.editing) exitEditMode(true);
+
+          openTab("date-folder:" + date, date, "raw");
+          state.editTabType = "raw";
+
+          // Breadcrumb
+          document.getElementById("page-breadcrumbs").innerHTML =
+            `<span onclick="showView('home')" style="cursor:pointer">home</span>` +
+            `<span class="breadcrumb-sep">›</span><span>raw</span>` +
+            `<span class="breadcrumb-sep">›</span><span style="color:var(--text-dim)">${esc(date)}</span>`;
+
+          showView("page");
+          const body = document.getElementById("page-body");
+          body.innerHTML = `<div style="padding:32px 0;text-align:center;color:var(--text-muted)">Loading…</div>`;
+          document.getElementById("page-backlinks").innerHTML = "";
+
+          const data = await api(
+            "/api/raw/date-summary?date=" + encodeURIComponent(date),
+          );
+          const files = data.files || [];
+          const uncataloged = data.uncataloged || [];
+
+          // Format helpers
+          function fmtSize(bytes) {
+            if (bytes < 1024) return bytes + " B";
+            if (bytes < 1024 * 1024)
+              return (bytes / 1024).toFixed(1) + " KB";
+            return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+          }
+          function fmtTime(iso) {
+            if (!iso) return "";
+            const d = new Date(iso);
+            return d.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          }
+          function extBadgeColor(ext) {
+            const map = {
+              pdf: "#e06c75",
+              doc: "#569cd6",
+              docx: "#569cd6",
+              pptx: "#ce9178",
+              ppt: "#ce9178",
+              xlsx: "#4ec9b0",
+              xls: "#4ec9b0",
+              csv: "#4ec9b0",
+              md: "#acacac",
+              txt: "#acacac",
+              jpg: "#9c78d8",
+              jpeg: "#9c78d8",
+              png: "#9c78d8",
+              gif: "#9c78d8",
+              mp4: "#d7ba7d",
+              mp3: "#d7ba7d",
+              json: "#4f9eff",
+              yaml: "#4f9eff",
+              yml: "#4f9eff",
+            };
+            return map[ext] || "var(--text-dim)";
+          }
+
+          // Group files by sub-folder if any
+          const byFolder = {};
+          for (const f of files) {
+            const parts = f.name.split("/");
+            const folder = parts.length > 1 ? parts.slice(0, -1).join("/") : "";
+            if (!byFolder[folder]) byFolder[folder] = [];
+            byFolder[folder].push(f);
+          }
+
+          let html = `<div class="date-folder-cover">`;
+
+          // Header
+          const [yr, mo, dy] = date.split("-");
+          const dateLabel = new Date(
+            parseInt(yr),
+            parseInt(mo) - 1,
+            parseInt(dy),
+          ).toLocaleDateString([], {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+          html += `<div class="date-folder-header">
+            <div class="date-folder-icon">${SVG_ICONS.calendar}</div>
+            <div>
+              <div class="date-folder-title">${esc(date)}</div>
+              <div class="date-folder-subtitle">${esc(dateLabel)} · ${files.length} file${files.length !== 1 ? "s" : ""} ingested</div>
+            </div>
+          </div>`;
+
+          if (files.length === 0) {
+            html += `<div class="date-folder-empty">No files found for this date.</div>`;
+          } else {
+            // Timeline: render each folder group
+            const folders = Object.keys(byFolder).sort();
+            for (const folder of folders) {
+              const folderFiles = byFolder[folder];
+              if (folder) {
+                html += `<div class="date-folder-subdir">
+                  <span class="date-folder-subdir-icon">${SVG_ICONS.folder}</span>
+                  <span class="date-folder-subdir-name">${esc(folder)}/</span>
+                  <span class="date-folder-subdir-count">${folderFiles.length} file${folderFiles.length !== 1 ? "s" : ""}</span>
+                </div>`;
+              }
+              html += `<div class="date-folder-timeline">`;
+              for (const f of folderFiles) {
+                const fname = f.name.split("/").pop();
+                const ext = f.ext || "";
+                const color = extBadgeColor(ext);
+                const wikiCount = (f.wikiPages || []).length;
+                const wikiHtml =
+                  wikiCount > 0
+                    ? `<span class="date-file-wiki-badge">${wikiCount} wiki page${wikiCount !== 1 ? "s" : ""}</span>`
+                    : `<span class="date-file-wiki-badge date-file-wiki-none">not ingested</span>`;
+                html += `<div class="date-file-row" onclick="viewRawFile('${esc(f.path)}')">
+                  <div class="date-file-time">${fmtTime(f.mtime)}</div>
+                  <div class="date-file-dot" style="background:${color}"></div>
+                  <div class="date-file-info">
+                    <div class="date-file-name">${esc(fname)}</div>
+                    <div class="date-file-meta">
+                      <span class="date-file-ext-badge" style="color:${color}">${ext.toUpperCase() || "FILE"}</span>
+                      <span class="date-file-size">${fmtSize(f.size)}</span>
+                      ${wikiHtml}
+                    </div>
+                  </div>
+                </div>`;
+              }
+              html += `</div>`;
+            }
+          }
+          html += `</div>`;
+          body.innerHTML = html;
+          document.getElementById("content").scrollTop = 0;
+          document.getElementById("sb-path").textContent = "raw/" + date;
+        } catch (err) {
+          console.error("Failed to load date folder:", err);
         }
       }
 
@@ -14576,7 +15067,7 @@
           )
           .force(
             "charge",
-            d3.forceManyBody().strength(-220).distanceMax(500),
+            d3.forceManyBody().strength(-300).distanceMax(500),
           )
           .force("center", d3.forceCenter(width / 2, height / 2))
           .force(
@@ -14696,8 +15187,12 @@
           if (selectedNode === d) {
             selectedNode = null;
             node.attr("opacity", 1);
-            link.attr("stroke-opacity", 0.4);
-            label.attr("opacity", 1);
+            link.attr("stroke-opacity", 0.5);
+            label
+              .attr("opacity", 1)
+              .attr("display", (n) =>
+                (connectionCount.get(n.id) || 0) > 3 ? "block" : "none",
+              );
             return;
           }
           selectedNode = d;
@@ -14708,11 +15203,15 @@
           link.attr("stroke-opacity", (l) => {
             const s = typeof l.source === "object" ? l.source.id : l.source;
             const t = typeof l.target === "object" ? l.target.id : l.target;
-            return s === d.id || t === d.id ? 0.8 : 0.05;
+            return s === d.id || t === d.id ? 0.9 : 0.05;
           });
-          label.attr("opacity", (n) =>
-            n.id === d.id || neighbors.has(n.id) ? 1 : 0.1,
-          );
+          label
+            .attr("opacity", (n) =>
+              n.id === d.id || neighbors.has(n.id) ? 1 : 0.1,
+            )
+            .attr("display", (n) =>
+              n.id === d.id || neighbors.has(n.id) ? "block" : "none",
+            );
         }
 
         node
@@ -14728,19 +15227,49 @@
             tooltip.style.left = e.offsetX + 12 + "px";
             tooltip.style.top = e.offsetY - 10 + "px";
           })
-          .on("mouseout", () => (tooltip.style.display = "none"))
+          .on("mouseout", (e, d) => {
+            tooltip.style.display = "none";
+            // Restore default label visibility on hover-out
+            if (!selectedNode) {
+              label.attr("display", (n) =>
+                (connectionCount.get(n.id) || 0) > 3 ? "block" : "none",
+              );
+            }
+          })
           .on("click", (e, d) => {
             e.stopPropagation();
             highlightNode(d);
           })
-          .on("dblclick", (e, d) => openPage(d.id));
+          // dblclick: unpin node (release from fixed position)
+          .on("dblclick", (e, d) => {
+            e.stopPropagation();
+            d.fx = null;
+            d.fy = null;
+            sim.alpha(0.1).restart();
+          });
+
+        // Hover: reveal this node's label + neighbor labels
+        node.on("mouseover.labels", (e, d) => {
+          const neighbors = connectedTo.get(d.id) || new Set();
+          label.attr("display", (n) =>
+            n.id === d.id ||
+            neighbors.has(n.id) ||
+            (connectionCount.get(n.id) || 0) > 3
+              ? "block"
+              : "none",
+          );
+        });
 
         svg.on("click", () => {
           if (selectedNode) {
             selectedNode = null;
             node.attr("opacity", 1);
-            link.attr("stroke-opacity", 0.4);
-            label.attr("opacity", 1);
+            link.attr("stroke-opacity", 0.5);
+            label
+              .attr("opacity", 1)
+              .attr("display", (d) =>
+                (connectionCount.get(d.id) || 0) > 3 ? "block" : "none",
+              );
           }
         });
 
@@ -14766,21 +15295,28 @@
           label.attr("x", (d) => d.x).attr("y", (d) => d.y);
         });
 
-        // ── Graph settings panel toggle ──
-        const panelToggle = document.getElementById("graph-panel-toggle");
-        const settingsPanel = document.getElementById("graph-settings-panel");
-        if (panelToggle && settingsPanel) {
-          panelToggle.addEventListener("click", () => {
-            const open = settingsPanel.classList.toggle("collapsed");
-            panelToggle.setAttribute(
-              "aria-expanded",
-              String(!settingsPanel.classList.contains("collapsed")),
-            );
-            settingsPanel.setAttribute(
-              "aria-hidden",
-              String(settingsPanel.classList.contains("collapsed")),
-            );
-          });
+        // ── Jarvis legend ──────────────────────────────────────────────────
+        let legendEl = container.querySelector(".graph-legend");
+        if (!legendEl) {
+          legendEl = document.createElement("div");
+          legendEl.className = "graph-legend";
+          legendEl.innerHTML = `
+            <div class="graph-legend-row">
+              <div class="graph-legend-dot" style="background:rgba(79,158,255,0.9);box-shadow:0 0 6px rgba(79,158,255,0.8)"></div>
+              <span>Hub node (pulsing)</span>
+            </div>
+            <div class="graph-legend-row">
+              <div class="graph-legend-dot" style="background:rgba(79,200,176,0.9)"></div>
+              <span>Community cluster</span>
+            </div>
+            <div class="graph-legend-row">
+              <div class="graph-legend-dot" style="background:rgba(79,158,255,0.2);border:1px dashed rgba(79,158,255,0.4)"></div>
+              <span>Orphan (no links)</span>
+            </div>
+            <div class="graph-legend-row" style="margin-top:5px;color:rgba(100,160,255,0.5);font-size:9px">
+              Drag to pin &nbsp;&middot;&nbsp; Dblclick to unpin
+            </div>`;
+          container.appendChild(legendEl);
         }
 
         // ── Graph labels radio handler ──
@@ -14788,7 +15324,9 @@
           if (mode === "all") label.attr("display", "block");
           else if (mode === "none") label.attr("display", "none");
           else
-            label.attr("display", (d) => (isGodNode(d.id) ? "block" : "none"));
+            label.attr("display", (d) =>
+              (connectionCount.get(d.id) || 0) > 3 ? "block" : "none",
+            );
         }
         document.querySelectorAll('input[name="graph-labels"]').forEach((r) => {
           r.addEventListener("change", (e) => applyLabelMode(e.target.value));
@@ -14944,6 +15482,10 @@
         renderSettingsSection(state.settingsSection);
       }
 
+      function loadSettingsSection(section) {
+        renderSettingsSection(section);
+      }
+
       function renderSettingsSection(section) {
         state.settingsSection = section;
         document.querySelectorAll(".settings-nav-item").forEach((el) => {
@@ -15022,22 +15564,8 @@
           <span class="settings-status" id="provider-status"></span>`;
         } else if (section === "sources") {
           el.innerHTML = `
-          <div class="settings-section-title">Sources & Connectors</div>
+          <div class="settings-section-title">Connectors</div>
           <div class="settings-section-desc">Connect local folders, git repos, or external data sources. Files are automatically ingested when added or changed.</div>
-          <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-            <button class="settings-btn settings-btn-primary" onclick="showAddConnectorModal('folder')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-              Connect Folder
-            </button>
-            <button class="settings-btn" onclick="showAddConnectorModal('git-repo')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65S8.93 17.38 9 18v4"/></svg>
-              Connect Git Repo
-            </button>
-            <button class="settings-btn" onclick="showAddConnectorModal('github')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-              GitHub URL
-            </button>
-          </div>
           <div id="connectors-list">
             <div style="color:var(--text-muted);font-size:13px;text-align:center;padding:32px 0">Loading sources…</div>
           </div>
@@ -15287,44 +15815,70 @@
               <span style="font-size:16px">+</span> Add Custom Step
             </button>
           </div>
+          <!-- Prompt Overrides (UXO-077) -->
+          <div class="pipe-cfg-section" id="prompt-overrides-section">
+            <div class="pipe-cfg-title">Prompt Overrides</div>
+            <div class="pipe-cfg-desc">Customize the system prompt and user instructions sent to the LLM during ingestion. Leave blank to use defaults.</div>
+            <div id="prompt-override-list">
+              <div style="color:var(--text-muted);font-size:12px;padding:12px 0;text-align:center">Loading…</div>
+            </div>
+          </div>
           <div id="pipe-cfg-modal" class="pipe-modal" style="display:none"></div>
+          <div id="prompt-modal" class="pipe-modal" style="display:none"></div>
           <span class="settings-status" id="automations-status"></span>
         `;
           loadAutoSettings();
           loadPipelineConfig();
+          loadPromptOverrides();
         } else if (section === "hotkeys") {
+          const isMac = navigator.platform.toUpperCase().includes("MAC") || navigator.userAgent.includes("Mac");
+          const mod = isMac ? "⌘" : "Ctrl+";
           const shortcuts = [
-            ["⌘K", "Search pages", "Navigate"],
-            ["⌘P", "Command palette", "Navigate"],
-            ["⌘G", "Toggle graph view", "Navigate"],
-            ["⌘,", "Open settings", "Navigate"],
-            ["⌘E", "Toggle edit mode", "Edit"],
-            ["⌘S", "Save current edit", "Edit"],
-            ["⌘N", "New note", "Edit"],
-            ["⌘W", "Close current tab", "Tabs"],
-            ["⌘Tab", "Next tab", "Tabs"],
-            ["Esc", "Close overlay/cancel edit", "General"],
+            [`${mod}K`,     "Search pages",              "Navigate"],
+            [`${mod}P`,     "Command palette",           "Navigate"],
+            [`${mod}G`,     "Toggle graph view",         "Navigate"],
+            [`${mod},`,     "Open settings",             "Navigate"],
+            [`${mod}B`,     "Toggle sidebar",            "Navigate"],
+            [`${mod}⇧C`,    "Open connectors",           "Navigate"],
+            [`${mod}⇧S`,    "Open source control",       "Navigate"],
+            [`${mod}⇧T`,    "Open time-lapse",           "Navigate"],
+            [`${mod}E`,     "Toggle edit mode",          "Edit"],
+            [`${mod}S`,     "Save current edit",         "Edit"],
+            [`${mod}N`,     "New page",                  "Edit"],
+            [`${mod}D`,     "Bookmark current page",     "Edit"],
+            [`${mod}W`,     "Close current tab",         "Tabs"],
+            [`${mod}T`,     "New tab (home)",            "Tabs"],
+            [`${mod}Tab`,   "Next tab",                  "Tabs"],
+            [`${mod}⇧Tab`,  "Previous tab",              "Tabs"],
+            [`${mod}⇧K`,    "Run observer",              "Actions"],
+            ["Esc",         "Close overlay / cancel edit", "General"],
+            ["?",           "Show keyboard shortcuts",   "General"],
+            ["/",           "Focus search",              "Vim (when enabled)"],
+            ["j / k",       "Scroll down / up",          "Vim (when enabled)"],
+            ["G",           "Go to bottom",              "Vim (when enabled)"],
           ];
           const groups = {};
           shortcuts.forEach(([k, d, g]) => {
             if (!groups[g]) groups[g] = [];
             groups[g].push([k, d]);
           });
-          let hotkeysHtml = `<div class="settings-section-title">Keyboard Shortcuts</div>
-          <div class="settings-section-desc">All keyboard shortcuts. More can be configured in future versions.</div>`;
+          const vimEnabled = !!state.vimMode;
+          let hotkeysHtml = `
+            <div class="settings-section-title">Keyboard Shortcuts</div>
+            <div class="settings-section-desc">Global shortcuts for power users. Press <kbd style="font-family:var(--font-mono);font-size:11px;background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--border-subtle)">?</kbd> anywhere to open this reference.</div>
+            <div style="margin-top:14px;display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-surface);border-radius:var(--radius);border:1px solid var(--border-subtle)">
+              <span style="font-size:13px;color:var(--text)">Vim-like shortcuts</span>
+              <span style="font-size:12px;color:var(--text-secondary);flex:1">j/k scroll, / search, G bottom</span>
+              <button onclick="state.vimMode=!state.vimMode;try{localStorage.setItem('wikimem-vim-mode',state.vimMode)}catch{}loadSettingsSection('hotkeys')" style="padding:3px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:${vimEnabled ? "var(--accent)" : "var(--bg-card)"};color:${vimEnabled ? "#fff" : "var(--text)"};cursor:pointer;font-size:12px;font-family:var(--font)">${vimEnabled ? "Enabled" : "Disabled"}</button>
+            </div>`;
           for (const [group, items] of Object.entries(groups)) {
+            if (group.startsWith("Vim") && !vimEnabled) continue;
             hotkeysHtml += `<div style="margin-top:16px"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:6px">${group}</div>`;
-            hotkeysHtml += items
-              .map(
-                ([
-                  k,
-                  d,
-                ]) => `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border-subtle)">
-            <span style="color:var(--text);font-size:13px">${d}</span>
-            <kbd style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);background:var(--bg);padding:2px 8px;border-radius:4px;border:1px solid var(--border-subtle)">${k}</kbd>
-          </div>`,
-              )
-              .join("");
+            hotkeysHtml += items.map(([k, d]) =>
+              `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border-subtle)">
+                <span style="color:var(--text);font-size:13px">${d}</span>
+                <kbd style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);background:var(--bg);padding:2px 8px;border-radius:4px;border:1px solid var(--border-subtle);white-space:nowrap">${k}</kbd>
+              </div>`).join("");
             hotkeysHtml += `</div>`;
           }
           el.innerHTML = hotkeysHtml;
@@ -16214,6 +16768,162 @@
         pipeDragSrcIdx = null;
       }
 
+      // ── Prompt Overrides (UXO-077) ────────────────────────────────────────
+      let _promptOverrideData = {};
+
+      async function loadPromptOverrides() {
+        const list = document.getElementById("prompt-override-list");
+        if (!list) return;
+        try {
+          const data = await api("/api/pipeline/prompts");
+          _promptOverrideData = data;
+          renderPromptOverrides();
+        } catch {
+          list.innerHTML =
+            '<div style="color:var(--text-muted);font-size:12px;padding:12px 0;text-align:center">Failed to load prompts</div>';
+        }
+      }
+
+      function renderPromptOverrides() {
+        const list = document.getElementById("prompt-override-list");
+        if (!list) return;
+        const entries = Object.entries(_promptOverrideData);
+        if (entries.length === 0) {
+          list.innerHTML =
+            '<div style="color:var(--text-muted);font-size:12px;padding:12px 0;text-align:center">No editable prompts</div>';
+          return;
+        }
+        list.innerHTML = entries
+          .map(([step, info]) => {
+            const isDefault = info.isDefault;
+            const badge = isDefault
+              ? `<span class="pipe-step-badge core">default</span>`
+              : `<span class="pipe-step-badge custom">custom</span>`;
+            const preview =
+              esc(info.value.substring(0, 80)) +
+              (info.value.length > 80 ? "\u2026" : "");
+            const resetBtn = !isDefault
+              ? `<button class="pipe-step-del" onclick="resetPrompt('${esc(step)}')" title="Restore default">\u21ba</button>`
+              : "";
+            return `<div class="pipe-step-row" data-step="${esc(step)}">
+              <span class="pipe-step-icon">\ud83d\udcac</span>
+              <div class="pipe-step-info">
+                <div class="pipe-step-name">${esc(info.label)}</div>
+                <div class="pipe-step-meta">${badge}<span title="${esc(info.value)}" style="cursor:help;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${preview}</span></div>
+              </div>
+              <div class="pipe-step-actions">
+                <button class="pipe-step-edit" onclick="openPromptModal('${esc(step)}')" title="Customize prompt">\u270e Customize</button>
+                ${resetBtn}
+              </div>
+            </div>`;
+          })
+          .join("");
+      }
+
+      function openPromptModal(step) {
+        const modal = document.getElementById("prompt-modal");
+        if (!modal) return;
+        const info = _promptOverrideData[step];
+        if (!info) return;
+        const resetBtn = !info.isDefault
+          ? `<button class="settings-btn" style="margin-left:auto;color:var(--text-muted)" onclick="resetPrompt('${esc(step)}');closePromptModal()">\u21ba Restore default</button>`
+          : "";
+        modal.style.display = "flex";
+        modal.innerHTML = `
+        <div class="pipe-modal-inner" style="max-width:680px;width:100%">
+          <div class="pipe-modal-header">
+            <h3>Customize: ${esc(info.label)}</h3>
+            <button class="pipe-modal-close" onclick="closePromptModal()">\u00d7</button>
+          </div>
+          <div class="settings-group" style="margin-bottom:8px">
+            <label class="settings-label">Prompt</label>
+            <textarea class="settings-input auto-textarea" id="prompt-modal-textarea" rows="10"
+              style="min-height:200px;resize:vertical;font-family:var(--font-mono);font-size:12px;line-height:1.6"
+              placeholder="Enter your custom prompt\u2026">${esc(info.value)}</textarea>
+            <div class="auto-hint" style="margin-top:6px">
+              Min 20 chars. For the system prompt, keep instructions about wiki structure.
+              For user instructions, the document content is appended automatically after your instructions.
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px;align-items:center">
+            <button class="settings-btn settings-btn-primary" onclick="savePromptOverride('${esc(step)}')">Save</button>
+            <button class="settings-btn" onclick="closePromptModal()">Cancel</button>
+            ${resetBtn}
+          </div>
+          <div id="prompt-modal-status" style="min-height:18px;font-size:11px;margin-top:8px"></div>
+        </div>`;
+      }
+
+      function closePromptModal() {
+        const modal = document.getElementById("prompt-modal");
+        if (modal) modal.style.display = "none";
+      }
+
+      async function savePromptOverride(step) {
+        const textarea = document.getElementById("prompt-modal-textarea");
+        const status = document.getElementById("prompt-modal-status");
+        if (!textarea || !status) return;
+        const value = textarea.value.trim();
+        if (value.length < 20) {
+          status.style.color = "var(--red)";
+          status.textContent = "\u2717 Prompt is too short (min 20 characters)";
+          return;
+        }
+        if (value.length > 12000) {
+          status.style.color = "var(--red)";
+          status.textContent = "\u2717 Prompt is too long (max 12 000 characters)";
+          return;
+        }
+        try {
+          await fetch("/api/pipeline/prompts", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ [step]: value }),
+          });
+          status.style.color = "var(--green)";
+          status.textContent = "\u2713 Saved";
+          if (_promptOverrideData[step]) {
+            _promptOverrideData[step].value = value;
+            _promptOverrideData[step].isDefault = false;
+          }
+          setTimeout(() => {
+            closePromptModal();
+            renderPromptOverrides();
+          }, 700);
+        } catch {
+          status.style.color = "var(--red)";
+          status.textContent = "\u2717 Save failed";
+        }
+      }
+
+      async function resetPrompt(step) {
+        try {
+          const r = await fetch(
+            `/api/pipeline/prompts/${encodeURIComponent(step)}/reset`,
+            { method: "POST" },
+          );
+          const data = await r.json();
+          if (_promptOverrideData[step]) {
+            _promptOverrideData[step].value =
+              data.defaultValue || _promptOverrideData[step].value;
+            _promptOverrideData[step].isDefault = true;
+          }
+          renderPromptOverrides();
+          const s = document.getElementById("automations-status");
+          if (s) {
+            s.className = "settings-status ok";
+            s.textContent = "\u21ba Reset to default";
+            setTimeout(() => (s.textContent = ""), 2000);
+          }
+        } catch {
+          const s = document.getElementById("automations-status");
+          if (s) {
+            s.className = "settings-status err";
+            s.textContent = "\u2717 Reset failed";
+          }
+        }
+      }
+
       // ── Connectors / Sources ──────────────────────────────────────────────
       let connectorAddType = "folder";
 
@@ -16636,13 +17346,19 @@
         // Onboarding gate: empty vault → show first-time experience
         const onboardEl = document.getElementById("home-onboarding");
         const dashEl = document.getElementById("home-dashboard");
-        if (stats.pageCount === 0) {
+        const alreadyOnboarded = !!localStorage.getItem("wikimem.onboarded");
+        if (stats.pageCount === 0 && stats.sourceCount === 0 && !alreadyOnboarded) {
           onboardEl.style.display = "";
           dashEl.style.display = "none";
           return;
         }
         onboardEl.style.display = "none";
         dashEl.style.display = "";
+        // Show tour replay button for users who have been onboarded
+        if (alreadyOnboarded) {
+          const replayBtn = document.getElementById("tour-replay-btn");
+          if (replayBtn) replayBtn.classList.add("visible");
+        }
         renderHomeConnectors();
 
         const statusText = `${stats.pageCount} pages · ${stats.wordCount.toLocaleString()} words`;
@@ -16727,6 +17443,174 @@
         }
         document.getElementById("home-onboarding").style.display = "none";
         document.getElementById("home-dashboard").style.display = "";
+      }
+
+      // ── First-run onboarding card actions ──
+      function onboardImportFolder() {
+        const fi = document.createElement("input");
+        fi.type = "file";
+        fi.multiple = true;
+        fi.accept = ".md,.txt,.pdf,.html,.htm,.docx,.pptx,.csv,.json,.yaml,.yml,.rst,.org,.tex";
+        fi.onchange = async () => {
+          if (!fi.files || fi.files.length === 0) return;
+          let imported = 0;
+          for (const file of fi.files) {
+            const ab = await file.arrayBuffer();
+            const bytes = new Uint8Array(ab);
+            const r = await fetch("/api/upload", {
+              method: "POST",
+              headers: { "x-filename": file.name, "Content-Type": "application/octet-stream" },
+              body: bytes,
+            });
+            if (r.ok) imported++;
+          }
+          if (imported > 0) {
+            localStorage.setItem("wikimem.onboarded", "true");
+            showToast("Imported " + imported + " file" + (imported > 1 ? "s" : ""));
+            await loadTree();
+            await loadHome();
+          }
+        };
+        fi.click();
+      }
+      function onboardConnectSource() {
+        openViewTab("connectors");
+      }
+      function onboardWriteNote() {
+        document.getElementById("write-note-overlay").style.display = "flex";
+        setTimeout(() => document.getElementById("write-note-title").focus(), 60);
+      }
+      function onboardImportUrl() {
+        document.getElementById("url-ingest-overlay").style.display = "flex";
+        setTimeout(() => document.getElementById("onboard-url-input").focus(), 60);
+      }
+
+      // ── Write Note modal ──
+      function closeWriteNoteModal() {
+        document.getElementById("write-note-overlay").style.display = "none";
+        document.getElementById("write-note-title").value = "";
+        document.getElementById("write-note-body").value = "";
+      }
+      function closeWriteNoteOnBackdrop(e) {
+        if (e.target === document.getElementById("write-note-overlay")) closeWriteNoteModal();
+      }
+      async function submitWriteNote() {
+        const title = document.getElementById("write-note-title").value.trim();
+        const body = document.getElementById("write-note-body").value.trim();
+        if (!title && !body) { showToast("Write something first"); return; }
+        const filename = (title || "note") + ".md";
+        const content = title ? "# " + title + "\n\n" + body : body;
+        const enc = new TextEncoder();
+        const bytes = enc.encode(content);
+        const r = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "x-filename": filename, "Content-Type": "application/octet-stream" },
+          body: bytes,
+        });
+        if (r.ok) {
+          localStorage.setItem("wikimem.onboarded", "true");
+          closeWriteNoteModal();
+          showToast("Note added to wiki");
+          await loadTree();
+          await loadHome();
+        } else {
+          showToast("Upload failed — try again");
+        }
+      }
+
+      // ── URL ingest modal ──
+      function closeUrlIngestModal() {
+        document.getElementById("url-ingest-overlay").style.display = "none";
+        document.getElementById("onboard-url-input").value = "";
+      }
+      function closeUrlIngestOnBackdrop(e) {
+        if (e.target === document.getElementById("url-ingest-overlay")) closeUrlIngestModal();
+      }
+      async function submitOnboardUrl() {
+        const url = document.getElementById("onboard-url-input").value.trim();
+        if (!url) { showToast("Enter a URL first"); return; }
+        showToast("Scraping\u2026");
+        try {
+          const r = await fetch("/api/scrape", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+          });
+          if (r.ok) {
+            localStorage.setItem("wikimem.onboarded", "true");
+            closeUrlIngestModal();
+            showToast("URL imported successfully");
+            await loadTree();
+            await loadHome();
+          } else {
+            const err = await r.json().catch(() => ({}));
+            showToast("Scrape failed: " + (err.error || r.status));
+          }
+        } catch (ex) {
+          showToast("Network error: " + ex.message);
+        }
+      }
+
+      // ── Tour modal ──
+      const _tourSteps = [
+        {
+          icon: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="26" height="22" rx="3"/><path d="M3 11h26M9 5v6M23 5v6"/><path d="M8 17h6M8 21h10" stroke-linecap="round"/></svg>',
+          title: "This is your wiki",
+          body: "Everything you add gets compiled into a connected knowledge base — every file, every source, every note linked by topic.",
+        },
+        {
+          icon: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 4v18M8 14l8 8 8-8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 24h24" stroke-linecap="round"/></svg>',
+          title: "Drop any file here",
+          body: "PDF, audio, email, code, Markdown, CSV, PowerPoint \u2014 WikiMem reads them all. Drag onto the sidebar or use the Import button.",
+        },
+        {
+          icon: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="16" r="4"/><circle cx="24" cy="8" r="4"/><circle cx="24" cy="24" r="4"/><path d="M12 14l8-4M12 18l8 4" stroke-linecap="round"/></svg>',
+          title: "Connect your sources",
+          body: "Link Slack, Gmail, GitHub, Notion, and more. WikiMem auto-syncs new content so your wiki stays current without lifting a finger.",
+        },
+        {
+          icon: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="16" cy="16" r="12"/><path d="M16 10v6l4 4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+          title: "The Observer works for you",
+          body: "Turn on automations in Settings \u2192 Automations and the Observer will improve your wiki daily \u2014 pruning, linking, and summarising while you sleep.",
+        },
+      ];
+      let _tourStep = 0;
+      function openWikiMemTour() {
+        _tourStep = 0;
+        _renderTourStep();
+        document.getElementById("tour-modal-overlay").classList.add("visible");
+      }
+      function closeTourModal() {
+        document.getElementById("tour-modal-overlay").classList.remove("visible");
+        localStorage.setItem("wikimem.onboarded", "true");
+        const replayBtn = document.getElementById("tour-replay-btn");
+        if (replayBtn) replayBtn.classList.add("visible");
+      }
+      function closeTourOnBackdrop(e) {
+        if (e.target === document.getElementById("tour-modal-overlay")) closeTourModal();
+      }
+      function tourNext() {
+        if (_tourStep < _tourSteps.length - 1) {
+          _tourStep++;
+          _renderTourStep();
+        } else {
+          closeTourModal();
+        }
+      }
+      function _renderTourStep() {
+        const step = _tourSteps[_tourStep];
+        const total = _tourSteps.length;
+        document.getElementById("tour-step-label").textContent = "Step " + (_tourStep + 1) + " of " + total;
+        document.getElementById("tour-step-icon").innerHTML = step.icon;
+        document.getElementById("tour-step-title").textContent = step.title;
+        document.getElementById("tour-step-body").textContent = step.body;
+        const dotsEl = document.getElementById("tour-dots");
+        dotsEl.innerHTML = Array.from({ length: total }, function(_, i) {
+          return '<span class="tour-dot' + (i === _tourStep ? " active" : "") + '"></span>';
+        }).join("");
+        const btnNext = document.getElementById("tour-btn-next");
+        btnNext.textContent = _tourStep === total - 1 ? "Done" : "Next";
+        document.getElementById("tour-btn-skip").style.display = _tourStep === total - 1 ? "none" : "";
       }
 
       // ── Search ──
@@ -16872,76 +17756,38 @@
 
       // ── Command Palette (Cmd+P) ──
       const commands = [
-        {
-          icon: "⌂",
-          label: "Go Home",
-          shortcut: "",
-          action: () => showView("home"),
-        },
-        {
-          icon: "⊛",
-          label: "Toggle Graph View",
-          shortcut: "⌘G",
-          action: railGraphClick,
-        },
-        {
-          icon: "⌕",
-          label: "Search Pages",
-          shortcut: "⌘K",
-          action: openSearch,
-        },
-        {
-          icon: "⚙",
-          label: "Open Settings",
-          shortcut: "⌘,",
-          action: railSettingsClick,
-        },
-        {
-          icon: "⚙",
-          label: "Ingestion Pipeline",
-          shortcut: "",
-          action: railPipelineClick,
-        },
-        {
-          icon: "◷",
-          label: "Audit Trail / History",
-          shortcut: "",
-          action: railHistoryClick,
-        },
-        {
-          icon: "▶",
-          label: "Time-Lapse",
-          shortcut: "",
-          action: railTimelapseClick,
-        },
-        {
-          icon: "☰",
-          label: "Toggle Sidebar",
-          shortcut: "",
-          action: () =>
-            document.getElementById("sidebar").classList.toggle("collapsed"),
-        },
-        {
-          icon: "↓",
-          label: "Upload Files",
-          shortcut: "",
-          action: () => document.getElementById("file-input").click(),
-        },
-        {
-          icon: "⟲",
-          label: "Refresh Data",
-          shortcut: "",
-          action: () => {
-            loadTree();
-            loadHome();
-          },
-        },
-        {
-          icon: "▼",
-          label: "Collapse All Folders",
-          shortcut: "",
-          action: collapseAllFolders,
-        },
+        // ── Navigation ──
+        { icon: "⌂",  label: "Go Home",                  shortcut: "",       action: () => showView("home") },
+        { icon: "⊛",  label: "Toggle Graph View",         shortcut: "⌘G",    action: railGraphClick },
+        { icon: "⌕",  label: "Search Pages",              shortcut: "⌘K",    action: openSearch },
+        { icon: "⚙",  label: "Open Settings",             shortcut: "⌘,",    action: railSettingsClick },
+        { icon: "⧗",  label: "Open Connectors",           shortcut: "⌘⇧C",   action: railConnectorsClick },
+        { icon: "◷",  label: "Open Source Control",       shortcut: "⌘⇧S",   action: railHistoryClick },
+        { icon: "▶",  label: "Open Time-Lapse",           shortcut: "⌘⇧T",   action: railTimelapseClick },
+        { icon: "⚙",  label: "Open Pipeline",             shortcut: "",       action: railPipelineClick },
+        // ── Actions ──
+        { icon: "▶",  label: "Run Observer",              shortcut: "⌘⇧K",   action: () => { openViewTab("settings"); setTimeout(() => loadSettingsSection("automations"), 300); setTimeout(runObserverWithImprove, 600); } },
+        { icon: "⟳",  label: "Sync All Connectors",       shortcut: "",       action: () => { if (typeof syncAllConnectors === "function") syncAllConnectors(); else showToast("Coming soon"); } },
+        { icon: "+",  label: "Create New Page",           shortcut: "⌘N",    action: () => document.getElementById("sa-new-note")?.click() },
+        { icon: "★",  label: "Bookmark Current Page",     shortcut: "⌘D",    action: () => { if (state.editPageTitle) toggleBookmarkTitle(state.editPageTitle); else showToast("No page open"); } },
+        { icon: "✎",  label: "Rename Current Page",       shortcut: "",       action: () => { if (state.editPageTitle) renameFile(state.editPageTitle, state.editPagePath, "wiki"); else showToast("No page open"); } },
+        { icon: "⬇",  label: "Export Current Page",       shortcut: "",       action: () => { if (state.editPageTitle) downloadRawFile(state.editPagePath || state.editPageTitle + ".md"); else showToast("No page open"); } },
+        { icon: "✕",  label: "Delete Current Page",       shortcut: "",       action: () => { if (state.editPageTitle) deleteFile(state.editPageTitle, state.editPagePath, "wiki"); else showToast("No page open"); } },
+        { icon: "⎘",  label: "Copy Current Page URL",     shortcut: "",       action: () => { const t = state.editPageTitle; if (t) { navigator.clipboard?.writeText(window.location.href).then(() => showToast("URL copied")).catch(() => showToast("Copy failed")); } else showToast("No page open"); } },
+        // ── Tabs ──
+        { icon: "×",  label: "Close Current Tab",         shortcut: "⌘W",    action: () => { if (state.activeTabId) closeTab(state.activeTabId); } },
+        { icon: "⊞",  label: "New Tab (Home)",            shortcut: "⌘T",    action: () => { showView("home"); state.activeTabId = null; renderTabs(); } },
+        // ── Recent Pages (dynamic, populated at open time) ──
+        { icon: "🕐", label: "Recent Pages…",             shortcut: "",       action: openRecentPages },
+        // ── View ──
+        { icon: "☰",  label: "Toggle Sidebar",            shortcut: "⌘B",    action: () => document.getElementById("sidebar").classList.toggle("collapsed") },
+        { icon: "◑",  label: "Switch Theme Light/Dark",   shortcut: "",       action: toggleTheme },
+        // ── Utility ──
+        { icon: "↓",  label: "Upload Files",              shortcut: "",       action: () => document.getElementById("file-input").click() },
+        { icon: "⟲",  label: "Refresh Data",              shortcut: "",       action: () => { loadTree(); loadHome(); } },
+        { icon: "▼",  label: "Collapse All Folders",      shortcut: "",       action: collapseAllFolders },
+        // ── Help ──
+        { icon: "?",  label: "Keyboard Shortcuts",        shortcut: "?",      action: openShortcutsModal },
       ];
       let paletteFiltered = [...commands];
       let paletteIndex = 0;
@@ -17031,6 +17877,167 @@
         .addEventListener("click", (e) => {
           if (e.target === e.currentTarget) closePalette();
         });
+
+      // ── Keyboard Shortcuts Modal ──
+      (function buildShortcutsModal() {
+        const overlay = document.createElement("div");
+        overlay.id = "shortcuts-modal-overlay";
+        overlay.style.cssText =
+          "display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,0.55);align-items:center;justify-content:center";
+        overlay.innerHTML = `
+          <div id="shortcuts-modal-box" style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);width:520px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border-subtle)">
+              <span style="font-size:14px;font-weight:600;color:var(--text-bright)">Keyboard Shortcuts</span>
+              <button id="shortcuts-modal-close" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;line-height:1;padding:0 2px">&times;</button>
+            </div>
+            <div id="shortcuts-modal-body" style="overflow-y:auto;padding:12px 16px 16px"></div>
+          </div>`;
+        document.body.appendChild(overlay);
+        overlay.addEventListener("click", (e) => {
+          if (e.target === overlay) closeShortcutsModal();
+        });
+        document
+          .getElementById("shortcuts-modal-close")
+          .addEventListener("click", closeShortcutsModal);
+      })();
+
+      function openShortcutsModal() {
+        const overlay = document.getElementById("shortcuts-modal-overlay");
+        if (!overlay) return;
+        const isMac =
+          navigator.platform.toUpperCase().includes("MAC") ||
+          navigator.userAgent.includes("Mac");
+        const mod = isMac ? "⌘" : "Ctrl+";
+        const groups = {
+          Navigate: [
+            [`${mod}K`, "Search pages"],
+            [`${mod}P`, "Command palette"],
+            [`${mod}G`, "Graph view"],
+            [`${mod},`, "Settings"],
+            [`${mod}B`, "Toggle sidebar"],
+            [`${mod}⇧C`, "Connectors"],
+            [`${mod}⇧S`, "Source control"],
+            [`${mod}⇧T`, "Time-lapse"],
+          ],
+          Edit: [
+            [`${mod}E`, "Toggle edit mode"],
+            [`${mod}S`, "Save"],
+            [`${mod}N`, "New page"],
+            [`${mod}D`, "Bookmark page"],
+          ],
+          Tabs: [
+            [`${mod}W`, "Close tab"],
+            [`${mod}T`, "New tab"],
+            [`${mod}Tab`, "Next tab"],
+            [`${mod}⇧Tab`, "Prev tab"],
+          ],
+          Actions: [[`${mod}⇧K`, "Run observer"]],
+          General: [
+            ["Esc", "Close overlay"],
+            ["?", "Show this reference"],
+          ],
+        };
+        if (state.vimMode) {
+          groups["Vim"] = [
+            ["/", "Search"],
+            ["j", "Scroll down"],
+            ["k", "Scroll up"],
+            ["G", "Go to bottom"],
+          ];
+        }
+        let html = "";
+        for (const [group, items] of Object.entries(groups)) {
+          html += `<div style="margin-bottom:14px"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-dim);margin-bottom:6px">${group}</div>`;
+          html += `<div style="display:grid;grid-template-columns:1fr auto;gap:0">`;
+          html += items
+            .map(
+              ([k, d]) =>
+                `<div style="padding:5px 0;border-bottom:1px solid var(--border-subtle);color:var(--text);font-size:13px">${d}</div>
+             <div style="padding:5px 0;border-bottom:1px solid var(--border-subtle);text-align:right"><kbd style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);background:var(--bg);padding:2px 7px;border-radius:3px;border:1px solid var(--border-subtle);white-space:nowrap">${k}</kbd></div>`,
+            )
+            .join("");
+          html += `</div></div>`;
+        }
+        document.getElementById("shortcuts-modal-body").innerHTML = html;
+        overlay.style.display = "flex";
+      }
+      function closeShortcutsModal() {
+        const overlay = document.getElementById("shortcuts-modal-overlay");
+        if (overlay) overlay.style.display = "none";
+      }
+
+      // ── Recent Pages picker (opens palette pre-populated with last 10) ──
+      function openRecentPages() {
+        const recent = getRecentPages();
+        if (!recent.length) {
+          showToast("No recent pages yet");
+          return;
+        }
+        const recentCmds = recent.map((title) => ({
+          icon: "🕐",
+          label: title,
+          shortcut: "",
+          action: () => openPage(title),
+        }));
+        paletteFiltered = recentCmds;
+        paletteIndex = 0;
+        const input = document.getElementById("palette-input");
+        input.value = "";
+        input.placeholder = "Recent pages — type to filter…";
+        renderPalette();
+        // Reset placeholder on next input or close
+        const resetPlaceholder = () => {
+          input.placeholder = "Search commands…";
+          input.removeEventListener("input", resetPlaceholder);
+        };
+        input.addEventListener("input", resetPlaceholder);
+      }
+
+      // ── Sync All Connectors ──
+      async function syncAllConnectors() {
+        showToast("Syncing all connectors…");
+        try {
+          const data = await api("/api/connectors");
+          const connectors = Array.isArray(data)
+            ? data
+            : data.connectors || [];
+          if (!connectors.length) {
+            showToast("No connectors configured");
+            return;
+          }
+          let synced = 0;
+          for (const c of connectors) {
+            try {
+              await fetch(`/api/connectors/${c.id}/sync`, { method: "POST" });
+              synced++;
+            } catch {}
+          }
+          showToast(`✓ Synced ${synced}/${connectors.length} connectors`);
+          loadTree();
+          loadHome();
+        } catch {
+          showToast("Sync failed — check connectors page");
+        }
+      }
+
+      // ── Theme toggle (light/dark) ──
+      function toggleTheme() {
+        const root = document.documentElement;
+        const isLight = root.getAttribute("data-theme") === "light";
+        root.setAttribute("data-theme", isLight ? "dark" : "light");
+        try {
+          localStorage.setItem("wikimem-theme", isLight ? "dark" : "light");
+        } catch {}
+        showToast(isLight ? "Dark mode" : "Light mode");
+      }
+
+      // ── Restore vim mode from localStorage on boot ──
+      (function restoreVimMode() {
+        try {
+          if (localStorage.getItem("wikimem-vim-mode") === "true")
+            state.vimMode = true;
+        } catch {}
+      })();
 
       // ── Upload ──
       const fileInput = document.getElementById("file-input");
@@ -17378,6 +18385,14 @@
         }).catch(() => { btn.textContent = "Failed"; setTimeout(() => { btn.textContent = "Copy"; }, 1500); });
       }
 
+      function _queryFlash(msg) {
+        const el = document.getElementById("sb-path");
+        if (!el) return;
+        const prev = el.textContent;
+        el.textContent = msg;
+        setTimeout(() => { el.textContent = prev; }, 2500);
+      }
+
       async function queryActionSavePage(question, answer) {
         try {
           const title = question.length > 60 ? question.substring(0, 60) + "..." : question;
@@ -17389,12 +18404,12 @@
           });
           const data = await res.json().catch(() => ({}));
           if (data.slug) {
-            showStatus(`Saved as "${title}"`);
+            _queryFlash(`✓ Saved as "${title}"`);
             loadTree();
           } else {
-            showStatus("Couldn't save page — check console");
+            _queryFlash("Couldn't save page");
           }
-        } catch { showStatus("Save failed"); }
+        } catch { _queryFlash("Save failed"); }
       }
 
       // ── URL Ingest ──
@@ -17564,32 +18579,29 @@
 
       // ── Keyboard shortcuts ──
       document.addEventListener("keydown", (e) => {
-        if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-          e.preventDefault();
-          openSearch();
-        }
-        if ((e.metaKey || e.ctrlKey) && e.key === "p") {
-          e.preventDefault();
-          openPalette();
-        }
-        if ((e.metaKey || e.ctrlKey) && e.key === "g") {
-          e.preventDefault();
-          railGraphClick();
-        }
-        if ((e.metaKey || e.ctrlKey) && e.key === ",") {
-          e.preventDefault();
-          railSettingsClick();
-        }
-        if ((e.metaKey || e.ctrlKey) && e.key === "w") {
-          e.preventDefault();
-          if (state.activeTabId) closeTab(state.activeTabId);
-        }
-        // Cmd+N — new note
-        if ((e.metaKey || e.ctrlKey) && e.key === "n") {
-          e.preventDefault();
-          document.getElementById("sa-new-note")?.click();
-        }
-        // Cmd+Tab / Ctrl+Tab — next tab
+        const isMod = e.metaKey || e.ctrlKey;
+        const activeEl = document.activeElement;
+        const inInput = activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA" || activeEl.isContentEditable);
+
+        // ── Cmd+K — Search ──
+        if (isMod && e.key === "k") { e.preventDefault(); openSearch(); }
+        // ── Cmd+P — Command Palette ──
+        if (isMod && e.key === "p") { e.preventDefault(); openPalette(); }
+        // ── Cmd+G — Graph ──
+        if (isMod && !e.shiftKey && e.key === "g") { e.preventDefault(); railGraphClick(); }
+        // ── Cmd+, — Settings ──
+        if (isMod && e.key === ",") { e.preventDefault(); railSettingsClick(); }
+        // ── Cmd+B — Toggle Sidebar ──
+        if (isMod && e.key === "b") { e.preventDefault(); document.getElementById("sidebar").classList.toggle("collapsed"); }
+        // ── Cmd+W — Close Tab ──
+        if (isMod && !e.shiftKey && e.key === "w") { e.preventDefault(); if (state.activeTabId) closeTab(state.activeTabId); }
+        // ── Cmd+N — New Page ──
+        if (isMod && !e.shiftKey && e.key === "n") { e.preventDefault(); document.getElementById("sa-new-note")?.click(); }
+        // ── Cmd+T — New Tab (Home) ──
+        if (isMod && !e.shiftKey && e.key === "t") { e.preventDefault(); showView("home"); state.activeTabId = null; renderTabs(); }
+        // ── Cmd+D — Bookmark current page ──
+        if (isMod && !e.shiftKey && e.key === "d") { e.preventDefault(); if (state.editPageTitle) toggleBookmarkTitle(state.editPageTitle); }
+        // ── Cmd+Tab / Cmd+Shift+Tab — next/prev tab ──
         if ((e.ctrlKey || e.metaKey) && e.key === "Tab") {
           e.preventDefault();
           if (state.tabs.length > 1) {
@@ -17600,10 +18612,32 @@
             activateTab(state.tabs[next].id);
           }
         }
-        if (e.key === "Escape") {
-          closeSearch();
-          closePalette();
+        // ── Cmd+Shift+K — Run Observer ──
+        if (isMod && e.shiftKey && e.key === "K") {
+          e.preventDefault();
+          openViewTab("settings");
+          setTimeout(() => loadSettingsSection("automations"), 300);
+          setTimeout(runObserverWithImprove, 600);
         }
+        // ── Cmd+Shift+C — Open Connectors ──
+        if (isMod && e.shiftKey && e.key === "C") { e.preventDefault(); railConnectorsClick(); }
+        // ── Cmd+Shift+S — Open Source Control ──
+        if (isMod && e.shiftKey && e.key === "S") { e.preventDefault(); railHistoryClick(); }
+        // ── Cmd+Shift+T — Open Time-Lapse ──
+        if (isMod && e.shiftKey && e.key === "T") { e.preventDefault(); railTimelapseClick(); }
+        // ── Escape — Close any overlay ──
+        if (e.key === "Escape") { closeSearch(); closePalette(); closeShortcutsModal(); }
+        // ── ? — Keyboard shortcuts reference (not in input) ──
+        if (e.key === "?" && !inInput && !isMod) { e.preventDefault(); openShortcutsModal(); }
+
+        // ── Vim-like shortcuts (only when vim mode enabled + not in input) ──
+        if (state.vimMode && !inInput && !isMod) {
+          if (e.key === "/" ) { e.preventDefault(); openSearch(); }
+          if (e.key === "j") { e.preventDefault(); window.scrollBy(0, 60); }
+          if (e.key === "k") { e.preventDefault(); window.scrollBy(0, -60); }
+          if (e.key === "G") { e.preventDefault(); window.scrollTo(0, document.body.scrollHeight); }
+        }
+        // gg — scroll to top (vim) — detected via double-g
       });
 
       // ── Icon rail handlers ──
@@ -19356,171 +20390,171 @@
       // keyLabel: human label for the credential input field
       const CONNECTOR_CATALOG = [
         // ── Communication ──
-        { id: "slack",      name: "Slack",           category: "communication", color: "#4A154B",
+        { id: "slack",      name: "Slack",           category: "communication", color: "#4A154B", icon_slug: "slack",
           method: "oauth",      oauthKey: "slack" },
-        { id: "discord",    name: "Discord",          category: "communication", color: "#5865F2",
+        { id: "discord",    name: "Discord",          category: "communication", color: "#5865F2", icon_slug: "discord",
           method: "bot_token",
           keyLabel: "Bot Token",
           docsUrl: "https://discord.com/developers/applications",
           instructions: "1. Go to Discord Developer Portal → New Application\n2. Bot tab → Add Bot → Copy Token\n3. OAuth2 → URL Generator → bot scope → send messages, read message history\n4. Use generated URL to add bot to your server" },
-        { id: "teams",      name: "Microsoft Teams",  category: "communication", color: "#6264A7",
+        { id: "teams",      name: "Microsoft Teams",  category: "communication", color: "#6264A7", icon_slug: "microsoftteams",
           method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
-        { id: "telegram",   name: "Telegram",         category: "communication", color: "#2CA5E0",
+        { id: "telegram",   name: "Telegram",         category: "communication", color: "#2CA5E0", icon_slug: "telegram",
           method: "bot_token",
           keyLabel: "Bot Token",
           docsUrl: "https://t.me/BotFather",
           instructions: "1. Open Telegram and message @BotFather\n2. Send /newbot and follow the prompts\n3. Copy the token BotFather gives you\n4. Add your bot to the channel/group you want to sync" },
-        { id: "gmail",      name: "Gmail",            category: "communication", color: "#EA4335",
+        { id: "gmail",      name: "Gmail",            category: "communication", color: "#EA4335", icon_slug: "gmail",
           method: "oauth",      oauthKey: "google" },
-        { id: "outlook",    name: "Outlook",          category: "communication", color: "#0072C6",
+        { id: "outlook",    name: "Outlook",          category: "communication", color: "#0072C6", icon_slug: "microsoftoutlook",
           method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
         // ── Development ──
-        { id: "github",     name: "GitHub",           category: "development",   color: "#24292F",
+        { id: "github",     name: "GitHub",           category: "development",   color: "#24292F", icon_slug: "github",
           method: "oauth",      oauthKey: "github" },
-        { id: "gitlab",     name: "GitLab",           category: "development",   color: "#FC6D26",
+        { id: "gitlab",     name: "GitLab",           category: "development",   color: "#FC6D26", icon_slug: "gitlab",
           method: "api_key",
           keyLabel: "Personal Access Token",
           docsUrl: "https://gitlab.com/-/user_settings/personal_access_tokens",
           instructions: "1. GitLab → Settings → Access Tokens\n2. Create token with read_api, read_repository scopes\n3. Copy and paste the token here" },
-        { id: "jira",       name: "Jira",             category: "development",   color: "#0052CC",
+        { id: "jira",       name: "Jira",             category: "development",   color: "#0052CC", icon_slug: "jira",
           method: "oauth",      oauthKey: "jira" },
-        { id: "linear",     name: "Linear",           category: "development",   color: "#5E6AD2",
+        { id: "linear",     name: "Linear",           category: "development",   color: "#5E6AD2", icon_slug: "linear",
           method: "oauth",      oauthKey: "linear" },
-        { id: "notion",     name: "Notion",           category: "development",   color: "#000000",
+        { id: "notion",     name: "Notion",           category: "development",   color: "#000000", icon_slug: "notion",
           method: "api_key",
           keyLabel: "Integration Secret",
           docsUrl: "https://www.notion.so/my-integrations",
           instructions: "1. notion.so/my-integrations → New integration\n2. Give it a name, select your workspace\n3. Copy the Internal Integration Secret\n4. Share each database/page with your integration (Share button → invite integration)" },
-        { id: "sentry",     name: "Sentry",           category: "development",   color: "#F55247",
+        { id: "sentry",     name: "Sentry",           category: "development",   color: "#F55247", icon_slug: "sentry",
           method: "api_key",
           keyLabel: "Auth Token",
           docsUrl: "https://sentry.io/settings/account/api/auth-tokens/",
           instructions: "1. Sentry → Settings → Auth Tokens → Create New Token\n2. Select scopes: project:read, event:read\n3. Copy and paste the token here" },
         // ── Cloud ──
-        { id: "gdrive",     name: "Google Drive",     category: "cloud",         color: "#4285F4",
+        { id: "gdrive",     name: "Google Drive",     category: "cloud",         color: "#4285F4", icon_slug: "googledrive",
           method: "oauth",      oauthKey: "google" },
-        { id: "dropbox",    name: "Dropbox",          category: "cloud",         color: "#0061FF",
+        { id: "dropbox",    name: "Dropbox",          category: "cloud",         color: "#0061FF", icon_slug: "dropbox",
           method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
-        { id: "onedrive",   name: "OneDrive",         category: "cloud",         color: "#0078D4",
+        { id: "onedrive",   name: "OneDrive",         category: "cloud",         color: "#0078D4", icon_slug: "microsoftonedrive",
           method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
-        { id: "box",        name: "Box",              category: "cloud",         color: "#0061D5",
+        { id: "box",        name: "Box",              category: "cloud",         color: "#0061D5", icon_slug: "box",
           method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
-        { id: "s3",         name: "Amazon S3",        category: "cloud",         color: "#FF9900",
+        { id: "s3",         name: "Amazon S3",        category: "cloud",         color: "#FF9900", icon_slug: "amazons3",
           method: "api_key",
           keyLabel: "Access Key ID",
           extraFields: [{ name: "secret", label: "Secret Access Key", secret: true }, { name: "bucket", label: "Bucket Name", secret: false }, { name: "region", label: "Region (e.g. us-east-1)", secret: false }],
           docsUrl: "https://console.aws.amazon.com/iam/home#/users",
           instructions: "1. AWS Console → IAM → Users → Create user\n2. Attach policy: AmazonS3ReadOnlyAccess\n3. Security Credentials tab → Create Access Key\n4. Copy Access Key ID and Secret Access Key" },
         // ── Productivity ──
-        { id: "gcal",       name: "Google Calendar",  category: "productivity",  color: "#1A73E8",
+        { id: "gcal",       name: "Google Calendar",  category: "productivity",  color: "#1A73E8", icon_slug: "googlecalendar",
           method: "oauth",      oauthKey: "google" },
-        { id: "todoist",    name: "Todoist",          category: "productivity",  color: "#DC4C3F",
+        { id: "todoist",    name: "Todoist",          category: "productivity",  color: "#DC4C3F", icon_slug: "todoist",
           method: "api_key",
           keyLabel: "API Token",
           docsUrl: "https://todoist.com/prefs/integrations",
           instructions: "1. Todoist → Settings → Integrations → Developer\n2. Copy your API token" },
-        { id: "trello",     name: "Trello",           category: "productivity",  color: "#0052CC",
+        { id: "trello",     name: "Trello",           category: "productivity",  color: "#0052CC", icon_slug: "trello",
           method: "api_key",
           keyLabel: "API Key",
           extraFields: [{ name: "token", label: "API Token", secret: true }],
           docsUrl: "https://trello.com/app-key",
           instructions: "1. trello.com/app-key → copy your API Key\n2. Click 'Token' link on that page to generate a token\n3. Enter both here" },
-        { id: "asana",      name: "Asana",            category: "productivity",  color: "#F06A6A",
+        { id: "asana",      name: "Asana",            category: "productivity",  color: "#F06A6A", icon_slug: "asana",
           method: "api_key",
           keyLabel: "Personal Access Token",
           docsUrl: "https://app.asana.com/0/my-apps",
           instructions: "1. Asana → My Profile → Apps → Manage Developer Apps\n2. Create new Personal Access Token\n3. Copy and paste here" },
-        { id: "airtable",   name: "Airtable",         category: "productivity",  color: "#2D7FF9",
+        { id: "airtable",   name: "Airtable",         category: "productivity",  color: "#2D7FF9", icon_slug: "airtable",
           method: "api_key",
           keyLabel: "Personal Access Token",
           docsUrl: "https://airtable.com/create/tokens",
           instructions: "1. Airtable → Account → Developer Hub → Personal Access Tokens\n2. Create token with data.records:read, schema.bases:read scopes\n3. Copy and paste here" },
         // ── Social ──
-        { id: "twitter",    name: "X / Twitter",      category: "social",        color: "#000000",
+        { id: "twitter",    name: "X / Twitter",      category: "social",        color: "#000000", icon_slug: "x",
           method: "api_key",
           keyLabel: "Bearer Token",
           docsUrl: "https://developer.twitter.com/en/portal/dashboard",
           instructions: "1. developer.twitter.com → Projects & Apps → New Project\n2. Keys and Tokens tab → Bearer Token\n3. Copy and paste here" },
-        { id: "reddit",     name: "Reddit",           category: "social",        color: "#FF4500",
+        { id: "reddit",     name: "Reddit",           category: "social",        color: "#FF4500", icon_slug: "reddit",
           method: "api_key",
           keyLabel: "Client ID",
           extraFields: [{ name: "secret", label: "Client Secret", secret: true }],
           docsUrl: "https://www.reddit.com/prefs/apps",
           instructions: "1. reddit.com/prefs/apps → Create App (type: script)\n2. Note the Client ID (below app name) and Secret\n3. Enter both here" },
-        { id: "youtube",    name: "YouTube",          category: "social",        color: "#FF0000",
+        { id: "youtube",    name: "YouTube",          category: "social",        color: "#FF0000", icon_slug: "youtube",
           method: "api_key",
           keyLabel: "API Key",
           docsUrl: "https://console.cloud.google.com/apis/credentials",
           instructions: "1. Google Cloud Console → APIs & Services → Credentials\n2. Create API Key, restrict to YouTube Data API v3\n3. Copy and paste here" },
-        { id: "linkedin",   name: "LinkedIn",         category: "social",        color: "#0A66C2",
+        { id: "linkedin",   name: "LinkedIn",         category: "social",        color: "#0A66C2", icon_slug: "linkedin",
           method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
-        { id: "hackernews", name: "Hacker News",      category: "social",        color: "#FF6600",
+        { id: "hackernews", name: "Hacker News",      category: "social",        color: "#FF6600", icon_slug: "ycombinator",
           method: "url",
           urlLabel: "Username (optional)",
           urlPlaceholder: "your_hn_username",
           docsUrl: "https://news.ycombinator.com",
           instructions: "HN is public — enter your username to sync your submissions and comments, or leave blank to sync the front page." },
         // ── Knowledge ──
-        { id: "obsidian",   name: "Obsidian",         category: "knowledge",     color: "#7C3AED",
+        { id: "obsidian",   name: "Obsidian",         category: "knowledge",     color: "#7C3AED", icon_slug: "obsidian",
           method: "local",
           urlLabel: "Vault Path",
           urlPlaceholder: "/Users/you/Documents/my-vault",
           docsUrl: "https://obsidian.md",
           instructions: "Enter the full path to your Obsidian vault folder. WikiMem will read your markdown files directly." },
-        { id: "confluence", name: "Confluence",       category: "knowledge",     color: "#0052CC",
+        { id: "confluence", name: "Confluence",       category: "knowledge",     color: "#0052CC", icon_slug: "confluence",
           method: "api_key",
           keyLabel: "API Token",
           extraFields: [{ name: "domain", label: "Domain (e.g. mycompany.atlassian.net)", secret: false }, { name: "email", label: "Account Email", secret: false }],
           docsUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
           instructions: "1. id.atlassian.com → Security → API tokens → Create API token\n2. Enter your domain, email, and the token here" },
-        { id: "wikipedia",  name: "Wikipedia",        category: "knowledge",     color: "#3366CC",
+        { id: "wikipedia",  name: "Wikipedia",        category: "knowledge",     color: "#3366CC", icon_slug: "wikipedia",
           method: "url",
           urlLabel: "Search query or article title",
           urlPlaceholder: "e.g. Machine learning",
           docsUrl: "https://en.wikipedia.org",
           instructions: "Enter a search term or exact article title. WikiMem will fetch and sync the article content." },
-        { id: "roam",       name: "Roam Research",    category: "knowledge",     color: "#8B5CF6",
+        { id: "roam",       name: "Roam Research",    category: "knowledge",     color: "#8B5CF6", icon_slug: "roamresearch",
           method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
-        { id: "logseq",     name: "Logseq",           category: "knowledge",     color: "#3884FF",
+        { id: "logseq",     name: "Logseq",           category: "knowledge",     color: "#3884FF", icon_slug: "logseq",
           method: "local",
           urlLabel: "Graph Path",
           urlPlaceholder: "/Users/you/logseq-graph",
           docsUrl: "https://logseq.com",
           instructions: "Enter the full path to your Logseq graph folder. WikiMem will read your markdown and org-mode files directly." },
-        { id: "substack",   name: "Substack",         category: "knowledge",     color: "#FF6719",
+        { id: "substack",   name: "Substack",         category: "knowledge",     color: "#FF6719", icon_slug: "substack",
           method: "url",
           urlLabel: "Substack URL or username",
           urlPlaceholder: "https://username.substack.com",
           docsUrl: "https://substack.com",
           instructions: "Enter your Substack publication URL. WikiMem will sync posts via the RSS feed." },
         // ── AI / ML ──
-        { id: "claude",     name: "Claude",           category: "ai",            color: "#CC7B5C",
+        { id: "claude",     name: "Claude",           category: "ai",            color: "#CC7B5C", icon_slug: "anthropic",
           method: "api_key",
           keyLabel: "API Key",
           docsUrl: "https://console.anthropic.com/account/keys",
           instructions: "1. console.anthropic.com → API Keys → Create Key\n2. Copy and paste here\nUsed for AI-powered ingestion and summarization." },
-        { id: "openai",     name: "ChatGPT / OpenAI", category: "ai",            color: "#00A67E",
+        { id: "openai",     name: "ChatGPT / OpenAI", category: "ai",            color: "#00A67E", icon_slug: "openai",
           method: "api_key",
           keyLabel: "API Key",
           docsUrl: "https://platform.openai.com/api-keys",
           instructions: "1. platform.openai.com → API Keys → Create new secret key\n2. Copy and paste here" },
-        { id: "perplexity", name: "Perplexity",       category: "ai",            color: "#20808D",
+        { id: "perplexity", name: "Perplexity",       category: "ai",            color: "#20808D", icon_slug: "perplexity",
           method: "api_key",
           keyLabel: "API Key",
           docsUrl: "https://www.perplexity.ai/settings/api",
           instructions: "1. perplexity.ai → Settings → API → Generate\n2. Copy and paste here" },
-        { id: "huggingface", name: "Hugging Face",    category: "ai",            color: "#FFD21E",
+        { id: "huggingface", name: "Hugging Face",    category: "ai",            color: "#FFD21E", icon_slug: "huggingface",
           method: "api_key",
           keyLabel: "Access Token",
           docsUrl: "https://huggingface.co/settings/tokens",
           instructions: "1. huggingface.co → Settings → Access Tokens → New Token\n2. Select 'Read' role\n3. Copy and paste here" },
-        { id: "replicate",  name: "Replicate",        category: "ai",            color: "#0EA5E9",
+        { id: "replicate",  name: "Replicate",        category: "ai",            color: "#0EA5E9", icon_slug: "replicate",
           method: "api_key",
           keyLabel: "API Token",
           docsUrl: "https://replicate.com/account/api-tokens",
           instructions: "1. replicate.com → Account → API Tokens → Create token\n2. Copy and paste here" },
         // ── Other ──
-        { id: "rss",        name: "RSS / Atom",       category: "other",         color: "#F26522",
+        { id: "rss",        name: "RSS / Atom",       category: "other",         color: "#F26522", icon_slug: "rss",
           method: "url",
           urlLabel: "Feed URL",
           urlPlaceholder: "https://example.com/feed.xml",
@@ -19536,13 +20570,13 @@
           urlPlaceholder: "/Users/you/Documents/notes",
           docsUrl: "https://github.com/naman10parikh/llmwiki",
           instructions: "Enter the full path to a local folder. WikiMem will watch for changes and auto-ingest files." },
-        { id: "gitrepo",    name: "Git Repo",         category: "other",         color: "#F97316",
+        { id: "gitrepo",    name: "Git Repo",         category: "other",         color: "#F97316", icon_slug: "git",
           method: "url",
           urlLabel: "Git Repository URL",
           urlPlaceholder: "https://github.com/owner/repo or /local/path/to/repo",
           docsUrl: "https://git-scm.com",
           instructions: "Enter a Git repository URL (HTTPS or SSH) or local path. WikiMem will clone/pull and ingest markdown files." },
-        { id: "sqlite",     name: "SQLite",           category: "other",         color: "#003B57",
+        { id: "sqlite",     name: "SQLite",           category: "other",         color: "#003B57", icon_slug: "sqlite",
           method: "local",
           urlLabel: "Database Path",
           urlPlaceholder: "/Users/you/data.db",
@@ -19556,9 +20590,7 @@
           instructions: "Enter the full path to a CSV or TSV file. Each row will become a wiki page." },
       ];
 
-      let _connectorTokenStatus = {};
-      let _connectorCat = "all";
-      let _connectorViewInit = false;
+      // _connectorTokenStatus / _connectorCat / _connectorViewInit declared at top of script (anti-TDZ)
 
       async function initConnectorsView() {
         // Fetch live token status from API (reuse existing endpoint)
@@ -19593,35 +20625,43 @@
         }
 
         grid.innerHTML = filtered.map((c) => {
-          // Check if connected via existing OAuth token data
-          const isConnected = c.oauthKey && _connectorTokenStatus[c.oauthKey]?.connected;
-          const connectedAt = isConnected && _connectorTokenStatus[c.oauthKey]?.connectedAt
-            ? new Date(_connectorTokenStatus[c.oauthKey].connectedAt).toLocaleDateString()
-            : null;
+          // OAuth providers use oauthKey as token key; all others use their own id
+          const tokenKey = c.oauthKey || c.id;
+          const isConnected = !!(tokenKey && _connectorTokenStatus[tokenKey]?.connected);
+          const connectedAt =
+            isConnected && _connectorTokenStatus[tokenKey]?.connectedAt
+              ? new Date(_connectorTokenStatus[tokenKey].connectedAt).toLocaleDateString()
+              : null;
 
           const initial = c.name.charAt(0).toUpperCase();
           const iconStyle = `background:${c.color};`;
+          const isComingSoon = c.method === "coming_soon";
+          const iconHtml = c.icon_slug
+            ? `<div class="conn-icon" style="${iconStyle}"><img src="https://cdn.simpleicons.org/${c.icon_slug}/ffffff" width="20" height="20" alt="${initial}" style="display:block;object-fit:contain;width:20px;height:20px" onerror="this.style.display='none';this.parentNode.textContent='${initial}'" /></div>`
+            : `<div class="conn-icon" style="${iconStyle}">${initial}</div>`;
 
-          const statusBadge = isConnected
-            ? '<span class="conn-status-badge connected">Connected</span>'
-            : '<span class="conn-status-badge disconnected">Not connected</span>';
+          const statusBadge = isComingSoon
+            ? '<span class="conn-status-badge" style="background:rgba(120,120,140,0.12);color:var(--text-muted)">Coming soon</span>'
+            : isConnected
+              ? '<span class="conn-status-badge connected">Connected</span>'
+              : '<span class="conn-status-badge disconnected">Not connected</span>';
 
           const syncTime = connectedAt
             ? `<span class="conn-sync-time">Since ${connectedAt}</span>`
             : `<span class="conn-sync-time"></span>`;
 
           let btnHtml = "";
-          if (isConnected) {
-            btnHtml = `<button class="conn-connect-btn is-connected" onclick="connectorAction('${c.id}','${c.oauthKey || ""}',true)">Manage</button>`;
-          } else if (c.oauthKey) {
-            btnHtml = `<button class="conn-connect-btn primary" onclick="connectorAction('${c.id}','${c.oauthKey || ""}',false)">Connect</button>`;
+          if (isComingSoon) {
+            btnHtml = `<button class="conn-connect-btn" style="opacity:0.45;cursor:default" onclick="connectorComingSoon('${c.name}')">Coming soon</button>`;
+          } else if (isConnected) {
+            btnHtml = `<button class="conn-connect-btn is-connected" onclick="connectorAction('${c.id}',true)">Manage</button>`;
           } else {
-            btnHtml = `<button class="conn-connect-btn" onclick="connectorComingSoon('${c.name}')">Coming soon</button>`;
+            btnHtml = `<button class="conn-connect-btn primary" onclick="connectorAction('${c.id}',false)">Connect</button>`;
           }
 
-          return `<div class="conn-card${isConnected ? " is-connected" : ""}">
+          return `<div class="conn-card${isConnected ? " is-connected" : ""}${isComingSoon ? " is-coming-soon" : ""}">
             <div class="conn-card-top">
-              <div class="conn-icon" style="${iconStyle}">${initial}</div>
+              ${iconHtml}
               <div class="conn-card-meta">
                 <div class="conn-card-name">${c.name}</div>
                 <span class="conn-cat-badge">${c.category}</span>
@@ -19636,27 +20676,437 @@
         }).join("");
       }
 
-      function connectorAction(connId, oauthKey, isConnected) {
-        if (!oauthKey) {
-          connectorComingSoon(connId);
+      function connectorAction(connId, isConnected) {
+        const c = CONNECTOR_CATALOG.find((x) => x.id === connId);
+        if (!c) return;
+
+        if (c.method === "coming_soon") {
+          connectorComingSoon(c.name);
           return;
         }
+
         if (isConnected) {
-          // UXO-042: show resource picker instead of navigating to settings
-          showResourcePicker(oauthKey);
+          if (c.method === "oauth" && c.oauthKey) {
+            showResourcePicker(c.oauthKey);
+          } else {
+            showConnectorManageModal(c);
+          }
           return;
         }
-        // Trigger OAuth connect
-        if (typeof startOAuthConnect === "function") {
-          startOAuthConnect(oauthKey);
-        } else {
-          showToast("Connecting…");
+
+        switch (c.method) {
+          case "oauth":
+            if (typeof startOAuthConnect === "function") startOAuthConnect(c.oauthKey);
+            else showToast("Connecting…");
+            break;
+          case "api_key":
+            showApiKeyModal(c);
+            break;
+          case "bot_token":
+            showBotTokenModal(c);
+            break;
+          case "url":
+            showUrlModal(c);
+            break;
+          case "local":
+            showLocalPathModal(c);
+            break;
+          case "webhook":
+            showWebhookModal(c);
+            break;
+          default:
+            connectorComingSoon(c.name);
         }
       }
 
       function connectorComingSoon(name) {
-        showToast(`${name} connector coming soon`);
+        showToast(`${name} — coming soon! Star us on GitHub to get notified.`);
       }
+
+      // ─── Generic modal helper ────────────────────────────────────────────────────
+      function _showConnectorModal(title, bodyHtml, footerHtml) {
+        let modal = document.getElementById("conn-generic-modal");
+        if (!modal) {
+          modal = document.createElement("div");
+          modal.id = "conn-generic-modal";
+          modal.style.cssText =
+            "position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px)";
+          document.body.appendChild(modal);
+        }
+        modal.innerHTML = `<div style="background:var(--surface-raised,#1e1e2e);border:1px solid var(--border,rgba(255,255,255,0.08));border-radius:12px;padding:28px 28px 20px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.5);position:relative">
+          <button onclick="document.getElementById('conn-generic-modal').remove()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1">×</button>
+          <h3 style="margin:0 0 16px;font-size:16px;font-weight:600;color:var(--text-primary)">${title}</h3>
+          <div id="conn-modal-body">${bodyHtml}</div>
+          <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">${footerHtml}</div>
+        </div>`;
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) modal.remove();
+        });
+      }
+
+      async function _saveConnectorToken(provider, apiKey, extraData) {
+        try {
+          const body = { api_key: apiKey, ...extraData };
+          const res = await fetch(`/api/auth/tokens/${provider}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Save failed");
+          return { ok: true };
+        } catch (err) {
+          return { ok: false, error: err.message };
+        }
+      }
+
+      async function _refreshConnectorStatus() {
+        try {
+          const data = await api("/api/auth/tokens");
+          if (data && typeof data === "object") _connectorTokenStatus = data;
+        } catch (_) {
+          /* ignore */
+        }
+      }
+
+      // ─── API Key modal ───────────────────────────────────────────────────────────────────
+      function showApiKeyModal(c) {
+        const keyLabel = c.keyLabel || "API Key";
+        const instructions = c.instructions
+          ? `<div style="margin-bottom:12px;padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px;font-size:12px;color:var(--text-muted);white-space:pre-line">${esc(c.instructions)}</div>`
+          : "";
+        const docsLink = c.docsUrl
+          ? `<a href="${c.docsUrl}" target="_blank" rel="noopener" style="font-size:12px;color:var(--accent,#7c6af7)">Get ${esc(keyLabel)} ↗</a>`
+          : "";
+        _showConnectorModal(
+          `Connect ${c.name}`,
+          `${instructions}
+          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px">${esc(keyLabel)}</label>
+          <input id="conn-apikey-input" type="password" placeholder="Paste your ${esc(keyLabel)}" style="width:100%;box-sizing:border-box;padding:9px 12px;background:var(--surface,#12121a);border:1px solid var(--border,rgba(255,255,255,0.1));border-radius:8px;color:var(--text-primary);font-size:13px;outline:none;margin-bottom:8px">
+          ${docsLink}
+          <div id="conn-apikey-error" style="color:#f87171;font-size:12px;margin-top:6px;display:none"></div>`,
+          `<button onclick="document.getElementById('conn-generic-modal').remove()" style="padding:8px 16px;background:transparent;border:1px solid var(--border,rgba(255,255,255,0.12));border-radius:7px;color:var(--text-muted);cursor:pointer;font-size:13px">Cancel</button>
+           <button id="conn-apikey-save-btn" onclick="_saveApiKey('${c.id}')" style="padding:8px 20px;background:var(--accent,#7c6af7);border:none;border-radius:7px;color:#fff;cursor:pointer;font-size:13px;font-weight:500">Save &amp; Connect</button>`,
+        );
+        setTimeout(() => document.getElementById("conn-apikey-input")?.focus(), 50);
+      }
+
+      async function _saveApiKey(connId) {
+        const c = CONNECTOR_CATALOG.find((x) => x.id === connId);
+        if (!c) return;
+        const input = document.getElementById("conn-apikey-input");
+        const errEl = document.getElementById("conn-apikey-error");
+        const btn = document.getElementById("conn-apikey-save-btn");
+        const key = input?.value?.trim();
+        if (!key) {
+          errEl.textContent = "Please enter your API key.";
+          errEl.style.display = "block";
+          return;
+        }
+        btn.textContent = "Saving…";
+        btn.disabled = true;
+        const result = await _saveConnectorToken(c.id, key, {});
+        if (!result.ok) {
+          errEl.textContent = result.error || "Failed to save.";
+          errEl.style.display = "block";
+          btn.textContent = "Save & Connect";
+          btn.disabled = false;
+          return;
+        }
+        document.getElementById("conn-generic-modal")?.remove();
+        showToast(`${c.name} connected!`);
+        await _refreshConnectorStatus();
+        renderConnectorsGrid();
+      }
+
+      // ─── Bot Token modal ────────────────────────────────────────────────────────────────
+      function showBotTokenModal(c) {
+        const instructions = c.instructions
+          ? `<div style="margin-bottom:12px;padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px;font-size:12px;color:var(--text-muted);white-space:pre-line">${esc(c.instructions)}</div>`
+          : "";
+        const docsLink = c.docsUrl
+          ? `<a href="${c.docsUrl}" target="_blank" rel="noopener" style="font-size:12px;color:var(--accent,#7c6af7)">Setup docs ↗</a>`
+          : "";
+        _showConnectorModal(
+          `Connect ${c.name}`,
+          `${instructions}
+          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px">Bot Token</label>
+          <input id="conn-bottoken-input" type="password" placeholder="Paste your bot token" style="width:100%;box-sizing:border-box;padding:9px 12px;background:var(--surface,#12121a);border:1px solid var(--border,rgba(255,255,255,0.1));border-radius:8px;color:var(--text-primary);font-size:13px;outline:none;margin-bottom:8px">
+          ${docsLink}
+          <div id="conn-bottoken-error" style="color:#f87171;font-size:12px;margin-top:6px;display:none"></div>`,
+          `<button onclick="document.getElementById('conn-generic-modal').remove()" style="padding:8px 16px;background:transparent;border:1px solid var(--border,rgba(255,255,255,0.12));border-radius:7px;color:var(--text-muted);cursor:pointer;font-size:13px">Cancel</button>
+           <button id="conn-bottoken-save-btn" onclick="_saveBotToken('${c.id}')" style="padding:8px 20px;background:var(--accent,#7c6af7);border:none;border-radius:7px;color:#fff;cursor:pointer;font-size:13px;font-weight:500">Save &amp; Connect</button>`,
+        );
+        setTimeout(() => document.getElementById("conn-bottoken-input")?.focus(), 50);
+      }
+
+      async function _saveBotToken(connId) {
+        const c = CONNECTOR_CATALOG.find((x) => x.id === connId);
+        if (!c) return;
+        const input = document.getElementById("conn-bottoken-input");
+        const errEl = document.getElementById("conn-bottoken-error");
+        const btn = document.getElementById("conn-bottoken-save-btn");
+        const token = input?.value?.trim();
+        if (!token) {
+          errEl.textContent = "Please enter a bot token.";
+          errEl.style.display = "block";
+          return;
+        }
+        btn.textContent = "Saving…";
+        btn.disabled = true;
+        const result = await _saveConnectorToken(c.id, token, {});
+        if (!result.ok) {
+          errEl.textContent = result.error || "Failed to save.";
+          errEl.style.display = "block";
+          btn.textContent = "Save & Connect";
+          btn.disabled = false;
+          return;
+        }
+        document.getElementById("conn-generic-modal")?.remove();
+        showToast(`${c.name} connected!`);
+        await _refreshConnectorStatus();
+        renderConnectorsGrid();
+      }
+
+      // ─── URL / RSS modal ────────────────────────────────────────────────────────────────
+      function showUrlModal(c) {
+        const urlLabel = c.urlLabel || "URL";
+        const urlPlaceholder = c.urlPlaceholder || "https://…";
+        const instructions = c.instructions
+          ? `<div style="margin-bottom:12px;padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px;font-size:12px;color:var(--text-muted);white-space:pre-line">${esc(c.instructions)}</div>`
+          : "";
+        _showConnectorModal(
+          `Connect ${c.name}`,
+          `${instructions}
+          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px">${esc(urlLabel)}</label>
+          <input id="conn-url-input" type="url" placeholder="${esc(urlPlaceholder)}" style="width:100%;box-sizing:border-box;padding:9px 12px;background:var(--surface,#12121a);border:1px solid var(--border,rgba(255,255,255,0.1));border-radius:8px;color:var(--text-primary);font-size:13px;outline:none;margin-bottom:8px">
+          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;margin-top:8px">Feed name (optional)</label>
+          <input id="conn-url-name" type="text" placeholder="My feed" style="width:100%;box-sizing:border-box;padding:9px 12px;background:var(--surface,#12121a);border:1px solid var(--border,rgba(255,255,255,0.1));border-radius:8px;color:var(--text-primary);font-size:13px;outline:none">
+          <div id="conn-url-error" style="color:#f87171;font-size:12px;margin-top:6px;display:none"></div>`,
+          `<button onclick="document.getElementById('conn-generic-modal').remove()" style="padding:8px 16px;background:transparent;border:1px solid var(--border,rgba(255,255,255,0.12));border-radius:7px;color:var(--text-muted);cursor:pointer;font-size:13px">Cancel</button>
+           <button id="conn-url-save-btn" onclick="_saveUrlConnector('${c.id}')" style="padding:8px 20px;background:var(--accent,#7c6af7);border:none;border-radius:7px;color:#fff;cursor:pointer;font-size:13px;font-weight:500">Add Feed</button>`,
+        );
+        setTimeout(() => document.getElementById("conn-url-input")?.focus(), 50);
+      }
+
+      async function _saveUrlConnector(connId) {
+        const c = CONNECTOR_CATALOG.find((x) => x.id === connId);
+        if (!c) return;
+        const urlInput = document.getElementById("conn-url-input");
+        const nameInput = document.getElementById("conn-url-name");
+        const errEl = document.getElementById("conn-url-error");
+        const btn = document.getElementById("conn-url-save-btn");
+        const url = urlInput?.value?.trim();
+        if (!url) {
+          errEl.textContent = "Please enter a URL.";
+          errEl.style.display = "block";
+          return;
+        }
+        btn.textContent = "Adding…";
+        btn.disabled = true;
+        const feedName = nameInput?.value?.trim() || c.name;
+        const result = await _saveConnectorToken(c.id, url, { feed_name: feedName });
+        if (!result.ok) {
+          errEl.textContent = result.error || "Failed to add feed.";
+          errEl.style.display = "block";
+          btn.textContent = "Add Feed";
+          btn.disabled = false;
+          return;
+        }
+        document.getElementById("conn-generic-modal")?.remove();
+        showToast(`${c.name} feed added!`);
+        await _refreshConnectorStatus();
+        renderConnectorsGrid();
+      }
+
+      // ─── Local path modal ─────────────────────────────────────────────────────────────────
+      function showLocalPathModal(c) {
+        const instructions = c.instructions
+          ? `<div style="margin-bottom:12px;padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px;font-size:12px;color:var(--text-muted);white-space:pre-line">${esc(c.instructions)}</div>`
+          : "";
+        _showConnectorModal(
+          `Connect ${c.name}`,
+          `${instructions}
+          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px">Local folder path</label>
+          <input id="conn-local-input" type="text" placeholder="/Users/you/path/to/folder" style="width:100%;box-sizing:border-box;padding:9px 12px;background:var(--surface,#12121a);border:1px solid var(--border,rgba(255,255,255,0.1));border-radius:8px;color:var(--text-primary);font-size:13px;font-family:monospace;outline:none;margin-bottom:8px">
+          <div style="font-size:11px;color:var(--text-muted)">WikiMem will index markdown files in this folder.</div>
+          <div id="conn-local-error" style="color:#f87171;font-size:12px;margin-top:6px;display:none"></div>`,
+          `<button onclick="document.getElementById('conn-generic-modal').remove()" style="padding:8px 16px;background:transparent;border:1px solid var(--border,rgba(255,255,255,0.12));border-radius:7px;color:var(--text-muted);cursor:pointer;font-size:13px">Cancel</button>
+           <button id="conn-local-save-btn" onclick="_saveLocalConnector('${c.id}')" style="padding:8px 20px;background:var(--accent,#7c6af7);border:none;border-radius:7px;color:#fff;cursor:pointer;font-size:13px;font-weight:500">Connect Folder</button>`,
+        );
+        setTimeout(() => document.getElementById("conn-local-input")?.focus(), 50);
+      }
+
+      async function _saveLocalConnector(connId) {
+        const c = CONNECTOR_CATALOG.find((x) => x.id === connId);
+        if (!c) return;
+        const input = document.getElementById("conn-local-input");
+        const errEl = document.getElementById("conn-local-error");
+        const btn = document.getElementById("conn-local-save-btn");
+        const path = input?.value?.trim();
+        if (!path) {
+          errEl.textContent = "Please enter a folder path.";
+          errEl.style.display = "block";
+          return;
+        }
+        btn.textContent = "Connecting…";
+        btn.disabled = true;
+        const result = await _saveConnectorToken(c.id, path, { type: "local_path" });
+        if (!result.ok) {
+          errEl.textContent = result.error || "Failed to connect folder.";
+          errEl.style.display = "block";
+          btn.textContent = "Connect Folder";
+          btn.disabled = false;
+          return;
+        }
+        document.getElementById("conn-generic-modal")?.remove();
+        showToast(`${c.name} folder connected!`);
+        await _refreshConnectorStatus();
+        renderConnectorsGrid();
+      }
+
+      // ─── Webhook modal ────────────────────────────────────────────────────────────────────
+      async function showWebhookModal(c) {
+        _showConnectorModal(
+          "Webhook Ingest",
+          `<div style="padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px;font-size:12px;color:var(--text-muted);margin-bottom:12px">
+            POST JSON to this URL to push content into your wiki.<br>
+            Body: <code style="font-family:monospace">{"title":"…","content":"…"}</code>
+          </div>
+          <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px">Your webhook URL</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="conn-webhook-url" type="text" readonly value="Loading…" style="flex:1;padding:9px 12px;background:var(--surface,#12121a);border:1px solid var(--border,rgba(255,255,255,0.1));border-radius:8px;color:var(--text-primary);font-size:12px;font-family:monospace;outline:none">
+            <button onclick="_copyWebhookUrl()" style="padding:8px 12px;background:rgba(124,106,247,0.15);border:1px solid rgba(124,106,247,0.3);border-radius:7px;color:var(--accent,#7c6af7);cursor:pointer;font-size:12px;white-space:nowrap">Copy</button>
+          </div>`,
+          `<button onclick="document.getElementById('conn-generic-modal').remove()" style="padding:8px 20px;background:var(--accent,#7c6af7);border:none;border-radius:7px;color:#fff;cursor:pointer;font-size:13px;font-weight:500">Done</button>`,
+        );
+        try {
+          const data = await api("/api/auth/webhook-url");
+          const urlInput = document.getElementById("conn-webhook-url");
+          if (urlInput) urlInput.value = data.url || "Not available";
+          await _saveConnectorToken(c.id, data.url || "enabled", { type: "webhook" });
+          await _refreshConnectorStatus();
+          renderConnectorsGrid();
+        } catch (err) {
+          const urlInput = document.getElementById("conn-webhook-url");
+          if (urlInput) urlInput.value = "Error: " + (err.message || String(err));
+        }
+      }
+
+      function _copyWebhookUrl() {
+        const val = document.getElementById("conn-webhook-url")?.value;
+        if (val && !val.startsWith("Error") && val !== "Loading…") {
+          navigator.clipboard.writeText(val).then(() => showToast("Webhook URL copied!"));
+        }
+      }
+
+      // ─── Manage modal (connected non-OAuth connectors) ───────────────────────────
+      function showConnectorManageModal(c) {
+        const tokenKey = c.oauthKey || c.id;
+        const status = _connectorTokenStatus[tokenKey];
+        const connectedAt = status?.connectedAt ? new Date(status.connectedAt).toLocaleDateString() : "Unknown";
+        _showConnectorModal(
+          `Manage ${c.name}`,
+          `<div style="padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px;margin-bottom:12px">
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Status</div>
+            <div style="font-size:14px;color:#4ade80;font-weight:500">Connected</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Since ${connectedAt}</div>
+          </div>
+          <button onclick="_triggerConnectorSync('${c.id}')" style="width:100%;padding:9px;background:rgba(124,106,247,0.1);border:1px solid rgba(124,106,247,0.3);border-radius:8px;color:var(--accent,#7c6af7);cursor:pointer;font-size:13px;margin-bottom:8px">Sync now</button>`,
+          `<button onclick="_disconnectAndRefresh('${c.id}')" style="padding:8px 16px;background:transparent;border:1px solid rgba(248,113,113,0.4);border-radius:7px;color:#f87171;cursor:pointer;font-size:13px">Disconnect</button>
+           <button onclick="document.getElementById('conn-generic-modal').remove()" style="padding:8px 20px;background:var(--accent,#7c6af7);border:none;border-radius:7px;color:#fff;cursor:pointer;font-size:13px;font-weight:500">Done</button>`,
+        );
+      }
+
+      async function _triggerConnectorSync(connId) {
+        showToast("Syncing…");
+        try {
+          await api(`/api/sync/${connId}`, { method: "POST" });
+          showToast("Sync complete!");
+        } catch (err) {
+          showToast("Sync failed: " + (err.message || String(err)));
+        }
+      }
+
+      async function _disconnectAndRefresh(connId) {
+        try {
+          await fetch(`/api/auth/tokens/${connId}`, { method: "DELETE" });
+        } catch (_) {
+          /* ignore */
+        }
+        document.getElementById("conn-generic-modal")?.remove();
+        showToast("Disconnected.");
+        await _refreshConnectorStatus();
+        renderConnectorsGrid();
+      }
+
+      // ── Resource Picker (UXO-042, UXO-043, UXO-044) ──────────────────────
+      const RP_PROVIDER_CONFIG = {
+        gmail: { label:"Gmail", filters:["labels","since","maxItems","query"], defaultMaxItems:20, defaultSince:"7d", labelOptions:[{id:"INBOX",name:"Inbox"},{id:"SENT",name:"Sent"},{id:"IMPORTANT",name:"Important"},{id:"STARRED",name:"Starred"},{id:"DRAFT",name:"Drafts"}], defaultLabels:["INBOX"] },
+        google: { label:"Gmail / Google", filters:["labels","since","maxItems","query"], defaultMaxItems:20, defaultSince:"7d", labelOptions:[{id:"INBOX",name:"Inbox"},{id:"SENT",name:"Sent"},{id:"IMPORTANT",name:"Important"},{id:"STARRED",name:"Starred"}], defaultLabels:["INBOX"] },
+        slack: { label:"Slack", filters:["channels","since","maxItems"], defaultMaxItems:50, defaultSince:"7d" },
+        github: { label:"GitHub", filters:["repos","issueTypes","since","maxItems"], defaultMaxItems:30, defaultSince:"30d", issueTypeOptions:[{id:"issues",name:"Issues"},{id:"prs",name:"Pull Requests"},{id:"readmes",name:"READMEs"}], defaultIssueTypes:["issues","prs"] },
+        notion: { label:"Notion", filters:["since","maxItems"], defaultMaxItems:30, defaultSince:"30d" },
+        linear: { label:"Linear", filters:["since","maxItems"], defaultMaxItems:30, defaultSince:"14d" },
+        gdrive: { label:"Google Drive", filters:["since","maxItems"], defaultMaxItems:20, defaultSince:"30d" },
+        jira: { label:"Jira", filters:["since","maxItems"], defaultMaxItems:30, defaultSince:"30d" },
+      };
+      const SINCE_OPTIONS = [
+        {value:"1d",label:"Last 24 hours"},{value:"7d",label:"Last 7 days"},
+        {value:"14d",label:"Last 14 days"},{value:"30d",label:"Last 30 days"},
+        {value:"90d",label:"Last 3 months"},{value:"all",label:"All time"},
+      ];
+      function sinceValueToISO(val) {
+        if (!val||val==="all") return undefined;
+        const days=parseInt(val,10); if(isNaN(days)) return undefined;
+        const d=new Date(); d.setDate(d.getDate()-days); return d.toISOString();
+      }
+      function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+      let _rpState=null, _rpPreviewTimer=null;
+      async function showResourcePicker(provider) {
+        const cfg=RP_PROVIDER_CONFIG[provider];
+        if(!cfg){syncOAuthProvider(provider);return;}
+        const ex=document.getElementById("rp-overlay"); if(ex) ex.remove();
+        _rpState={provider,cfg,maxItems:cfg.defaultMaxItems,since:cfg.defaultSince||"7d",selectedLabels:cfg.defaultLabels?[...cfg.defaultLabels]:[],selectedChannels:[],selectedRepos:[],selectedIssueTypes:cfg.defaultIssueTypes?[...cfg.defaultIssueTypes]:[],query:"",availableChannels:[],availableRepos:[],previewResult:null,syncing:false};
+        if(cfg.filters.includes("channels")) _rpFetchChannels(provider);
+        if(cfg.filters.includes("repos")) _rpFetchRepos(provider);
+        _rpRender(); _rpTriggerPreview();
+      }
+      async function _rpFetchChannels(provider){try{const res=await fetch("/api/connectors/"+encodeURIComponent(provider)+"/preview?maxItems=1");const data=await res.json();if(data.items&&data.items.length&&_rpState&&!_rpState.availableChannels.length){const seen=new Set();data.items.forEach(function(it){const ch=it.meta&&(it.meta.channel||it.meta.channelName);if(ch&&!seen.has(ch)){seen.add(ch);_rpState.availableChannels.push({id:ch,name:ch});}});_rpRender();}}catch(_e){}}
+      async function _rpFetchRepos(provider){try{const res=await fetch("/api/connectors/"+encodeURIComponent(provider)+"/preview?maxItems=1");const data=await res.json();if(data.items&&data.items.length&&_rpState&&!_rpState.availableRepos.length){const seen=new Set();data.items.forEach(function(it){const repo=it.meta&&(it.meta.repo||it.meta.repository);if(repo&&!seen.has(repo)){seen.add(repo);_rpState.availableRepos.push({id:repo,name:repo});}});_rpRender();}}catch(_e){}}
+      function _rpRender(){
+        const s=_rpState; if(!s) return; const cfg=s.cfg; let fieldsHtml="";
+        if(cfg.filters.includes("labels")&&cfg.labelOptions){const chips=cfg.labelOptions.map(function(l){const a=s.selectedLabels.includes(l.id)?" active":"";return'<span class="rp-chip'+a+'" onclick="_rpToggleLabel(\''+l.id+'\')">'+esc(l.name)+'</span>';}).join("");fieldsHtml+='<div class="rp-field"><div class="rp-label">Labels</div><div class="rp-chips">'+chips+'</div></div>';}
+        if(cfg.filters.includes("channels")){if(s.availableChannels.length){const chips=s.availableChannels.slice(0,12).map(function(ch){const a=s.selectedChannels.includes(ch.id)?" active":"";return'<span class="rp-chip'+a+'" onclick="_rpToggleChannel(\''+ch.id+'\')">#'+esc(ch.name)+'</span>';}).join("");fieldsHtml+='<div class="rp-field"><div class="rp-label">Channels</div><div class="rp-chips">'+chips+'</div></div>';}else{fieldsHtml+='<div class="rp-field"><div class="rp-label">Channels</div><div style="font-size:12px;color:#606060">All accessible channels (loading\u2026)</div></div>';}}
+        if(cfg.filters.includes("issueTypes")&&cfg.issueTypeOptions){const chips=cfg.issueTypeOptions.map(function(t){const a=s.selectedIssueTypes.includes(t.id)?" active":"";return'<span class="rp-chip'+a+'" onclick="_rpToggleIssueType(\''+t.id+'\')">'+esc(t.name)+'</span>';}).join("");fieldsHtml+='<div class="rp-field"><div class="rp-label">Include</div><div class="rp-chips">'+chips+'</div></div>';}
+        if(cfg.filters.includes("since")){const opts=SINCE_OPTIONS.map(function(o){return'<option value="'+o.value+'"'+(s.since===o.value?" selected":"")+">"+esc(o.label)+"</option>";}).join("");fieldsHtml+='<div class="rp-field"><div class="rp-label">Since date</div><select class="rp-select" onchange="_rpSetSince(this.value)">'+opts+"</select></div>";}
+        if(cfg.filters.includes("query")){fieldsHtml+='<div class="rp-field"><div class="rp-label">Search query (optional)</div><input class="rp-input" type="text" placeholder="e.g. from:boss@co.com" value="'+esc(s.query)+'" oninput="_rpSetQuery(this.value)" /></div>';}
+        if(cfg.filters.includes("maxItems")){fieldsHtml+='<div class="rp-field"><div class="rp-label">Max items</div><div class="rp-slider-row"><input class="rp-slider" type="range" min="5" max="200" step="5" value="'+s.maxItems+'" oninput="_rpSetMax(parseInt(this.value));document.getElementById(\'rp-slider-val\').textContent=this.value" /><span class="rp-slider-val" id="rp-slider-val">'+s.maxItems+"</span></div></div>";}
+        let previewHtml="";
+        if(!s.previewResult){previewHtml='<div class="rp-preview-label">Preview</div><div class="rp-preview-count" style="color:#505050">Calculating\u2026</div>';}
+        else if(s.previewResult.errors&&s.previewResult.errors.length&&!s.previewResult.totalItems){previewHtml='<div class="rp-preview-label">Preview</div><div class="rp-preview-err">'+esc(s.previewResult.errors[0])+"</div>";}
+        else{const count=s.previewResult.totalItems;const word=count===1?"item":"items";previewHtml='<div class="rp-preview-label">Preview</div><div class="rp-preview-count">'+count+" "+word+' matching filters</div><div class="rp-preview-cost">'+esc(s.previewResult.costEstimate||"")+"</div>";}
+        const syncCount=s.previewResult&&s.previewResult.totalItems!=null?s.previewResult.totalItems:"?";
+        const syncLabel=s.syncing?"Syncing\u2026":"Start Sync ("+syncCount+" items)";
+        const syncingAnim=s.syncing?'<div class="rp-pipe-anim"><span class="rp-pipe-dot"></span><span class="rp-pipe-dot"></span><span class="rp-pipe-dot"></span><span style="margin-left:4px">Syncing\u2026</span></div>':"";
+        const html='<div class="rp-overlay" id="rp-overlay" onclick="_rpOverlayClick(event)"><div class="rp-modal"><div class="rp-header"><div class="rp-title-block"><div class="rp-title">Sync from '+esc(cfg.label)+'</div><div class="rp-subtitle">Choose what to sync \u2014 start small</div></div><button class="rp-close" onclick="closeResourcePicker()" title="Close">&#x2715;</button></div><div class="rp-body">'+fieldsHtml+'<div class="rp-preview-box'+(s.previewResult?"":" loading")+'" id="rp-preview-box">'+previewHtml+"</div>"+syncingAnim+'</div><div class="rp-footer"><div class="rp-footer-left"><button class="rp-btn rp-btn-cancel" onclick="closeResourcePicker()">Cancel</button><button class="rp-btn rp-btn-quick" onclick="_rpQuickSync()" title="Last 7 days, max 20 items">&#x26A1; Quick Sync</button></div><button class="rp-btn rp-btn-sync" id="rp-sync-btn" onclick="_rpStartSync()"'+(s.syncing?" disabled":"")+">"+syncLabel+"</button></div></div></div>";
+        const el=document.getElementById("rp-overlay");
+        if(el){el.outerHTML=html;}else{document.body.insertAdjacentHTML("beforeend",html);}
+      }
+      function _rpOverlayClick(e){if(e.target&&e.target.id==="rp-overlay")closeResourcePicker();}
+      function closeResourcePicker(){const el=document.getElementById("rp-overlay");if(el)el.remove();_rpState=null;if(_rpPreviewTimer){clearTimeout(_rpPreviewTimer);_rpPreviewTimer=null;}}
+      function _rpToggleLabel(id){const s=_rpState;if(!s)return;const idx=s.selectedLabels.indexOf(id);if(idx>=0)s.selectedLabels.splice(idx,1);else s.selectedLabels.push(id);_rpRender();_rpTriggerPreview();}
+      function _rpToggleChannel(id){const s=_rpState;if(!s)return;const idx=s.selectedChannels.indexOf(id);if(idx>=0)s.selectedChannels.splice(idx,1);else s.selectedChannels.push(id);_rpRender();_rpTriggerPreview();}
+      function _rpToggleIssueType(id){const s=_rpState;if(!s)return;const idx=s.selectedIssueTypes.indexOf(id);if(idx>=0)s.selectedIssueTypes.splice(idx,1);else s.selectedIssueTypes.push(id);_rpRender();_rpTriggerPreview();}
+      function _rpSetSince(val){if(!_rpState)return;_rpState.since=val;_rpTriggerPreview();}
+      function _rpSetQuery(val){if(!_rpState)return;_rpState.query=val;_rpTriggerPreview();}
+      function _rpSetMax(val){if(!_rpState)return;_rpState.maxItems=val;_rpTriggerPreview();}
+      function _rpTriggerPreview(){if(_rpPreviewTimer)clearTimeout(_rpPreviewTimer);_rpPreviewTimer=setTimeout(_rpFetchPreview,600);}
+      async function _rpFetchPreview(){const s=_rpState;if(!s)return;try{const params=_rpBuildParams(s);const qs=new URLSearchParams(params).toString();const res=await fetch("/api/connectors/"+encodeURIComponent(s.provider)+"/preview?"+qs);if(!_rpState||_rpState.provider!==s.provider)return;const data=await res.json();_rpState.previewResult=data;}catch(e){if(_rpState){_rpState.previewResult={totalItems:0,items:[],estimatedTokens:0,costEstimate:"",errors:[String(e)]};}}  _rpRender();}
+      function _rpBuildParams(s){const p={};if(s.maxItems)p.maxItems=s.maxItems;const sinceISO=sinceValueToISO(s.since);if(sinceISO)p.since=sinceISO;if(s.query)p.query=s.query;if(s.selectedLabels&&s.selectedLabels.length)p.labels=s.selectedLabels.join(",");if(s.selectedChannels&&s.selectedChannels.length)p.channels=s.selectedChannels.join(",");if(s.selectedRepos&&s.selectedRepos.length)p.repos=s.selectedRepos.join(",");return p;}
+      async function _rpQuickSync(){const s=_rpState;if(!s)return;const provider=s.provider;const cfg=s.cfg;closeResourcePicker();showToast("Quick Sync: last 7 days, max 20 items\u2026");try{const res=await fetch("/api/sync/"+encodeURIComponent(provider),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({maxItems:20,since:sinceValueToISO("7d")})});const data=await res.json();if(data.error||(data.errors&&data.errors.length)){showToast("Sync error: "+(data.errors&&data.errors[0]?data.errors[0]:data.error));}else{showToast("\u2713 "+cfg.label+": "+(data.filesWritten||0)+" files synced in "+((data.duration||0)/1000).toFixed(1)+"s");loadTree();}}catch(err){showToast("Quick Sync failed: "+(err.message||"unknown"));}}
+      async function _rpStartSync(){const s=_rpState;if(!s)return;s.syncing=true;_rpRender();const provider=s.provider;const cfg=s.cfg;const body={};if(s.maxItems)body.maxItems=s.maxItems;const sinceISO=sinceValueToISO(s.since);if(sinceISO)body.since=sinceISO;if(s.query)body.query=s.query;if(s.selectedLabels&&s.selectedLabels.length)body.labels=s.selectedLabels;if(s.selectedChannels&&s.selectedChannels.length)body.channels=s.selectedChannels;if(s.selectedRepos&&s.selectedRepos.length)body.repos=s.selectedRepos;try{const res=await fetch("/api/sync/"+encodeURIComponent(provider),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const data=await res.json();closeResourcePicker();if(data.error||(data.errors&&data.errors.length)){showToast("Sync error: "+(data.errors&&data.errors[0]?data.errors[0]:data.error));}else{showToast("\u2713 "+cfg.label+": "+(data.filesWritten||0)+" files synced in "+((data.duration||0)/1000).toFixed(1)+"s");loadTree();}}catch(err){if(_rpState){_rpState.syncing=false;_rpRender();}showToast("Sync failed: "+(err.message||"unknown"));}}
+      // ── End Resource Picker ───────────────────────────────────────────────
 
       function railConnectorsClick() {
         if (state.activeTabId === VIEW_TABS.connectors.id) {
@@ -19856,8 +21306,28 @@
         const badge = commit.isWiki
           ? '<span class="commit-badge wiki">wiki</span>'
           : '<span class="commit-badge code">code</span>';
+        const filesChanged = commit.filesChanged != null ? commit.filesChanged : (commit.files ? commit.files.length : null);
+        const statsHtml = (commit.insertions != null || commit.deletions != null)
+          ? `<span class="tl-stat-add">+${commit.insertions || 0}</span><span class="tl-stat-del">-${commit.deletions || 0}</span>`
+          : "";
+        const filesHtml = filesChanged != null
+          ? `<span class="tl-files-changed">${filesChanged} file${filesChanged !== 1 ? "s" : ""} changed</span>${statsHtml ? " · " + statsHtml : ""}`
+          : "";
         document.getElementById("tl-commit-info").innerHTML =
-          `<span class="tl-hash">${commit.hashShort}</span>${badge}<span>${esc(commit.message)}</span><span style="margin-left:auto;color:var(--text-muted)">${dateStr} · ${commit.author}</span>`;
+          `<div class="tl-commit-main">` +
+            `<div class="tl-commit-message">${esc(commit.message)}</div>` +
+            `<div class="tl-commit-meta">` +
+              `<span class="tl-hash">${commit.hashShort}</span>` +
+              `${badge}` +
+              `<span class="tl-commit-author">${esc(commit.author)}</span>` +
+              `<span class="tl-commit-date">${dateStr}</span>` +
+              (filesHtml ? `<span class="tl-commit-stats">${filesHtml}</span>` : "") +
+            `</div>` +
+          `</div>` +
+          `<div class="tl-commit-right">` +
+            `<span class="tl-commit-progress">Commit ${idx + 1} of ${tlState.commits.length}</span>` +
+            `<span id="tl-speed-badge" class="tl-speed-badge"></span>` +
+          `</div>`;
         document.getElementById("tl-label-current").textContent =
           `${idx + 1} / ${tlState.commits.length}`;
 
@@ -20731,6 +22201,20 @@
         }
       }
 
+      function tlUpdateSpeedBadge(playing) {
+        const badge = document.getElementById("tl-speed-badge");
+        if (!badge) return;
+        if (playing) {
+          const speedVal = parseInt(document.getElementById("tl-speed").value) || 2000;
+          const labelMap = { 2000: "1x", 1000: "2x", 400: "5x", 200: "10x" };
+          const label = labelMap[speedVal] || "1x";
+          badge.textContent = "▶ " + label;
+          badge.classList.add("visible");
+        } else {
+          badge.classList.remove("visible");
+        }
+      }
+
       function tlPlay() {
         if (tlState.playing) {
           tlPause();
@@ -20741,6 +22225,7 @@
         document.getElementById("tl-play").classList.add("playing");
         const speed =
           parseInt(document.getElementById("tl-speed").value) || 2000;
+        tlUpdateSpeedBadge(true);
         const slider = document.getElementById("tl-slider");
         const max = tlState.commits.length - 1;
         if (max <= 0) {
@@ -20808,6 +22293,7 @@
         if (tlState._tlGraphSim) tlState._tlGraphSim.stop();
         document.getElementById("tl-play").textContent = "▶";
         document.getElementById("tl-play").classList.remove("playing");
+        tlUpdateSpeedBadge(false);
       }
 
       document
@@ -20913,6 +22399,14 @@
       if (cxOv)
         cxOv.addEventListener("click", (e) => {
           if (e.target === e.currentTarget) closeCxModal();
+        });
+
+      const obsClose = document.getElementById("obs-modal-close");
+      if (obsClose) obsClose.addEventListener("click", closeObsModal);
+      const obsOv = document.getElementById("obs-modal-overlay");
+      if (obsOv)
+        obsOv.addEventListener("click", (e) => {
+          if (e.target === e.currentTarget) closeObsModal();
         });
 
       // Settings nav
@@ -21067,6 +22561,8 @@
         if (tlState.playing) {
           tlPause();
           tlPlay();
+        } else {
+          tlUpdateSpeedBadge(false);
         }
       });
       document.getElementById("tl-mode-tree").addEventListener("click", () => {
@@ -21088,6 +22584,67 @@
       document.getElementById("tl-restore").addEventListener("click", () => {
         const commit = tlState.commits[tlState.currentIdx];
         if (commit) restoreToCommit(commit.hash, commit.hashShort);
+      });
+
+      // ── Timelapse Keyboard Shortcuts ──
+      document.addEventListener("keydown", (e) => {
+        // Only active when timelapse view is visible
+        const tlView = document.getElementById("timelapse-view");
+        if (!tlView || tlView.style.display === "none") return;
+        // Don't intercept when typing in an input/textarea
+        if (e.target.matches("input, textarea, select, [contenteditable]")) return;
+
+        const max = tlState.commits.length - 1;
+        if (max < 0) return;
+
+        switch (e.key) {
+          case " ":
+          case "Space":
+            e.preventDefault();
+            tlPlay(); // toggles play/pause
+            break;
+          case "ArrowLeft":
+            e.preventDefault();
+            if (tlState.currentIdx > 0) renderTimelapseAt(tlState.currentIdx - 1);
+            break;
+          case "ArrowRight":
+            e.preventDefault();
+            if (tlState.currentIdx < max) renderTimelapseAt(tlState.currentIdx + 1);
+            break;
+          case "Home":
+            e.preventDefault();
+            renderTimelapseAt(0);
+            break;
+          case "End":
+            e.preventDefault();
+            renderTimelapseAt(max);
+            break;
+          case "Escape":
+            e.preventDefault();
+            if (tlState.playing) tlPause();
+            showView("home");
+            break;
+          case "1":
+            e.preventDefault();
+            document.getElementById("tl-speed").value = "2000";
+            document.getElementById("tl-speed").dispatchEvent(new Event("change"));
+            break;
+          case "2":
+            e.preventDefault();
+            document.getElementById("tl-speed").value = "1000";
+            document.getElementById("tl-speed").dispatchEvent(new Event("change"));
+            break;
+          case "5":
+            e.preventDefault();
+            document.getElementById("tl-speed").value = "400";
+            document.getElementById("tl-speed").dispatchEvent(new Event("change"));
+            break;
+          case "0":
+            e.preventDefault();
+            document.getElementById("tl-speed").value = "200";
+            document.getElementById("tl-speed").dispatchEvent(new Event("change"));
+            break;
+        }
       });
 
       // ── Init ──
