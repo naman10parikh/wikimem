@@ -12272,6 +12272,7 @@
           showView("page");
 
           document.getElementById("page-edit-btn").style.display = "";
+          updatePageBookmarkBtn(page.title);
           const titleEl = document.getElementById("page-title");
           titleEl.textContent = page.title;
           titleEl.setAttribute("contenteditable", "true");
