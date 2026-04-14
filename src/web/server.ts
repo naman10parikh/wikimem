@@ -956,6 +956,145 @@ export function createServer(vaultRoot: string, port: number): void {
     }
   });
 
+  // API: query the wiki — streaming SSE endpoint
+  app.post('/api/query-stream', async (req, res) => {
+    const { question, provider: providerName, model: modelName } = req.body as { question?: string; provider?: string; model?: string };
+    if (!question) {
+      res.status(400).json({ error: 'Missing question field' });
+      return;
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    });
+
+    const send = (obj: Record<string, unknown>) => {
+      res.write(`data: ${JSON.stringify(obj)}\n\n`);
+    };
+
+    try {
+      send({ type: 'phase', phase: 'searching', message: 'Searching knowledge base...' });
+
+      const { loadConfig } = await import('../core/config.js');
+      const { searchPages } = await import('../search/index.js');
+      const { listWikiPages, readWikiPage } = await import('../core/vault.js');
+      const { readFileSync, existsSync } = await import('node:fs');
+
+      const userConfig = loadConfig(config.configPath);
+      const allPages = listWikiPages(config.wikiDir);
+      const relevantPages = await searchPages(question, allPages, {
+        mode: 'bm25',
+        wikiDir: config.wikiDir,
+      });
+
+      const pageContents: string[] = [];
+      const sourcesConsulted: string[] = [];
+      for (const pagePath of relevantPages.slice(0, 10)) {
+        try {
+          const page = readWikiPage(pagePath);
+          pageContents.push(`## ${page.title}\n${page.content}`);
+          sourcesConsulted.push(page.title);
+        } catch { /* skip */ }
+      }
+
+      send({ type: 'phase', phase: 'analyzing', message: `Analyzing ${sourcesConsulted.length} pages...` });
+      send({ type: 'sources', sources: sourcesConsulted });
+
+      const indexContent = existsSync(config.indexPath) ? readFileSync(config.indexPath, 'utf-8') : '';
+      const prompt = `# Query Against Wiki\n\n## Question\n${question}\n\n## Wiki Index\n${indexContent.substring(0, 3000)}\n\n## Relevant Pages\n${pageContents.join('\n\n---\n\n').substring(0, 20000)}\n\n## Instructions\nAnswer the question based on the wiki content above. Use [[wikilinks]] when referencing pages. Cite your sources inline using numbered references like [1], [2] etc., matching the order sources appear. If the wiki doesn't contain enough information, say so clearly.`;
+      const systemPrompt = 'You are a knowledgeable wiki assistant. Answer questions by synthesizing information from the wiki pages provided. Always cite sources using [[wikilinks]] and inline numbered references [1], [2] etc. Be concise and accurate.';
+
+      send({ type: 'phase', phase: 'composing', message: 'Composing answer...' });
+
+      // Detect provider from model name
+      const isOpenAI = modelName?.startsWith('gpt-') || providerName === 'openai';
+      const isOllama = providerName === 'ollama';
+
+      if (isOpenAI) {
+        // OpenAI streaming
+        const apiKey = userConfig.query_api_key ?? userConfig.api_key ?? process.env['OPENAI_API_KEY'];
+        if (!apiKey) throw new Error('OpenAI API key not found. Add it in Settings.');
+        const { default: OpenAI } = await import('openai');
+        const client = new OpenAI({ apiKey });
+        const stream = await client.chat.completions.create({
+          model: modelName ?? 'gpt-4o',
+          max_tokens: 4096,
+          stream: true,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt },
+          ],
+        });
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) send({ type: 'token', token: delta });
+        }
+      } else if (isOllama) {
+        const baseUrl = userConfig.query_base_url ?? 'http://localhost:11434';
+        const ollamaModel = modelName ?? userConfig.query_model ?? 'llama3';
+        const ollamaRes = await fetch(`${baseUrl}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: ollamaModel,
+            stream: true,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: prompt },
+            ],
+          }),
+        });
+        if (!ollamaRes.ok || !ollamaRes.body) throw new Error('Ollama request failed');
+        const reader = ollamaRes.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split('\n');
+          buf = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const parsed = JSON.parse(line) as { message?: { content?: string } };
+              const token = parsed.message?.content;
+              if (token) send({ type: 'token', token });
+            } catch { /* skip */ }
+          }
+        }
+      } else {
+        // Claude streaming (default)
+        const apiKey = userConfig.query_api_key ?? userConfig.api_key ?? process.env['ANTHROPIC_API_KEY'];
+        if (!apiKey) throw new Error('Anthropic API key not found. Add it in Settings → AI Models.');
+        const { default: Anthropic } = await import('@anthropic-ai/sdk');
+        const client = new Anthropic({ apiKey });
+        const stream = await client.messages.stream({
+          model: modelName ?? 'claude-sonnet-4-20250514',
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: prompt }],
+        });
+        for await (const event of stream) {
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            send({ type: 'token', token: event.delta.text });
+          }
+        }
+      }
+
+      send({ type: 'done', sources: sourcesConsulted });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isRateLimit = msg.includes('429') || msg.toLowerCase().includes('rate limit');
+      const isAuthError = msg.includes('401') || msg.toLowerCase().includes('authentication') || msg.toLowerCase().includes('api key');
+      send({ type: 'error', message: msg, isRateLimit, isAuthError });
+    } finally {
+      res.end();
+    }
+  });
+
   // API: ingest a URL
   app.post('/api/ingest', async (req, res) => {
     try {
@@ -1663,6 +1802,7 @@ export function createServer(vaultRoot: string, port: number): void {
     try {
       const tokens = loadOAuthTokens();
       const result: Record<string, { connected: boolean; connectedAt?: string; hasCredentials: boolean; hasDeviceFlow?: boolean }> = {};
+      // OAuth providers — include credential availability
       for (const provider of Object.keys(OAUTH_PROVIDERS)) {
         const token = tokens[provider];
         const creds = resolveOAuthCredentials(provider);
@@ -1672,6 +1812,16 @@ export function createServer(vaultRoot: string, port: number): void {
           hasCredentials: !!creds,
           ...(provider === 'github' ? { hasDeviceFlow: !!resolveDeviceFlowClientId() } : {}),
         };
+      }
+      // API-key and bot-token providers — include any that have tokens stored
+      for (const [provider, token] of Object.entries(tokens)) {
+        if (!result[provider]) {
+          result[provider] = {
+            connected: true,
+            connectedAt: token?.connectedAt,
+            hasCredentials: true,
+          };
+        }
       }
       res.json(result);
     } catch { res.json({}); }
@@ -1766,19 +1916,14 @@ export function createServer(vaultRoot: string, port: number): void {
         scope: tokenBody['scope'] as string | undefined,
       });
 
-      // Auto-trigger sync after successful OAuth connection (fire-and-forget)
-      import('../core/sync/index.js').then(({ syncProvider: sp }) => {
-        sp(stateData.provider, vaultRoot).catch(() => {});
-      }).catch(() => {});
+      // Do NOT auto-sync on connect — user must preview and select what to sync first.
 
       const providerDisplay = stateData.provider.charAt(0).toUpperCase() + stateData.provider.slice(1);
       res.send(`<!DOCTYPE html><html><head><style>
         body { font-family: Inter, system-ui, sans-serif; background: #1e1e1e; color: #ccc; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
         .card { background: #252526; border: 1px solid #3e3e3e; border-radius: 12px; padding: 32px 40px; text-align: center; }
         h2 { color: #4ec9b0; margin: 0 0 8px; } p { color: #808080; font-size: 14px; }
-        .spin { width:20px;height:20px;border:2px solid #3e3e3e;border-top-color:#4ec9b0;border-radius:50%;animation:s 1s linear infinite;margin:12px auto 0 }
-        @keyframes s { to { transform:rotate(360deg) } }
-      </style></head><body><div class="card"><h2>Connected!</h2><p>${providerDisplay} is now linked to WikiMem.</p><div class="spin"></div><p style="margin-top:8px"><small>Syncing your data... This window will close automatically.</small></p></div>
+      </style></head><body><div class="card"><h2>Connected!</h2><p>${providerDisplay} is now linked to WikiMem.</p><p style="margin-top:8px"><small>You can now preview and select what to sync.</small></p></div>
       <script>if(window.opener){window.opener.postMessage({type:'wikimem-oauth-connected',provider:'${stateData.provider}'},'*');}setTimeout(function(){window.close()},3000)</script>
       </body></html>`);
     } catch (err) {
@@ -1816,6 +1961,25 @@ export function createServer(vaultRoot: string, port: number): void {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.status(500).json({ error: `Save token failed: ${msg}` });
+    }
+  });
+
+  // GET /api/auth/webhook-url — return the persistent ingest webhook URL for this user
+  app.get('/api/auth/webhook-url', (_req, res) => {
+    try {
+      const webhookIdPath = join(vaultRoot, '.wikimem', 'webhook-id.txt');
+      let webhookId: string;
+      if (existsSync(webhookIdPath)) {
+        webhookId = readFileSync(webhookIdPath, 'utf-8').trim();
+      } else {
+        webhookId = randomBytes(16).toString('hex');
+        mkdirSync(dirname(webhookIdPath), { recursive: true });
+        writeFileSync(webhookIdPath, webhookId, 'utf-8');
+      }
+      res.json({ url: `http://localhost:${port}/api/webhook/ingest?key=${webhookId}` });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Webhook URL failed: ${msg}` });
     }
   });
 
@@ -1950,10 +2114,7 @@ export function createServer(vaultRoot: string, port: number): void {
         scope: body['scope'] as string | undefined,
       });
 
-      // Auto-trigger GitHub sync after device flow connection (fire-and-forget)
-      import('../core/sync/index.js').then(({ syncProvider: sp }) => {
-        sp('github', vaultRoot).catch(() => {});
-      }).catch(() => {});
+      // Do NOT auto-sync on connect — user must preview and select what to sync first.
 
       res.json({ status: 'complete', access_token: accessToken });
     } catch (err) {
@@ -2825,17 +2986,68 @@ export function createServer(vaultRoot: string, port: number): void {
   });
 
   // POST /api/sync/:provider — trigger sync for a connected OAuth provider
+  // Accepts optional filter parameters in the request body:
+  //   maxItems, since, query, preview, channels, labels, repos, projectKeys, databaseIds, folderId, topics
   // MUST be last among /api/sync/* routes (generic :provider catches everything)
   app.post('/api/sync/:provider', async (req, res) => {
     try {
       const provider = req.params['provider'];
       if (!provider) { res.status(400).json({ error: 'Missing provider' }); return; }
+
+      // Extract filter parameters from request body
+      const body = req.body as Record<string, unknown> | undefined;
+      const filters: import('../core/sync/sync-filters.js').SyncFilters = {};
+      if (body) {
+        if (typeof body['maxItems'] === 'number') filters.maxItems = body['maxItems'];
+        if (typeof body['since'] === 'string') filters.since = body['since'];
+        if (typeof body['query'] === 'string') filters.query = body['query'];
+        if (typeof body['preview'] === 'boolean') filters.preview = body['preview'];
+        if (Array.isArray(body['channels'])) filters.channels = body['channels'] as string[];
+        if (Array.isArray(body['labels'])) filters.labels = body['labels'] as string[];
+        if (Array.isArray(body['repos'])) filters.repos = body['repos'] as string[];
+        if (Array.isArray(body['projectKeys'])) filters.projectKeys = body['projectKeys'] as string[];
+        if (Array.isArray(body['databaseIds'])) filters.databaseIds = body['databaseIds'] as string[];
+        if (typeof body['folderId'] === 'string') filters.folderId = body['folderId'];
+        if (Array.isArray(body['topics'])) filters.topics = body['topics'] as string[];
+      }
+
+      const hasFilters = Object.keys(filters).length > 0;
       const { syncProvider } = await import('../core/sync/index.js');
-      const result = await syncProvider(provider, vaultRoot);
+      const result = await syncProvider(provider, vaultRoot, hasFilters ? filters : undefined);
       res.json(result);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.status(500).json({ error: `Sync failed: ${msg}` });
+    }
+  });
+
+  // GET /api/connectors/:id/preview — preview what would be synced for a provider
+  // Query params: maxItems, since, query, channels, labels, repos, projectKeys, databaseIds, folderId, topics
+  app.get('/api/connectors/:id/preview', async (req, res) => {
+    try {
+      const provider = req.params['id'];
+      if (!provider) { res.status(400).json({ error: 'Missing provider id' }); return; }
+
+      // Extract filter parameters from query string
+      const q = req.query;
+      const filters: import('../core/sync/sync-filters.js').SyncFilters = {};
+      if (q['maxItems']) filters.maxItems = parseInt(q['maxItems'] as string, 10);
+      if (q['since']) filters.since = q['since'] as string;
+      if (q['query']) filters.query = q['query'] as string;
+      if (q['channels']) filters.channels = (q['channels'] as string).split(',');
+      if (q['labels']) filters.labels = (q['labels'] as string).split(',');
+      if (q['repos']) filters.repos = (q['repos'] as string).split(',');
+      if (q['projectKeys']) filters.projectKeys = (q['projectKeys'] as string).split(',');
+      if (q['databaseIds']) filters.databaseIds = (q['databaseIds'] as string).split(',');
+      if (q['folderId']) filters.folderId = q['folderId'] as string;
+      if (q['topics']) filters.topics = (q['topics'] as string).split(',');
+
+      const { previewProvider } = await import('../core/sync/index.js');
+      const preview = await previewProvider(provider, vaultRoot, filters);
+      res.json(preview);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Preview failed: ${msg}` });
     }
   });
 

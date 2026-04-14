@@ -3,6 +3,8 @@
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { SyncFilters, SyncPreviewResult, PreviewItem } from './sync-filters.js';
+import { estimateTokens, formatCostEstimate, isAfterSince } from './sync-filters.js';
 
 export interface LinearSyncOptions {
   token: string;
@@ -10,6 +12,8 @@ export interface LinearSyncOptions {
   maxIssues?: number;
   teamId?: string;
   includeCompleted?: boolean;
+  /** Sync filter overrides */
+  filters?: SyncFilters;
 }
 
 export interface PlatformSyncResult {
@@ -127,10 +131,70 @@ function ensureDir(dir: string): void {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
+/** Preview what Linear data would be synced with the given filters */
+export async function previewLinear(options: LinearSyncOptions): Promise<SyncPreviewResult> {
+  const errors: string[] = [];
+  const filters = options.filters ?? {};
+  const queryOpts = { ...options };
+  if (filters.maxItems) queryOpts.maxIssues = filters.maxItems;
+
+  try {
+    const res = await gql<{ issues: { nodes: LinearIssueNode[] } }>(options.token, buildIssuesQuery(queryOpts));
+    if (res.errors?.length) errors.push(...res.errors.map((e) => `Issues: ${e.message}`));
+
+    let issues = res.data?.issues.nodes ?? [];
+    if (filters.since) {
+      issues = issues.filter((i) => isAfterSince(i.updatedAt, filters.since));
+    }
+    if (filters.query) {
+      const q = filters.query.toLowerCase();
+      issues = issues.filter((i) => `${i.title} ${i.description ?? ''}`.toLowerCase().includes(q));
+    }
+
+    const items: PreviewItem[] = issues.map((issue) => ({
+      id: issue.id,
+      title: issue.title,
+      date: issue.updatedAt,
+      type: 'issue',
+      sizeEstimate: (issue.description?.length ?? 0) + 500,
+      meta: {
+        state: issue.state.name,
+        priority: issue.priorityLabel,
+        assignee: issue.assignee?.name ?? 'unassigned',
+      },
+    }));
+
+    const totalChars = items.reduce((sum, i) => sum + i.sizeEstimate, 0);
+    const tokens = estimateTokens(totalChars, items.length);
+
+    return {
+      provider: 'linear',
+      totalItems: items.length,
+      items,
+      estimatedTokens: tokens,
+      costEstimate: formatCostEstimate(tokens),
+      errors,
+    };
+  } catch (err: unknown) {
+    errors.push(`Preview failed: ${err instanceof Error ? err.message : String(err)}`);
+    return { provider: 'linear', totalItems: 0, items: [], estimatedTokens: 0, costEstimate: '0 tokens', errors };
+  }
+}
+
 export async function syncLinear(options: LinearSyncOptions): Promise<PlatformSyncResult> {
   const start = Date.now();
   const errors: string[] = [];
   let filesWritten = 0;
+  const filters = options.filters ?? {};
+
+  // Preview mode
+  if (filters.preview) {
+    const preview = await previewLinear(options);
+    return { provider: 'linear', filesWritten: 0, errors: preview.errors, duration: Date.now() - start };
+  }
+
+  if (filters.maxItems) options.maxIssues = filters.maxItems;
+
   const date = new Date().toISOString().slice(0, 10);
   const outDir = join(options.vaultRoot, 'raw', date);
   ensureDir(outDir);
@@ -139,7 +203,15 @@ export async function syncLinear(options: LinearSyncOptions): Promise<PlatformSy
   try {
     const res = await gql<{ issues: { nodes: LinearIssueNode[] } }>(options.token, buildIssuesQuery(options));
     if (res.errors?.length) errors.push(...res.errors.map((e) => `Issues: ${e.message}`));
-    for (const issue of res.data?.issues.nodes ?? []) {
+    let issues = res.data?.issues.nodes ?? [];
+    if (filters.since) {
+      issues = issues.filter((i) => isAfterSince(i.updatedAt, filters.since));
+    }
+    if (filters.query) {
+      const q = filters.query.toLowerCase();
+      issues = issues.filter((i) => `${i.title} ${i.description ?? ''}`.toLowerCase().includes(q));
+    }
+    for (const issue of issues) {
       writeFileSync(join(outDir, `linear-issue-${slugify(issue.title)}.md`), issueToMarkdown(issue), 'utf-8');
       filesWritten++;
     }

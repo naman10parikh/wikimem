@@ -5,6 +5,8 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PlatformSyncResult } from './index.js';
+import type { SyncFilters, SyncPreviewResult, PreviewItem } from './sync-filters.js';
+import { estimateTokens, formatCostEstimate } from './sync-filters.js';
 
 export interface JiraSyncOptions {
   token: string;
@@ -17,6 +19,8 @@ export interface JiraSyncOptions {
   maxResults?: number;
   /** Only sync issues from these projects (keys like "ENG", "PROD") */
   projectKeys?: string[];
+  /** Sync filter overrides */
+  filters?: SyncFilters;
 }
 
 interface JiraAccessibleResource {
@@ -211,10 +215,94 @@ function ensureDir(dir: string): void {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
+/** Build JQL query incorporating filters */
+function buildJql(options: JiraSyncOptions): string {
+  const filters = options.filters ?? {};
+  const projectKeys = filters.projectKeys ?? options.projectKeys;
+
+  if (options.jql) return options.jql;
+
+  const parts: string[] = [];
+  if (projectKeys?.length) {
+    const projectFilter = projectKeys.map((k) => `"${k}"`).join(', ');
+    parts.push(`project IN (${projectFilter})`);
+  }
+  if (filters.since) {
+    const sinceDate = filters.since.slice(0, 10); // YYYY-MM-DD
+    parts.push(`updated >= "${sinceDate}"`);
+  } else {
+    parts.push('updated >= -7d');
+  }
+  if (filters.query) {
+    parts.push(`text ~ "${filters.query.replace(/"/g, '\\"')}"`);
+  }
+  parts.push('ORDER BY updated DESC');
+  return parts.join(' AND ');
+}
+
+/** Preview what Jira issues would be synced with the given filters */
+export async function previewJira(options: JiraSyncOptions): Promise<SyncPreviewResult> {
+  const errors: string[] = [];
+  const filters = options.filters ?? {};
+
+  let cloudId: string;
+  try {
+    cloudId = options.cloudId ?? await resolveCloudId(options.token);
+  } catch (err: unknown) {
+    errors.push(`Cloud ID resolution failed: ${err instanceof Error ? err.message : String(err)}`);
+    return { provider: 'jira', totalItems: 0, items: [], estimatedTokens: 0, costEstimate: '0 tokens', errors };
+  }
+
+  const maxResults = filters.maxItems ?? options.maxResults ?? 50;
+  const jql = buildJql(options);
+
+  try {
+    const searchUrl = `${jiraApi(cloudId)}/search?jql=${encodeURIComponent(jql)}&maxResults=${maxResults}&fields=summary,status,issuetype,priority,assignee,created,updated,project`;
+    const searchResult = await atlassianFetch<JiraSearchResponse>(searchUrl, options.token);
+
+    const items: PreviewItem[] = searchResult.issues.map((issue) => ({
+      id: issue.key,
+      title: `[${issue.key}] ${issue.fields.summary}`,
+      date: issue.fields.updated,
+      type: issue.fields.issuetype.name.toLowerCase(),
+      sizeEstimate: 1500,
+      meta: {
+        status: issue.fields.status.name,
+        priority: issue.fields.priority?.name ?? 'none',
+        project: issue.fields.project.key,
+        assignee: issue.fields.assignee?.displayName ?? 'unassigned',
+      },
+    }));
+
+    const totalChars = items.reduce((sum, i) => sum + i.sizeEstimate, 0);
+    const tokens = estimateTokens(totalChars, items.length);
+
+    return {
+      provider: 'jira',
+      totalItems: searchResult.total,
+      items,
+      estimatedTokens: tokens,
+      costEstimate: formatCostEstimate(tokens),
+      errors,
+    };
+  } catch (err: unknown) {
+    errors.push(`Preview failed: ${err instanceof Error ? err.message : String(err)}`);
+    return { provider: 'jira', totalItems: 0, items: [], estimatedTokens: 0, costEstimate: '0 tokens', errors };
+  }
+}
+
 export async function syncJira(options: JiraSyncOptions): Promise<PlatformSyncResult> {
   const start = Date.now();
   const errors: string[] = [];
   let filesWritten = 0;
+  const filters = options.filters ?? {};
+
+  // Preview mode
+  if (filters.preview) {
+    const preview = await previewJira(options);
+    return { provider: 'jira', filesWritten: 0, errors: preview.errors, duration: Date.now() - start };
+  }
+
   const date = new Date().toISOString().slice(0, 10);
   const outDir = join(options.vaultRoot, 'raw', date);
   ensureDir(outDir);
@@ -229,12 +317,8 @@ export async function syncJira(options: JiraSyncOptions): Promise<PlatformSyncRe
   }
 
   // Step 2: Build JQL and fetch issues
-  const maxResults = options.maxResults ?? 50;
-  let jql = options.jql ?? 'updated >= -7d ORDER BY updated DESC';
-  if (!options.jql && options.projectKeys?.length) {
-    const projectFilter = options.projectKeys.map((k) => `"${k}"`).join(', ');
-    jql = `project IN (${projectFilter}) AND updated >= -7d ORDER BY updated DESC`;
-  }
+  const maxResults = filters.maxItems ?? options.maxResults ?? 50;
+  const jql = buildJql(options);
 
   try {
     const searchUrl = `${jiraApi(cloudId)}/search?jql=${encodeURIComponent(jql)}&maxResults=${maxResults}&fields=summary,status,issuetype,priority,assignee,reporter,labels,description,comment,created,updated,project`;

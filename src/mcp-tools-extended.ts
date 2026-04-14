@@ -2,12 +2,15 @@
  * Extended MCP tool handlers for WikiMem.
  *
  * Handles: wikimem_observe, wikimem_improve, wikimem_pipeline,
- *          wikimem_scrape, wikimem_connectors
+ *          wikimem_scrape, wikimem_connectors,
+ *          wikimem_list_connectors, wikimem_connect, wikimem_sync,
+ *          wikimem_preview, wikimem_run_observer, wikimem_get_report
  *
  * All imports are dynamic to keep MCP server startup fast.
  */
 
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, existsSync, readdirSync, readFileSync } from 'node:path';
+import { existsSync as fsExistsSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { VaultConfig } from './core/vault.js';
 

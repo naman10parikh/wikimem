@@ -4,12 +4,16 @@
  */
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import type { SyncFilters, SyncPreviewResult, PreviewItem } from './sync-filters.js';
+import { estimateTokens, formatCostEstimate } from './sync-filters.js';
 
 export interface GDriveSyncOptions {
   token: string;
   vaultRoot: string;
   folderId?: string;
   maxFiles?: number;
+  /** Sync filter overrides */
+  filters?: SyncFilters;
 }
 
 export interface PlatformSyncResult {
@@ -107,11 +111,13 @@ async function listFiles(
   token: string,
   maxFiles: number,
   folderId?: string,
+  sinceOverride?: string,
+  queryFilter?: string,
 ): Promise<{ files: DriveFile[]; errors: string[] }> {
   const errors: string[] = [];
   const allFiles: DriveFile[] = [];
   let pageToken: string | undefined;
-  const since = recentTimestamp();
+  const since = sinceOverride ?? recentTimestamp();
 
   do {
     const params = new URLSearchParams({
@@ -123,6 +129,9 @@ async function listFiles(
     const queryParts = [`modifiedTime > '${since}'`, 'trashed = false'];
     if (folderId) {
       queryParts.push(`'${folderId}' in parents`);
+    }
+    if (queryFilter) {
+      queryParts.push(`name contains '${queryFilter.replace(/'/g, "\\'")}'`);
     }
     params.set('q', queryParts.join(' and '));
 
@@ -208,19 +217,64 @@ function fileToMarkdown(
   };
 }
 
+/** Preview what Google Drive files would be synced with the given filters */
+export async function previewGDrive(options: GDriveSyncOptions): Promise<SyncPreviewResult> {
+  const errors: string[] = [];
+  const filters = options.filters ?? {};
+  const maxFiles = filters.maxItems ?? options.maxFiles ?? 50;
+  const folderId = filters.folderId ?? options.folderId;
+
+  const { files, errors: listErrors } = await listFiles(
+    options.token, maxFiles, folderId, filters.since, filters.query,
+  );
+  errors.push(...listErrors);
+
+  const items: PreviewItem[] = files.map((file) => {
+    const exportInfo = EXPORT_MAP[file.mimeType];
+    const typeLabel = exportInfo?.label ?? (TEXT_MIME_TYPES.has(file.mimeType) ? 'text' : 'binary');
+    return {
+      id: file.id,
+      title: file.name,
+      date: file.modifiedTime,
+      type: typeLabel,
+      sizeEstimate: exportInfo ? 3000 : 500,
+      meta: { mimeType: file.mimeType },
+    };
+  });
+
+  const totalChars = items.reduce((sum, i) => sum + i.sizeEstimate, 0);
+  const tokens = estimateTokens(totalChars, items.length);
+
+  return {
+    provider: 'gdrive',
+    totalItems: items.length,
+    items,
+    estimatedTokens: tokens,
+    costEstimate: formatCostEstimate(tokens),
+    errors,
+  };
+}
+
 export async function syncGDrive(options: GDriveSyncOptions): Promise<PlatformSyncResult> {
   const start = Date.now();
   const errors: string[] = [];
   let filesWritten = 0;
-  const maxFiles = options.maxFiles ?? 50;
+  const filters = options.filters ?? {};
+
+  // Preview mode
+  if (filters.preview) {
+    const preview = await previewGDrive(options);
+    return { provider: 'gdrive', filesWritten: 0, errors: preview.errors, duration: Date.now() - start };
+  }
+
+  const maxFiles = filters.maxItems ?? options.maxFiles ?? 50;
+  const folderId = filters.folderId ?? options.folderId;
   const outDir = join(options.vaultRoot, 'wiki', 'sources');
 
   if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 
   const { files, errors: listErrors } = await listFiles(
-    options.token,
-    maxFiles,
-    options.folderId,
+    options.token, maxFiles, folderId, filters.since, filters.query,
   );
   errors.push(...listErrors);
 
