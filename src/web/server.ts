@@ -3,9 +3,10 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync, readdirSync, statSy
 import { join, resolve, extname, basename, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
-import { getVaultConfig, getVaultStats, listWikiPages, readWikiPage, writeWikiPage, readPageVersions } from '../core/vault.js';
+import { getVaultConfig, getVaultStats, ensureVaultDirs, listWikiPages, readWikiPage, writeWikiPage, readPageVersions } from '../core/vault.js';
 import type { VaultConfig } from '../core/vault.js';
 import { getBundledCredentials, getBundledDeviceFlowClientId, hasBundledDefaults } from '../core/oauth-defaults.js';
+import type { UserConfig } from '../core/config.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -91,6 +92,7 @@ interface PageInfo {
   wordCount: number;
   category: string;
   wikilinks: string[];
+  tags: string[];
 }
 
 function listPages(config: VaultConfig): PageInfo[] {
@@ -103,6 +105,7 @@ function listPages(config: VaultConfig): PageInfo[] {
       wordCount: page.wordCount,
       category: (page.frontmatter['category'] as string) ?? 'uncategorized',
       wikilinks: page.wikilinks,
+      tags: (page.frontmatter['tags'] as string[] | undefined) ?? [],
     };
   });
 }
@@ -110,6 +113,10 @@ function listPages(config: VaultConfig): PageInfo[] {
 export function createServer(vaultRoot: string, port: number): void {
   const app = express();
   const config = getVaultConfig(vaultRoot);
+
+  // Ensure vault directories exist before accepting any requests.
+  // Without this, a fresh vault hits ENOENT on the first /api/status call.
+  ensureVaultDirs(config);
 
   // Load persisted pipeline runs so they survive server restarts
   import('../core/pipeline-events.js').then(({ pipelineEvents }) => {
@@ -127,7 +134,17 @@ export function createServer(vaultRoot: string, port: number): void {
       const stats = getVaultStats(config);
       res.json(stats);
     } catch (err) {
-      res.status(500).json({ error: 'Failed to read vault status' });
+      // Log the real error so it's visible in server output
+      console.error('[/api/status] getVaultStats failed (attempt 1):', err);
+      // Retry once — handles transient ENOENT from readFileSync racing readdirSync
+      try {
+        ensureVaultDirs(config);
+        const stats = getVaultStats(config);
+        res.json(stats);
+      } catch (retryErr) {
+        console.error('[/api/status] getVaultStats failed (attempt 2):', retryErr);
+        res.status(500).json({ error: 'Failed to read vault status' });
+      }
     }
   });
 
@@ -196,6 +213,11 @@ export function createServer(vaultRoot: string, port: number): void {
         return;
       }
       const page = readWikiPage(match);
+      // UXO-039: normalize metadata field names for consistent front-end display
+      const fm = page.frontmatter as Record<string, unknown>;
+      if ('createdAt' in fm && !('created' in fm)) { fm['created'] = fm['createdAt']; delete fm['createdAt']; }
+      if ('created_at' in fm && !('created' in fm)) { fm['created'] = fm['created_at']; delete fm['created_at']; }
+      if ('type' in fm && !('category' in fm)) { fm['category'] = fm['type']; delete fm['type']; }
       res.json(page);
     } catch (err) {
       res.status(500).json({ error: 'Failed to read page' });
@@ -628,6 +650,8 @@ export function createServer(vaultRoot: string, port: number): void {
         category?: string;
         children?: TreeNode[];
         size?: number;
+        mtime?: string;
+        isDateDir?: boolean;
       }
 
       function buildWikiTree(dir: string, relPath: string): TreeNode[] {
@@ -657,6 +681,8 @@ export function createServer(vaultRoot: string, port: number): void {
         return nodes;
       }
 
+      const DATE_DIR_RE = /^\d{4}-\d{2}-\d{2}$/;
+
       function buildRawTree(dir: string, relPath: string): TreeNode[] {
         const nodes: TreeNode[] = [];
         if (!existsSync(dir)) return nodes;
@@ -667,9 +693,17 @@ export function createServer(vaultRoot: string, port: number): void {
           const stat = statSync(full);
           const childPath = relPath ? `${relPath}/${entry}` : entry;
           if (stat.isDirectory()) {
-            nodes.push({ name: entry, type: 'dir', path: childPath, children: buildRawTree(full, childPath) });
+            const isDateDir = !relPath && DATE_DIR_RE.test(entry);
+            nodes.push({
+              name: entry,
+              type: 'dir',
+              path: childPath,
+              children: buildRawTree(full, childPath),
+              mtime: stat.mtime.toISOString(),
+              isDateDir,
+            });
           } else {
-            nodes.push({ name: entry, type: 'raw', path: childPath, size: stat.size });
+            nodes.push({ name: entry, type: 'raw', path: childPath, size: stat.size, mtime: stat.mtime.toISOString() });
           }
         }
         return nodes;
@@ -982,7 +1016,7 @@ export function createServer(vaultRoot: string, port: number): void {
       const { listWikiPages, readWikiPage } = await import('../core/vault.js');
       const { readFileSync, existsSync } = await import('node:fs');
 
-      const userConfig = loadConfig(config.configPath);
+      const userConfig: UserConfig = loadConfig(config.configPath);
       const allPages = listWikiPages(config.wikiDir);
       const relevantPages = await searchPages(question, allPages, {
         mode: 'bm25',
@@ -1481,6 +1515,103 @@ export function createServer(vaultRoot: string, port: number): void {
       res.sendFile(resolved);
     } catch (err) {
       res.status(500).json({ error: 'Failed to serve file' });
+    }
+  });
+
+  // API: render DOCX to HTML using mammoth (for rich preview)
+  app.get('/api/raw/docx-html', async (req, res) => {
+    try {
+      let filePath = String(req.query['path'] ?? '');
+      if (filePath.startsWith('/')) filePath = filePath.slice(1);
+      if (!filePath) { res.status(400).json({ error: 'Missing path query param' }); return; }
+      const decoded = decodeURIComponent(filePath);
+      const fullPath = join(config.rawDir, decoded);
+      const resolved = resolve(fullPath);
+      if (!resolved.startsWith(resolve(config.rawDir))) {
+        res.status(403).json({ error: 'Access denied' }); return;
+      }
+      if (!existsSync(resolved)) {
+        res.status(404).json({ error: 'File not found' }); return;
+      }
+      const ext = extname(resolved).toLowerCase();
+      if (ext !== '.docx' && ext !== '.doc') {
+        res.status(400).json({ error: 'Not a Word document' }); return;
+      }
+      const mammoth = await import('mammoth');
+      const buffer = readFileSync(resolved);
+      const result = await mammoth.convertToHtml({ buffer });
+      res.json({ html: result.value, messages: result.messages.map(m => m.message) });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `DOCX render failed: ${msg}` });
+    }
+  });
+
+  // API: extract PPTX slides as structured JSON (for slide viewer)
+  app.get('/api/raw/pptx-slides', async (req, res) => {
+    try {
+      let filePath = String(req.query['path'] ?? '');
+      if (filePath.startsWith('/')) filePath = filePath.slice(1);
+      if (!filePath) { res.status(400).json({ error: 'Missing path query param' }); return; }
+      const decoded = decodeURIComponent(filePath);
+      const fullPath = join(config.rawDir, decoded);
+      const resolved = resolve(fullPath);
+      if (!resolved.startsWith(resolve(config.rawDir))) {
+        res.status(403).json({ error: 'Access denied' }); return;
+      }
+      if (!existsSync(resolved)) {
+        res.status(404).json({ error: 'File not found' }); return;
+      }
+      const ext = extname(resolved).toLowerCase();
+      if (ext !== '.pptx' && ext !== '.ppt') {
+        res.status(400).json({ error: 'Not a PowerPoint file' }); return;
+      }
+      const { processPptx } = await import('../processors/pptx.js');
+      const result = await processPptx(resolved);
+      // Parse slide content into structured slide objects
+      const AdmZip = (await import('adm-zip')).default;
+      const zip = new AdmZip(resolved);
+      const entries = zip.getEntries();
+      const slideEntries: Map<number, string> = new Map();
+      const noteEntries: Map<number, string> = new Map();
+      for (const entry of entries) {
+        const name = entry.entryName;
+        const sm = name.match(/^ppt\/slides\/slide(\d+)\.xml$/);
+        if (sm?.[1]) slideEntries.set(parseInt(sm[1], 10), entry.getData().toString('utf-8'));
+        const nm = name.match(/^ppt\/notesSlides\/notesSlide(\d+)\.xml$/);
+        if (nm?.[1]) noteEntries.set(parseInt(nm[1], 10), entry.getData().toString('utf-8'));
+      }
+      const slideNums = [...slideEntries.keys()].sort((a, b) => a - b);
+      // Extract plain text per slide for structured JSON response
+      const slides = slideNums.map((num) => {
+        const xml = slideEntries.get(num) ?? '';
+        const noteXml = noteEntries.get(num) ?? '';
+        // Extract all text runs from slide XML
+        const texts: string[] = [];
+        const tRegex = /<a:t>([^<]*)<\/a:t>/g;
+        let m: RegExpExecArray | null;
+        while ((m = tRegex.exec(xml)) !== null) {
+          const t = m[1]?.trim();
+          if (t) texts.push(t.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'"));
+        }
+        // Extract notes
+        const noteTexts: string[] = [];
+        const ntRegex = /<a:t>([^<]*)<\/a:t>/g;
+        let nm2: RegExpExecArray | null;
+        while ((nm2 = ntRegex.exec(noteXml)) !== null) {
+          const t = nm2[1]?.trim();
+          if (t) noteTexts.push(t.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'"));
+        }
+        // First distinct text chunk is likely the title
+        const title = texts[0] ?? `Slide ${num}`;
+        const body = texts.slice(1);
+        const notes = noteTexts.filter(t => !texts.includes(t) && !/^\d+$/.test(t));
+        return { slideNumber: num, title, body, notes };
+      });
+      res.json({ slideCount: slides.length, slides, title: result.title });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `PPTX parse failed: ${msg}` });
     }
   });
 
@@ -3277,6 +3408,93 @@ export function createServer(vaultRoot: string, port: number): void {
 
   // Start central automation scheduler (observer cron + pipeline watcher)
   automationScheduler.startAll();
+
+  // ── UXO-038: Bookmark API ──────────────────────────────────────────────────
+  function getBookmarkStorePath(): string {
+    return join(vaultRoot, '.wikimem', 'bookmarks.json');
+  }
+  function loadBookmarks(): string[] {
+    const p = getBookmarkStorePath();
+    if (!existsSync(p)) return [];
+    try {
+      const parsed = JSON.parse(readFileSync(p, 'utf-8')) as unknown;
+      return Array.isArray(parsed) ? (parsed as string[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  function saveBookmarksFile(titles: string[]): void {
+    const p = getBookmarkStorePath();
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, JSON.stringify(titles, null, 2), 'utf-8');
+  }
+
+  app.get('/api/bookmarks', (_req, res) => {
+    try {
+      res.json({ pages: loadBookmarks() });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.post('/api/bookmarks/:title', (req, res) => {
+    try {
+      const title = decodeURIComponent(req.params['title'] ?? '');
+      if (!title) { res.status(400).json({ error: 'Missing title' }); return; }
+      const list = loadBookmarks();
+      if (!list.includes(title)) {
+        list.push(title);
+        saveBookmarksFile(list);
+      }
+      res.json({ pages: list });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.delete('/api/bookmarks/:title', (req, res) => {
+    try {
+      const title = decodeURIComponent(req.params['title'] ?? '');
+      if (!title) { res.status(400).json({ error: 'Missing title' }); return; }
+      const list = loadBookmarks().filter((t) => t !== title);
+      saveBookmarksFile(list);
+      res.json({ pages: list });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  // ── UXO-039: Metadata schema endpoint ────────────────────────────────────
+  app.get('/api/metadata/schema', (_req, res) => {
+    try {
+      const STANDARD_FIELDS = ['category', 'tags', 'created', 'sources', 'related'];
+      const fieldSet = new Set<string>();
+      const pages = listWikiPages(config.wikiDir);
+      for (const p of pages) {
+        try {
+          const page = readWikiPage(p);
+          const fm = page.frontmatter as Record<string, unknown>;
+          // Normalize before collecting
+          if ('createdAt' in fm && !('created' in fm)) { fm['created'] = fm['createdAt']; delete fm['createdAt']; }
+          if ('created_at' in fm && !('created' in fm)) { fm['created'] = fm['created_at']; delete fm['created_at']; }
+          if ('type' in fm && !('category' in fm)) { fm['category'] = fm['type']; delete fm['type']; }
+          for (const key of Object.keys(fm)) {
+            if (key !== 'title') fieldSet.add(key);
+          }
+        } catch { /* skip unreadable pages */ }
+      }
+      const allFields = Array.from(fieldSet);
+      const standard = STANDARD_FIELDS.filter((f) => allFields.includes(f));
+      const custom = allFields.filter((f) => !STANDARD_FIELDS.includes(f));
+      res.json({ fields: [...standard, ...custom], standard, custom });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
 
   // Serve static files AFTER all API routes
   if (existsSync(publicDir)) {

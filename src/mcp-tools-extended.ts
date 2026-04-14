@@ -9,8 +9,8 @@
  * All imports are dynamic to keep MCP server startup fast.
  */
 
-import { basename, dirname, join, existsSync, readdirSync, readFileSync } from 'node:path';
-import { existsSync as fsExistsSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { VaultConfig } from './core/vault.js';
 
@@ -340,5 +340,408 @@ export async function handleConnectors(
 
     default:
       throw { code: -32602, message: `Unknown connector action: ${action}. Use list, add, remove, or sync.` };
+  }
+}
+
+// ─── wikimem_list_connectors ──────────────────────────────────────────────
+
+/**
+ * List all OAuth connectors (platform syncs) with their connection status.
+ * Reads stored tokens from .wikimem/tokens.json and cross-references with
+ * connector configs to show what's connected vs available.
+ */
+export async function handleListConnectors(
+  vaultRoot: string,
+  _args: Record<string, unknown>,
+): Promise<unknown> {
+  const SUPPORTED = ['github', 'slack', 'google', 'gmail', 'gdrive', 'linear', 'notion', 'jira'];
+
+  // Read stored OAuth tokens
+  const tokensPath = join(vaultRoot, '.wikimem', 'tokens.json');
+  let tokens: Record<string, { access_token: string; connectedAt?: string; scope?: string }> = {};
+  if (existsSync(tokensPath)) {
+    try {
+      tokens = JSON.parse(readFileSync(tokensPath, 'utf-8')) as typeof tokens;
+    } catch { /* ignore parse errors */ }
+  }
+
+  // Also read folder/git-repo connectors
+  const connectorsPath = join(vaultRoot, '.wikimem-connectors.json');
+  let folderConnectors: Array<{ id: string; name: string; type: string; status: string; lastSyncAt?: string; totalFiles?: number }> = [];
+  if (existsSync(connectorsPath)) {
+    try {
+      folderConnectors = JSON.parse(readFileSync(connectorsPath, 'utf-8')) as typeof folderConnectors;
+    } catch { /* ignore */ }
+  }
+
+  const oauthConnectors = SUPPORTED.map((provider) => {
+    // gmail and gdrive share the 'google' token
+    const tokenKey = (provider === 'gmail' || provider === 'gdrive') ? 'google' : provider;
+    const token = tokens[tokenKey];
+    return {
+      provider,
+      type: 'oauth',
+      connected: !!(token?.access_token),
+      connectedAt: token?.connectedAt ?? null,
+      scope: token?.scope ?? null,
+    };
+  });
+
+  return {
+    oauth: oauthConnectors,
+    folders: folderConnectors.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
+      status: c.status,
+      lastSyncAt: c.lastSyncAt ?? null,
+      totalFiles: c.totalFiles ?? 0,
+    })),
+    summary: {
+      oauthConnected: oauthConnectors.filter((c) => c.connected).length,
+      oauthAvailable: SUPPORTED.length,
+      folderConnectors: folderConnectors.length,
+    },
+    hint: 'Use wikimem_connect to start OAuth flow. Use wikimem_sync to sync a connected provider.',
+  };
+}
+
+// ─── wikimem_connect ──────────────────────────────────────────────────────
+
+/**
+ * Start the OAuth connection flow for a provider.
+ * For CLI environments, this outputs the OAuth URL and instructions.
+ * For web environments, users should visit wikimem serve → Settings → Connectors.
+ */
+export async function handleConnect(
+  vaultRoot: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  const provider = args['provider'];
+  if (typeof provider !== 'string' || !provider.trim()) {
+    throw { code: -32602, message: 'provider is required (github | slack | google | gmail | gdrive | linear | notion | jira)' };
+  }
+
+  const p = provider.trim().toLowerCase();
+  const OAUTH_PROVIDERS = ['github', 'slack', 'google', 'gmail', 'gdrive', 'linear', 'notion', 'jira'];
+  if (!OAUTH_PROVIDERS.includes(p)) {
+    throw { code: -32602, message: `Unknown provider "${p}". Supported: ${OAUTH_PROVIDERS.join(', ')}` };
+  }
+
+  // Check if already connected
+  const tokensPath = join(vaultRoot, '.wikimem', 'tokens.json');
+  if (existsSync(tokensPath)) {
+    const tokens = JSON.parse(readFileSync(tokensPath, 'utf-8')) as Record<string, { access_token?: string }>;
+    const tokenKey = (p === 'gmail' || p === 'gdrive') ? 'google' : p;
+    if (tokens[tokenKey]?.access_token) {
+      return {
+        provider: p,
+        alreadyConnected: true,
+        message: `${p} is already connected. Use wikimem_sync to sync content.`,
+        hint: 'Run wikimem_list_connectors to see all connection statuses.',
+      };
+    }
+  }
+
+  // Build the OAuth URL for the web UI flow
+  const oauthUrl = `http://localhost:3456/api/auth/${p}`;
+  const credentials = args['credentials'];
+
+  // If credentials are passed directly (for automated setups), validate and store
+  if (credentials && typeof credentials === 'object' && credentials !== null) {
+    const creds = credentials as Record<string, unknown>;
+    const accessToken = creds['access_token'];
+    if (typeof accessToken === 'string' && accessToken.trim()) {
+      const { mkdirSync, writeFileSync } = await import('node:fs');
+      mkdirSync(join(vaultRoot, '.wikimem'), { recursive: true });
+
+      const tokenKey = (p === 'gmail' || p === 'gdrive') ? 'google' : p;
+      let existing: Record<string, unknown> = {};
+      if (existsSync(tokensPath)) {
+        try { existing = JSON.parse(readFileSync(tokensPath, 'utf-8')) as typeof existing; } catch { /* ignore */ }
+      }
+
+      existing[tokenKey] = {
+        access_token: accessToken,
+        refresh_token: creds['refresh_token'] ?? null,
+        connectedAt: new Date().toISOString(),
+        scope: creds['scope'] ?? null,
+      };
+
+      writeFileSync(tokensPath, JSON.stringify(existing, null, 2), 'utf-8');
+
+      return {
+        provider: p,
+        connected: true,
+        message: `${p} connected successfully via provided credentials.`,
+        hint: 'Use wikimem_sync to start syncing content.',
+      };
+    }
+  }
+
+  return {
+    provider: p,
+    connected: false,
+    oauthUrl,
+    instructions: [
+      `Option A (Web UI): Run \`wikimem serve\` → open http://localhost:3456 → Settings → Connectors → Connect ${p}`,
+      `Option B (CLI): Run \`wikimem connect ${p}\` in your terminal for device flow`,
+      `Option C (Direct): Call wikimem_connect with credentials: { access_token: "..." }`,
+    ],
+    message: `${p} requires OAuth authorization. See instructions to complete the connection.`,
+  };
+}
+
+// ─── wikimem_sync ─────────────────────────────────────────────────────────
+
+/**
+ * Sync a connected OAuth provider into the wiki vault.
+ * Accepts optional filters to control what gets synced (date range, channels, labels, etc.)
+ */
+export async function handleSyncProvider(
+  vaultRoot: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  const provider = args['provider'];
+  if (typeof provider !== 'string' || !provider.trim()) {
+    throw { code: -32602, message: 'provider is required (github | slack | google | gmail | gdrive | linear | notion | jira)' };
+  }
+
+  const p = provider.trim().toLowerCase();
+
+  // Build filters from args
+  const rawFilters = args['filters'];
+  const filters = (rawFilters && typeof rawFilters === 'object' && !Array.isArray(rawFilters))
+    ? rawFilters as Record<string, unknown>
+    : {};
+
+  const { syncProvider } = await import('./core/sync/index.js');
+  const result = await syncProvider(p, vaultRoot, {
+    maxItems: typeof filters['maxItems'] === 'number' ? filters['maxItems'] : undefined,
+    since: typeof filters['since'] === 'string' ? filters['since'] : undefined,
+    query: typeof filters['query'] === 'string' ? filters['query'] : undefined,
+    labels: Array.isArray(filters['labels']) ? filters['labels'] as string[] : undefined,
+    channels: Array.isArray(filters['channels']) ? filters['channels'] as string[] : undefined,
+    repos: Array.isArray(filters['repos']) ? filters['repos'] as string[] : undefined,
+    projectKeys: Array.isArray(filters['projectKeys']) ? filters['projectKeys'] as string[] : undefined,
+    databaseIds: Array.isArray(filters['databaseIds']) ? filters['databaseIds'] as string[] : undefined,
+    folderId: typeof filters['folderId'] === 'string' ? filters['folderId'] : undefined,
+    topics: Array.isArray(filters['topics']) ? filters['topics'] as string[] : undefined,
+  });
+
+  return {
+    provider: result.provider,
+    success: result.errors.length === 0,
+    filesWritten: result.filesWritten,
+    duration: result.duration,
+    errors: result.errors,
+    message: result.errors.length === 0
+      ? `Synced ${result.filesWritten} file(s) from ${p} in ${result.duration}ms.`
+      : `Sync completed with ${result.errors.length} error(s). ${result.filesWritten} file(s) written.`,
+    hint: result.errors.length > 0 ? 'Check errors above. Run wikimem_list_connectors to verify connection.' : undefined,
+  };
+}
+
+// ─── wikimem_preview ─────────────────────────────────────────────────────
+
+/**
+ * Preview what would be synced from a provider without writing any files.
+ * Returns item metadata, counts, and cost estimates.
+ */
+export async function handlePreview(
+  vaultRoot: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  const provider = args['provider'];
+  if (typeof provider !== 'string' || !provider.trim()) {
+    throw { code: -32602, message: 'provider is required (github | slack | google | gmail | gdrive | linear | notion | jira)' };
+  }
+
+  const p = provider.trim().toLowerCase();
+
+  const rawFilters = args['filters'];
+  const filters = (rawFilters && typeof rawFilters === 'object' && !Array.isArray(rawFilters))
+    ? rawFilters as Record<string, unknown>
+    : {};
+
+  const { previewProvider } = await import('./core/sync/index.js');
+  const result = await previewProvider(p, vaultRoot, {
+    maxItems: typeof filters['maxItems'] === 'number' ? filters['maxItems'] : undefined,
+    since: typeof filters['since'] === 'string' ? filters['since'] : undefined,
+    query: typeof filters['query'] === 'string' ? filters['query'] : undefined,
+    labels: Array.isArray(filters['labels']) ? filters['labels'] as string[] : undefined,
+    channels: Array.isArray(filters['channels']) ? filters['channels'] as string[] : undefined,
+    repos: Array.isArray(filters['repos']) ? filters['repos'] as string[] : undefined,
+    projectKeys: Array.isArray(filters['projectKeys']) ? filters['projectKeys'] as string[] : undefined,
+    databaseIds: Array.isArray(filters['databaseIds']) ? filters['databaseIds'] as string[] : undefined,
+    folderId: typeof filters['folderId'] === 'string' ? filters['folderId'] : undefined,
+  });
+
+  return {
+    provider: result.provider,
+    totalItems: result.totalItems,
+    itemsToSync: result.items.length,
+    estimatedTokens: result.estimatedTokens,
+    costEstimate: result.costEstimate,
+    errors: result.errors,
+    items: result.items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      date: item.date,
+      type: item.type,
+      sizeEstimate: item.sizeEstimate,
+    })),
+    message: result.errors.length === 0
+      ? `Preview: ${result.items.length} of ${result.totalItems} item(s) would be synced. Est. cost: ${result.costEstimate}`
+      : `Preview failed: ${result.errors.join('; ')}`,
+    hint: 'Use wikimem_sync to perform the actual sync.',
+  };
+}
+
+// ─── wikimem_run_observer ─────────────────────────────────────────────────
+
+/**
+ * Trigger the observer/self-improvement engine.
+ * Scores pages, finds orphans, flags contradictions, identifies gaps.
+ * Optionally auto-improves weak pages using LLM.
+ */
+export async function handleRunObserver(
+  config: VaultConfig,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  const maxBudget = typeof args['budget'] === 'number' ? args['budget'] : 1.0;
+  const autoImprove = args['autoImprove'] === true;
+  const maxPages = typeof args['maxPages'] === 'number' ? args['maxPages'] : undefined;
+
+  const { runObserver } = await import('./core/observer.js');
+  const report = await runObserver(config, {
+    maxPagesToReview: maxPages,
+    maxBudget,
+    autoImprove,
+  });
+
+  const weakPages = report.scores
+    .filter((s) => s.score < s.maxScore * 0.6)
+    .slice(0, 15)
+    .map((s) => ({ title: s.title, score: s.score, maxScore: s.maxScore, topIssue: s.issues[0] ?? null }));
+
+  const improvedCount = report.improvements?.filter((i) => i.improved).length ?? 0;
+
+  return {
+    date: report.date,
+    totalPages: report.totalPages,
+    pagesReviewed: report.pagesReviewed,
+    averageScore: report.averageScore,
+    maxScore: report.maxScore,
+    weakPageCount: weakPages.length,
+    weakPages,
+    orphanCount: report.orphans.length,
+    orphans: report.orphans.slice(0, 10).map((o) => o.title),
+    gapCount: report.gaps.length,
+    gaps: report.gaps.slice(0, 8),
+    contradictionCount: report.contradictions.length,
+    topIssues: report.topIssues.slice(0, 5),
+    crossLinkOpportunities: report.crossLinks?.length ?? 0,
+    pageSuggestions: report.pageSuggestions?.slice(0, 5) ?? [],
+    autoImprove,
+    improvedCount,
+    budgetUsed: maxBudget,
+    message: `Observer run complete. ${report.pagesReviewed} pages reviewed, avg score ${report.averageScore}/${report.maxScore}. ${improvedCount} pages auto-improved.`,
+    hint: 'Full report saved to .wikimem/observer-reports/. Use wikimem_get_report to retrieve it.',
+  };
+}
+
+// ─── wikimem_get_report ───────────────────────────────────────────────────
+
+/**
+ * Get the latest (or a specific date's) observer report.
+ * Returns the full structured report from .wikimem/observer-reports/.
+ */
+export async function handleGetReport(
+  vaultRoot: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  const { getObserverReportsDir } = await import('./core/observer.js');
+  const reportsDir = getObserverReportsDir(vaultRoot);
+
+  if (!existsSync(reportsDir)) {
+    return {
+      found: false,
+      message: 'No observer reports found. Run wikimem_run_observer first.',
+    };
+  }
+
+  const dateArg = typeof args['date'] === 'string' ? args['date'].trim() : null;
+
+  let reportFile: string | null = null;
+
+  if (dateArg) {
+    const target = join(reportsDir, `${dateArg}.json`);
+    if (existsSync(target)) {
+      reportFile = target;
+    } else {
+      return {
+        found: false,
+        date: dateArg,
+        message: `No report found for date "${dateArg}". Check .wikimem/observer-reports/ for available reports.`,
+      };
+    }
+  } else {
+    // Get latest report by sorting filenames (ISO date format sorts lexicographically)
+    const files = readdirSync(reportsDir)
+      .filter((f) => f.endsWith('.json'))
+      .sort()
+      .reverse();
+
+    if (files.length === 0) {
+      return {
+        found: false,
+        message: 'No observer reports found. Run wikimem_run_observer first.',
+      };
+    }
+
+    reportFile = join(reportsDir, files[0] as string);
+  }
+
+  try {
+    const raw = readFileSync(reportFile, 'utf-8');
+    const report = JSON.parse(raw) as {
+      date: string;
+      generatedAt: string;
+      totalPages: number;
+      pagesReviewed: number;
+      averageScore: number;
+      maxScore: number;
+      orphans: Array<{ title: string }>;
+      gaps: Array<unknown>;
+      contradictions: Array<unknown>;
+      topIssues: Array<{ issue: string; count: number }>;
+      improvements: Array<{ improved: boolean }>;
+      experimentInsights?: string[];
+    };
+
+    // Return a condensed version (full report can be huge)
+    return {
+      found: true,
+      date: report.date,
+      generatedAt: report.generatedAt,
+      totalPages: report.totalPages,
+      pagesReviewed: report.pagesReviewed,
+      averageScore: report.averageScore,
+      maxScore: report.maxScore,
+      orphanCount: report.orphans?.length ?? 0,
+      gapCount: report.gaps?.length ?? 0,
+      contradictionCount: report.contradictions?.length ?? 0,
+      topIssues: report.topIssues?.slice(0, 10) ?? [],
+      improvementsApplied: report.improvements?.filter((i) => i.improved).length ?? 0,
+      experimentInsights: report.experimentInsights?.slice(0, 5) ?? [],
+      message: `Report from ${report.date}: ${report.pagesReviewed}/${report.totalPages} pages, avg score ${report.averageScore}/${report.maxScore}.`,
+    };
+  } catch (err) {
+    return {
+      found: false,
+      error: err instanceof Error ? err.message : String(err),
+      message: 'Failed to read report file.',
+    };
   }
 }

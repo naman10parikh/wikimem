@@ -24,6 +24,16 @@ export interface UserConfig {
   provider?: string;
   model?: string;
   api_key?: string;
+  /** Per-area model selection (UXO-059): different models for ingestion, querying, observer */
+  ingest_model?: string;
+  ingest_api_key?: string;
+  ingest_base_url?: string;
+  query_model?: string;
+  query_api_key?: string;
+  query_base_url?: string;
+  observer_model?: string;
+  observer_api_key?: string;
+  observer_base_url?: string;
   /** Multi-provider fallback chain (SUP-003). When set, overrides single `provider` for LLM calls. */
   providers?: ProvidersYamlConfig;
   vault?: {
@@ -60,6 +70,8 @@ export interface UserConfig {
       position?: number;
     }>;
     disabled_steps?: string[];
+    /** User-overridden prompts for built-in pipeline steps (UXO-077) */
+    prompts?: Record<string, string>;
   };
 }
 

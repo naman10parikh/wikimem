@@ -6,6 +6,7 @@ import type { VaultConfig } from './vault.js';
 import { readWikiPage, writeWikiPage, writeWikiPageVersioned, listWikiPages, slugify } from './vault.js';
 import { updateIndex } from './index-manager.js';
 import { appendLog } from './log-manager.js';
+import { getPrompt } from './pipeline-prompts.js';
 import { processText } from '../processors/text.js';
 import { processUrl } from '../processors/url.js';
 import { isImageFile, processImage } from '../processors/image.js';

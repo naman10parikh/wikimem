@@ -1828,10 +1828,13 @@
 
       /* ── Metadata Properties Panel (Obsidian-style) ── */
       #page-meta {
-        border-bottom: 1px solid var(--border-subtle);
+        border-bottom: 1px solid rgba(62, 62, 62, 0.5);
         padding: 0 0 14px;
-        margin-bottom: 16px;
+        margin-bottom: 24px;
         font-size: 12px;
+        background: transparent;
+        border-radius: 0;
+        box-shadow: none;
       }
       .meta-props-header {
         display: flex;
@@ -4313,6 +4316,196 @@
       #query-result.visible {
         display: block;
       }
+
+      /* ── Agent query enhancements ── */
+      .query-phase-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0 6px;
+        color: var(--text-dim);
+        font-size: 12px;
+      }
+      .query-phase-steps {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .query-phase-step {
+        width: 28px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--border);
+        transition: background 0.3s;
+      }
+      .query-phase-step.active {
+        background: var(--accent);
+        animation: pulse-bar 1s ease-in-out infinite;
+      }
+      .query-phase-step.done {
+        background: var(--green);
+      }
+      @keyframes pulse-bar {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      .stream-cursor {
+        display: inline-block;
+        width: 2px;
+        height: 1em;
+        background: var(--accent);
+        margin-left: 1px;
+        vertical-align: text-bottom;
+        animation: blink-cursor 0.7s step-end infinite;
+      }
+      @keyframes blink-cursor {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+      }
+      .cite-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 16px;
+        background: var(--accent-dim);
+        border: 1px solid rgba(79,158,255,0.25);
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--accent);
+        cursor: pointer;
+        vertical-align: super;
+        line-height: 1;
+        margin: 0 1px;
+        position: relative;
+        text-decoration: none;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .cite-pill:hover { background: rgba(79,158,255,0.22); border-color: var(--accent); }
+      .cite-pill-tooltip {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        min-width: 180px;
+        max-width: 260px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 8px 10px;
+        font-size: 11px;
+        color: var(--text);
+        z-index: 100;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        white-space: normal;
+        pointer-events: none;
+      }
+      .cite-pill:hover .cite-pill-tooltip { display: block; }
+      .query-sources-rail {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border-subtle);
+      }
+      .query-source-chip {
+        font-size: 11px;
+        padding: 3px 8px;
+        background: var(--bg-hover);
+        border: 1px solid var(--border-subtle);
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--accent);
+        transition: background 0.15s;
+      }
+      .query-source-chip:hover { background: var(--accent-dim); }
+      .chip-num { color: var(--text-muted); font-size: 10px; margin-right: 3px; }
+      .query-followups {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border-subtle);
+      }
+      .query-followup-label {
+        font-size: 10px;
+        color: var(--text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        margin-bottom: 5px;
+      }
+      .query-followup-btn {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 5px 8px;
+        margin-bottom: 3px;
+        background: none;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius);
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-family: var(--font);
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+      }
+      .query-followup-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: rgba(79,158,255,0.3); }
+      .query-thread { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
+      .query-turn { animation: fadeIn 0.2s ease; }
+      .query-turn-q {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+      }
+      .query-turn-q::before {
+        content: "You";
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: var(--accent);
+        opacity: 0.7;
+        white-space: nowrap;
+      }
+      .query-turn-a {
+        padding: 10px 12px;
+        background: var(--bg-surface);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-subtle);
+      }
+      .query-actions { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+      .query-action-btn {
+        font-size: 11px;
+        padding: 3px 9px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius);
+        color: var(--text-dim);
+        font-family: var(--font);
+        cursor: pointer;
+        transition: background 0.12s, color 0.12s;
+      }
+      .query-action-btn:hover { background: var(--bg-hover); color: var(--text); }
+      .query-action-btn.success { color: var(--green); border-color: var(--green-dim); }
+      .query-error-box {
+        padding: 10px 12px;
+        background: var(--red-dim);
+        border: 1px solid rgba(241,76,76,0.25);
+        border-radius: var(--radius-md);
+        font-size: 12px;
+        color: var(--red);
+      }
+      .query-error-box .err-action { margin-top: 6px; font-size: 11px; color: var(--text-dim); }
+      .query-error-box .err-retry { color: var(--accent); cursor: pointer; text-decoration: underline; }
+      .query-rate-countdown { font-family: var(--font-mono); font-weight: 600; }
+      .query-empty-hint { padding: 10px 0 4px; font-size: 12px; color: var(--text-muted); text-align: center; }
+      .query-empty-hint a { color: var(--accent); cursor: pointer; text-decoration: none; }
+      .query-empty-hint a:hover { text-decoration: underline; }
 
       .spinner {
         display: inline-block;
@@ -7229,6 +7422,230 @@
         line-height: 1.4;
       }
 
+      /* ── Observer Report Modal ── */
+      .obs-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        z-index: 215;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(2px);
+      }
+      .obs-modal {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        width: min(860px, 96vw);
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 56px rgba(0, 0, 0, 0.6);
+      }
+      .obs-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      .obs-modal-header h3 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text);
+      }
+      .obs-modal-header h3 .obs-date {
+        font-size: 12px;
+        font-weight: 400;
+        color: var(--text-muted);
+      }
+      .obs-modal-body {
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+        padding: 18px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .obs-summary-card {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 20px;
+        align-items: center;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 18px 20px;
+      }
+      .obs-ring-wrap {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        flex-shrink: 0;
+      }
+      .obs-ring-wrap svg { transform: rotate(-90deg); }
+      .obs-ring-label {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.15;
+      }
+      .obs-ring-pct { font-size: 20px; font-weight: 700; color: var(--text); }
+      .obs-ring-sub { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+      .obs-summary-meta { display: flex; flex-direction: column; gap: 10px; }
+      .obs-summary-stats { display: flex; flex-wrap: wrap; gap: 8px; }
+      .obs-stat-chip {
+        font-size: 11px;
+        padding: 3px 9px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text-secondary);
+        white-space: nowrap;
+      }
+      .obs-stat-chip.red { border-color: rgba(241,76,76,.35); color: var(--red); background: var(--red-dim); }
+      .obs-stat-chip.amber { border-color: rgba(215,186,125,.35); color: var(--amber); background: rgba(215,186,125,.1); }
+      .obs-stat-chip.green { border-color: rgba(78,201,176,.35); color: var(--green); background: var(--green-dim); }
+      .obs-budget-row { display: flex; gap: 16px; font-size: 11px; color: var(--text-muted); }
+      .obs-budget-row span strong { color: var(--text-secondary); }
+      .obs-section {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .obs-section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        user-select: none;
+      }
+      .obs-section-head:hover { background: rgba(255,255,255,.04); }
+      .obs-section-head.empty { cursor: default; }
+      .obs-section-head.empty:hover { background: none; }
+      .obs-section-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.45px;
+      }
+      .obs-section-right { display: flex; align-items: center; gap: 8px; }
+      .obs-section-count {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 1px 7px;
+        border-radius: 20px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+      }
+      .obs-section-count.red { background: var(--red-dim); border-color: rgba(241,76,76,.3); color: var(--red); }
+      .obs-section-count.amber { background: rgba(215,186,125,.1); border-color: rgba(215,186,125,.3); color: var(--amber); }
+      .obs-section-count.green { background: var(--green-dim); border-color: rgba(78,201,176,.3); color: var(--green); }
+      .obs-section-count.blue { background: var(--blue-dim); border-color: rgba(86,156,214,.3); color: var(--blue); }
+      .obs-chevron { font-size: 10px; color: var(--text-muted); transition: transform 0.18s; }
+      .obs-chevron.open { transform: rotate(90deg); }
+      .obs-section-body { padding: 0 14px; display: none; }
+      .obs-section-body.open { display: block; }
+      .obs-issue-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-subtle);
+        font-size: 12px;
+      }
+      .obs-issue-row:last-child { border-bottom: none; }
+      .obs-issue-text { flex: 1; color: var(--text-secondary); line-height: 1.4; }
+      .obs-issue-text strong { color: var(--text); }
+      .obs-issue-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+      .obs-badge {
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 10px;
+        font-weight: 600;
+        flex-shrink: 0;
+        white-space: nowrap;
+        margin-top: 1px;
+      }
+      .obs-badge.high { background: rgba(241,76,76,.18); color: var(--red); }
+      .obs-badge.medium { background: rgba(215,186,125,.15); color: var(--amber); }
+      .obs-badge.low { background: var(--green-dim); color: var(--green); }
+      .obs-imp-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-subtle);
+        font-size: 12px;
+      }
+      .obs-imp-row:last-child { border-bottom: none; }
+      .obs-imp-icon { font-size: 14px; flex-shrink: 0; line-height: 1.5; }
+      .obs-imp-text { flex: 1; color: var(--text-secondary); line-height: 1.4; }
+      .obs-imp-text strong { color: var(--text); }
+      .obs-imp-text .obs-action { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+      .obs-score-arrow { font-size: 11px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; padding-top: 2px; }
+      .obs-score-arrow .was { color: var(--red); }
+      .obs-score-arrow .now { color: var(--green); }
+      .obs-sugg-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-subtle);
+        font-size: 12px;
+      }
+      .obs-sugg-row:last-child { border-bottom: none; }
+      .obs-sugg-text { flex: 1; color: var(--text-secondary); line-height: 1.4; }
+      .obs-sugg-text strong { color: var(--text); }
+      .obs-sugg-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+      .obs-sugg-actions { display: flex; gap: 5px; flex-shrink: 0; padding-top: 1px; }
+      .obs-exp-row { padding: 6px 0; font-size: 12px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle); line-height: 1.4; }
+      .obs-exp-row:last-child { border-bottom: none; }
+      .obs-next-card {
+        background: rgba(79,158,255,.06);
+        border: 1px solid rgba(79,158,255,.2);
+        border-radius: 8px;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .obs-next-text { font-size: 12px; color: var(--text-secondary); flex: 1; line-height: 1.55; }
+      .obs-next-text strong { color: var(--text); }
+      .obs-empty { padding: 14px 0; font-size: 12px; color: var(--text-muted); text-align: center; }
+      .obs-view-report-btn {
+        font-size: 11px;
+        color: var(--accent);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      .obs-view-report-btn:hover { opacity: 0.8; }
+
       /* ── Input Modal (UXO-004) ── */
       #input-modal-overlay {
         position: fixed;
@@ -8755,6 +9172,45 @@
           </div>
         </div>
 
+        <!-- Connectors context panel (UXO-019) -->
+        <div id="sidebar-panel-connectors" class="sidebar-ctx-panel">
+          <div class="sidebar-ctx-title">Connectors</div>
+          <div class="sidebar-ctx-content" id="sidebar-connectors-cats">
+            <div class="sidebar-ctx-item" onclick="setConnectorCat(document.querySelector('.conn-tab[data-cat=all]'))">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              All
+            </div>
+            <div class="sidebar-ctx-item" onclick="setConnectorCat(document.querySelector('.conn-tab[data-cat=communication]'))">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Communication
+            </div>
+            <div class="sidebar-ctx-item" onclick="setConnectorCat(document.querySelector('.conn-tab[data-cat=development]'))">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              Development
+            </div>
+            <div class="sidebar-ctx-item" onclick="setConnectorCat(document.querySelector('.conn-tab[data-cat=cloud]'))">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+              Cloud
+            </div>
+            <div class="sidebar-ctx-item" onclick="setConnectorCat(document.querySelector('.conn-tab[data-cat=productivity]'))">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Productivity
+            </div>
+            <div class="sidebar-ctx-item" onclick="setConnectorCat(document.querySelector('.conn-tab[data-cat=knowledge]'))">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              Knowledge
+            </div>
+            <div class="sidebar-ctx-item" onclick="setConnectorCat(document.querySelector('.conn-tab[data-cat=ai]'))">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              AI / ML
+            </div>
+            <div class="sidebar-ctx-item" onclick="setConnectorCat(document.querySelector('.conn-tab[data-cat=other]'))">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+              Other
+            </div>
+          </div>
+        </div>
+
         <!-- Settings context panel -->
         <div id="sidebar-panel-settings" class="sidebar-ctx-panel">
           <div class="sidebar-ctx-title">Settings</div>
@@ -8806,140 +9262,132 @@
               <div id="home-onboarding" style="display: none">
                 <div class="onboard-wrap">
                   <div class="onboard-card">
-                    <h1>WikiMem</h1>
-                    <p class="onboard-sub">
-                      Your self-improving knowledge base
-                    </p>
-                    <div class="onboard-grid">
-                      <div
-                        class="onboard-action"
-                        onclick="openViewTab('pipeline')"
-                      >
+                    <div class="onboard-eyebrow">Welcome to WikiMem</div>
+                    <h1>Your self-improving knowledge base</h1>
+                    <p class="onboard-sub">Start by choosing how to add content</p>
+
+                    <!-- Top row: 3 equal cards -->
+                    <div class="onboard-grid-3">
+                      <div class="onboard-action" onclick="onboardImportFolder()">
                         <div class="onboard-action-icon">
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" y1="3" x2="12" y2="15" />
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
                           </svg>
                         </div>
-                        <div class="onboard-action-title">Upload Files</div>
-                        <div class="onboard-action-desc">
-                          Drop files or paste text to start building your wiki
-                        </div>
+                        <div class="onboard-action-title">Import Folder</div>
+                        <div class="onboard-action-desc">Drop files or open a local folder to ingest</div>
                       </div>
-                      <div
-                        class="onboard-action"
-                        onclick="showConnectorModal('folder')"
-                      >
+                      <div class="onboard-action" onclick="onboardConnectSource()">
                         <div class="onboard-action-icon">
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <path
-                              d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"
-                            />
-                            <line x1="12" y1="11" x2="12" y2="17" />
-                            <line x1="9" y1="14" x2="15" y2="14" />
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                            <line x1="12" y1="11" x2="12" y2="17"/>
+                            <line x1="9" y1="14" x2="15" y2="14"/>
                           </svg>
                         </div>
-                        <div class="onboard-action-title">Connect a Folder</div>
-                        <div class="onboard-action-desc">
-                          Watch a local folder for automatic ingestion
-                        </div>
+                        <div class="onboard-action-title">Connect Source</div>
+                        <div class="onboard-action-desc">Watch a folder or sync from a connector</div>
                       </div>
-                      <div class="onboard-action" onclick="startUrlIngest()">
+                      <div class="onboard-action" onclick="onboardWriteNote()">
                         <div class="onboard-action-icon">
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="2" y1="12" x2="22" y2="12" />
-                            <path
-                              d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"
-                            />
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 20h9"/>
+                            <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
                           </svg>
                         </div>
-                        <div class="onboard-action-title">Import from URL</div>
-                        <div class="onboard-action-desc">
-                          Paste a URL to scrape and ingest
-                        </div>
-                      </div>
-                      <div
-                        class="onboard-action"
-                        onclick="showConnectorModal('github')"
-                      >
-                        <div class="onboard-action-icon">
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <line x1="6" y1="3" x2="6" y2="15" />
-                            <circle cx="18" cy="6" r="3" />
-                            <circle cx="6" cy="18" r="3" />
-                            <path d="M18 9a9 9 0 01-9 9" />
-                          </svg>
-                        </div>
-                        <div class="onboard-action-title">Connect Git Repo</div>
-                        <div class="onboard-action-desc">
-                          Link a GitHub repository
-                        </div>
+                        <div class="onboard-action-title">Write Note</div>
+                        <div class="onboard-action-desc">Create a page directly in your wiki</div>
                       </div>
                     </div>
-                    <div class="onboard-formats">
-                      <strong>Supports 13+ formats:</strong> PDF, DOCX, XLSX,
-                      PPTX, CSV, JSON, YAML, HTML, TXT, PNG, WAV, MP4, URL
+
+                    <!-- Full-width URL row -->
+                    <div class="onboard-url-row">
+                      <div class="onboard-action onboard-url" onclick="onboardImportUrl()">
+                        <div class="onboard-action-icon">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="2" y1="12" x2="22" y2="12"/>
+                            <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+                          </svg>
+                        </div>
+                        <div class="onboard-url-text">
+                          <div class="onboard-action-title">Import from URL</div>
+                          <div class="onboard-url-hint">Paste an article, doc, or website URL to scrape and add to your wiki</div>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);flex-shrink:0">
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                      </div>
                     </div>
-                    <div class="onboard-local">
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <rect
-                          x="3"
-                          y="11"
-                          width="18"
-                          height="11"
-                          rx="2"
-                          ry="2"
-                        />
-                        <path d="M7 11V7a5 5 0 0110 0v4" />
-                      </svg>
-                      Your knowledge stays local. WikiMem runs entirely on your
-                      machine.
+
+                    <!-- Footer -->
+                    <div class="onboard-footer">
+                      <button class="onboard-learn-link" onclick="openWikiMemTour()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="12" r="10"/>
+                          <line x1="12" y1="8" x2="12" y2="12"/>
+                          <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        Learn how it works
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                      </button>
+                      <div class="onboard-formats">
+                        <strong>13+ formats:</strong> PDF, DOCX, XLSX, HTML, TXT, PNG, WAV, URL&hellip;
+                      </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tour replay button (shown after onboarding completes) -->
+              <button id="tour-replay-btn" onclick="openWikiMemTour()" title="Replay tour">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </button>
+
+              <!-- Tour modal -->
+              <div id="tour-modal-overlay" onclick="closeTourOnBackdrop(event)">
+                <div class="tour-modal">
+                  <div class="tour-step-badge" id="tour-step-label">Step 1 of 4</div>
+                  <div class="tour-icon-wrap" id="tour-step-icon"></div>
+                  <h3 id="tour-step-title"></h3>
+                  <p id="tour-step-body"></p>
+                  <div class="tour-dots" id="tour-dots"></div>
+                  <div class="tour-actions">
+                    <button class="tour-btn" id="tour-btn-skip" onclick="closeTourModal()">Skip</button>
+                    <button class="tour-btn primary" id="tour-btn-next" onclick="tourNext()">Next</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Write Note modal -->
+              <div id="write-note-overlay" onclick="closeWriteNoteOnBackdrop(event)">
+                <div class="write-note-modal">
+                  <h3>Write a Note</h3>
+                  <input id="write-note-title" type="text" placeholder="Title" maxlength="120" />
+                  <textarea id="write-note-body" placeholder="Start writing your note..."></textarea>
+                  <div class="write-note-actions">
+                    <button class="tour-btn" onclick="closeWriteNoteModal()">Cancel</button>
+                    <button class="tour-btn primary" onclick="submitWriteNote()">Add to Wiki</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- URL ingest modal (onboarding) -->
+              <div id="url-ingest-overlay" onclick="closeUrlIngestOnBackdrop(event)">
+                <div class="url-ingest-modal">
+                  <h3>Import from URL</h3>
+                  <input id="onboard-url-input" type="url" placeholder="https://example.com/article" />
+                  <div class="url-ingest-actions">
+                    <button class="tour-btn" onclick="closeUrlIngestModal()">Cancel</button>
+                    <button class="tour-btn primary" onclick="submitOnboardUrl()">Scrape &amp; Add</button>
                   </div>
                 </div>
               </div>
@@ -9132,6 +9580,12 @@
                       />
                     </svg>
                   </button>
+                </div>
+                <!-- Reading time bar (UXO-011) -->
+                <div id="page-reading-bar">
+                  <span class="reading-bar-time" id="reading-bar-time"></span>
+                  <span class="reading-bar-sep"></span>
+                  <span id="reading-bar-words"></span>
                 </div>
                 <div
                   id="page-validation-bar"
@@ -10306,6 +10760,23 @@
       </div>
     </div>
 
+    <!-- Observer Report Modal -->
+    <div id="obs-modal-overlay" class="obs-modal-overlay" style="display: none" role="dialog" aria-modal="true" aria-label="Observer Report">
+      <div class="obs-modal">
+        <div class="obs-modal-header">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            Observer Report
+            <span class="obs-date" id="obs-modal-date"></span>
+          </h3>
+          <button class="diff-modal-close" id="obs-modal-close" title="Close">&times;</button>
+        </div>
+        <div class="obs-modal-body" id="obs-modal-body">
+          <div class="obs-empty">Loading…</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Contradiction compare (Observer heuristic pairs) -->
     <div id="cx-modal-overlay" class="cx-modal-overlay" style="display: none">
       <div
@@ -10433,7 +10904,27 @@
         editPageTitle: null,
         editOriginal: "",
         editTabType: null,
+        vimMode: false,
       };
+
+      // ── Recent Pages (localStorage ring buffer, max 10) ──
+      const RECENT_PAGES_KEY = "wikimem-recent-pages";
+      function getRecentPages() {
+        try {
+          const raw = localStorage.getItem(RECENT_PAGES_KEY);
+          const arr = raw ? JSON.parse(raw) : [];
+          return Array.isArray(arr) ? arr : [];
+        } catch { return []; }
+      }
+      function pushRecentPage(title) {
+        if (!title) return;
+        try {
+          let arr = getRecentPages().filter((t) => t !== title);
+          arr.unshift(title);
+          if (arr.length > 10) arr = arr.slice(0, 10);
+          localStorage.setItem(RECENT_PAGES_KEY, JSON.stringify(arr));
+        } catch {}
+      }
 
       function esc(s) {
         return String(s)
@@ -10730,6 +11221,34 @@
         if (resizeHandle)
           resizeHandle.classList.toggle("settings-hidden", isSettings);
 
+        // UXO-019: switch sidebar context panel to match active mode
+        {
+          const panelMap = {
+            home: "files", page: "files", folder: "files",
+            graph: "graph",
+            pipeline: "pipeline",
+            history: "history",
+            timelapse: "timelapse",
+            connectors: "connectors",
+            settings: "settings",
+          };
+          const targetPanel = panelMap[mode] || "files";
+          document.querySelectorAll(".sidebar-ctx-panel").forEach((p) => {
+            p.classList.toggle("active", p.id === "sidebar-panel-" + targetPanel);
+          });
+          // Update sidebar title
+          const titleEl = document.getElementById("sidebar-title-text");
+          const titleMap = {
+            files: "Explorer", graph: "Graph", pipeline: "Upload",
+            history: "History", timelapse: "Timelapse",
+            connectors: "Connectors", settings: "Settings",
+          };
+          if (titleEl) titleEl.textContent = titleMap[targetPanel] || "Explorer";
+          // Show/hide the files-only action buttons
+          const filesActions = document.getElementById("sidebar-files-actions");
+          if (filesActions) filesActions.style.display = targetPanel === "files" ? "" : "none";
+        }
+
         document
           .getElementById("rail-files")
           .classList.toggle(
@@ -10765,6 +11284,12 @@
         if (mode === "graph" && !state.graphInit) initGraph();
         if (mode === "settings") loadSettings();
         if (mode === "history") loadGitHistory();
+      }
+
+      // UXO-019: setSidebarMode — used by settings gear button and rail icons
+      // that want sidebar context switching without full view change.
+      function setSidebarMode(mode) {
+        showView(mode);
       }
 
       // ── UXO-021: Folder View ──
@@ -13984,6 +14509,26 @@
         const width = container.clientWidth;
         const height = container.clientHeight;
 
+        // ── Jarvis: SVG gradient defs ──────────────────────────────────────
+        const defs = svg.append("defs");
+        const grad = defs
+          .append("linearGradient")
+          .attr("id", "gradient-blue-cyan")
+          .attr("x1", "0%")
+          .attr("y1", "0%")
+          .attr("x2", "100%")
+          .attr("y2", "100%");
+        grad
+          .append("stop")
+          .attr("offset", "0%")
+          .attr("stop-color", "#4f9eff")
+          .attr("stop-opacity", "0.6");
+        grad
+          .append("stop")
+          .attr("offset", "100%")
+          .attr("stop-color", "#00c8ff")
+          .attr("stop-opacity", "0.3");
+
         const g = svg.append("g");
         const zoom = d3
           .zoom()
@@ -14042,26 +14587,44 @@
         const cs = (k) =>
           getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 
+        // ── Jarvis: animated gradient links ───────────────────────────────
         const link = g
           .append("g")
           .selectAll("line")
           .data(data.links)
           .join("line")
-          .attr("stroke", cs("--border-subtle"))
-          .attr("stroke-width", 0.8)
-          .attr("stroke-opacity", 0.4);
+          .attr("class", "graph-link-jarvis")
+          .attr("stroke", "url(#gradient-blue-cyan)")
+          .attr("stroke-width", 1.2);
 
-        // Hub node outer ring (gold, matching timelapse)
+        // Hub node outer ring (Jarvis blue glow ring)
         g.append("g")
           .selectAll("circle.god-ring")
           .data(data.nodes.filter((d) => isGodNode(d.id)))
           .join("circle")
           .attr("class", "god-ring")
-          .attr("r", (d) => nR(d.id) + 5)
+          .attr("r", (d) => nR(d.id) + 6)
           .attr("fill", "none")
-          .attr("stroke", "#d4a843")
-          .attr("stroke-width", 1.5)
-          .attr("opacity", 0.5);
+          .attr("stroke", "rgba(79,158,255,0.4)")
+          .attr("stroke-width", 2)
+          .attr("opacity", 0.7);
+
+        // ── Drag: pin on drop, dblclick to unpin ──────────────────────────
+        const drag = d3
+          .drag()
+          .on("start", (e, d) => {
+            if (!e.active) sim.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+          })
+          .on("drag", (e, d) => {
+            d.fx = e.x;
+            d.fy = e.y;
+          })
+          .on("end", (e, d) => {
+            if (!e.active) sim.alphaTarget(0);
+            // pin stays set — node remains fixed where dropped
+          });
 
         const node = g
           .append("g")
@@ -14070,27 +14633,24 @@
           .join("circle")
           .attr("r", (d) => nR(d.id))
           .attr("fill", (d) => communityColor(d.id))
-          .attr("stroke", (d) => (isGodNode(d.id) ? "#d4a843" : cs("--bg")))
-          .attr("stroke-width", (d) => (isGodNode(d.id) ? 2 : 1.5))
+          .attr("stroke", (d) =>
+            isGodNode(d.id) ? "rgba(79,158,255,0.8)" : "rgba(79,158,255,0.2)",
+          )
+          .attr("stroke-width", (d) => (isGodNode(d.id) ? 2 : 1))
           .attr("cursor", "pointer")
-          .call(
-            d3
-              .drag()
-              .on("start", (e, d) => {
-                if (!e.active) sim.alphaTarget(0.3).restart();
-                d.fx = d.x;
-                d.fy = d.y;
-              })
-              .on("drag", (e, d) => {
-                d.fx = e.x;
-                d.fy = e.y;
-              })
-              .on("end", (e, d) => {
-                if (!e.active) sim.alphaTarget(0);
-                d.fx = null;
-                d.fy = null;
-              }),
-          );
+          .call(drag);
+
+        // Apply hub-node class for CSS pulse animation
+        node.filter((d) => isGodNode(d.id)).attr("class", "hub-node");
+
+        // ── Connection count map for label visibility ─────────────────────
+        const connectionCount = new Map(data.nodes.map((n) => [n.id, 0]));
+        data.links.forEach((l) => {
+          const s = typeof l.source === "object" ? l.source.id : l.source;
+          const t = typeof l.target === "object" ? l.target.id : l.target;
+          connectionCount.set(s, (connectionCount.get(s) || 0) + 1);
+          connectionCount.set(t, (connectionCount.get(t) || 0) + 1);
+        });
 
         const label = g
           .append("g")
@@ -14104,7 +14664,9 @@
           .attr("font-weight", (d) => (isGodNode(d.id) ? "600" : "normal"))
           .attr("font-family", "Inter,sans-serif")
           .attr("fill", (d) =>
-            isGodNode(d.id) ? cs("--text-bright") : cs("--text-dim"),
+            isGodNode(d.id)
+              ? "rgba(160,220,255,0.95)"
+              : "rgba(100,170,255,0.65)",
           )
           .attr("text-anchor", "middle")
           .attr(
@@ -14113,6 +14675,10 @@
               (isGodNode(d.id)
                 ? Math.max(7, Math.min(22, Math.sqrt(d.wordCount / 50)))
                 : Math.max(4, Math.min(16, Math.sqrt(d.wordCount / 70)))) + 13,
+          )
+          // Default: only show labels for nodes with > 3 connections
+          .attr("display", (d) =>
+            (connectionCount.get(d.id) || 0) > 3 ? "block" : "none",
           );
 
         let selectedNode = null;
@@ -16521,56 +17087,314 @@
       }
 
       // ── Query ──
-      document
-        .getElementById("query-btn")
-        .addEventListener("click", submitQuery);
-      document
-        .getElementById("query-input")
-        .addEventListener("keydown", (e) => {
-          if (e.key === "Enter") submitQuery();
-        });
-      async function submitQuery() {
+      // Conversation history for follow-up context
+      const _queryHistory = [];
+      let _queryHistoryIndex = -1;
+      let _queryAbortController = null;
+
+      // Model cost estimates (per 1K tokens, approximate)
+      const _modelCosts = {
+        "claude-sonnet-4-20250514": "$0.003",
+        "claude-3-5-sonnet-20241022": "$0.003",
+        "claude-3-haiku-20240307": "$0.0003",
+        "gpt-4o": "$0.005",
+        "gpt-4o-mini": "$0.00015",
+        "ollama/local": "free",
+      };
+
+      // Restore saved model preference
+      (function () {
+        const saved = localStorage.getItem("wikimem_query_model");
+        const sel = document.getElementById("query-model");
+        if (saved && sel) {
+          for (const opt of sel.options) {
+            if (opt.value === saved) { sel.value = saved; break; }
+          }
+        }
+      })();
+
+      document.getElementById("query-model").addEventListener("change", function () {
+        localStorage.setItem("wikimem_query_model", this.value);
+      });
+
+      document.getElementById("query-btn").addEventListener("click", submitQuery);
+      document.getElementById("query-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitQuery(); }
+        // Arrow-up recalls last query
+        if (e.key === "ArrowUp" && e.target.value === "" && _queryHistory.length) {
+          _queryHistoryIndex = Math.min(_queryHistoryIndex + 1, _queryHistory.length - 1);
+          e.target.value = _queryHistory[_queryHistory.length - 1 - _queryHistoryIndex] || "";
+          e.preventDefault();
+        }
+        if (e.key === "ArrowDown" && _queryHistoryIndex > 0) {
+          _queryHistoryIndex--;
+          e.target.value = _queryHistory[_queryHistory.length - 1 - _queryHistoryIndex] || "";
+          e.preventDefault();
+        }
+      });
+
+      async function submitQuery(questionOverride) {
         const input = document.getElementById("query-input");
         const result = document.getElementById("query-result");
         const btn = document.getElementById("query-btn");
         const modelSelect = document.getElementById("query-model");
-        const q = input.value.trim();
+        const q = (typeof questionOverride === "string" ? questionOverride : input.value).trim();
         if (!q) return;
+
+        // Cancel any in-flight request
+        if (_queryAbortController) _queryAbortController.abort();
+        _queryAbortController = new AbortController();
+
+        // Save to history
+        _queryHistory.push(q);
+        _queryHistoryIndex = -1;
+        if (typeof questionOverride !== "string") input.value = "";
+
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner"></span>';
         result.classList.add("visible");
-        result.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:var(--text-muted)"><span class="spinner"></span> Thinking...</div>`;
+
+        const model = modelSelect?.value || "claude-sonnet-4-20250514";
+
+        // Build thread: show prior turns + new question
+        const threadEl = result.querySelector(".query-thread") || document.createElement("div");
+        threadEl.className = "query-thread";
+
+        // Add this question to thread
+        const turnEl = document.createElement("div");
+        turnEl.className = "query-turn";
+        turnEl.innerHTML = `<div class="query-turn-q">${esc(q)}</div><div class="query-turn-a" id="q-turn-current"><div class="query-phase-bar"><div class="query-phase-steps"><div class="query-phase-step active" id="qps-0"></div><div class="query-phase-step" id="qps-1"></div><div class="query-phase-step" id="qps-2"></div></div><span id="q-phase-label">Searching knowledge base...</span></div><div id="q-stream-body" class="md" style="font-size:13px;line-height:1.7;margin-top:4px"></div></div>`;
+        threadEl.appendChild(turnEl);
+
+        // Rebuild result: thread + new turn
+        result.innerHTML = "";
+        result.appendChild(threadEl);
+
+        const streamBody = turnEl.querySelector("#q-stream-body");
+        const phaseLabel = turnEl.querySelector("#q-phase-label");
+        const steps = [
+          turnEl.querySelector("#qps-0"),
+          turnEl.querySelector("#qps-1"),
+          turnEl.querySelector("#qps-2"),
+        ];
+
+        function setPhase(idx, label) {
+          steps.forEach((s, i) => {
+            s.classList.remove("active", "done");
+            if (i < idx) s.classList.add("done");
+            else if (i === idx) s.classList.add("active");
+          });
+          phaseLabel.textContent = label;
+        }
+
+        let rawAnswer = "";
+        let sourcesFromStream = [];
+        let cursorEl = null;
+
+        function addCursor() {
+          if (cursorEl) return;
+          cursorEl = document.createElement("span");
+          cursorEl.className = "stream-cursor";
+          streamBody.appendChild(cursorEl);
+        }
+        function removeCursor() {
+          if (cursorEl) { cursorEl.remove(); cursorEl = null; }
+        }
+
+        // Inject citation pills into rendered HTML
+        function injectCitations(html, sources) {
+          if (!sources.length) return html;
+          // Replace [N] patterns with pill elements
+          return html.replace(/\[(\d+)\]/g, (match, num) => {
+            const idx = parseInt(num, 10) - 1;
+            const src = sources[idx];
+            if (!src) return match;
+            const tip = esc(src);
+            return `<span class="cite-pill" onclick="openPage('${tip}')" title="${tip}">${num}<span class="cite-pill-tooltip">Source: ${tip}<br><span style="color:var(--text-muted);font-size:10px">Click to open page</span></span></span>`;
+          });
+        }
+
+        // Render streaming markdown with cursor preserved
+        function renderStreamChunk() {
+          removeCursor();
+          const rendered = renderWikilinks(renderMarkdown(rawAnswer));
+          const withCitations = injectCitations(rendered, sourcesFromStream);
+          streamBody.innerHTML = withCitations;
+          addCursor();
+        }
+
         try {
-          const model = modelSelect?.value || "claude-sonnet-4-20250514";
-          const res = await fetch("/api/query", {
+          const res = await fetch("/api/query-stream", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ question: q, model }),
+            signal: _queryAbortController.signal,
           });
-          const data = await res.json();
-          if (data.error) {
-            result.innerHTML = `<div style="color:var(--red);font-size:13px">Error: ${esc(data.error)}</div>`;
-          } else {
-            let html = `<div class="md" style="font-size:14px;line-height:1.7">${renderWikilinks(renderMarkdown(data.answer || "No results found in your knowledge base."))}</div>`;
-            if (data.sourcesConsulted?.length) {
-              html += `<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-subtle)">
-              <div style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px">Sources consulted</div>
-              <div style="display:flex;flex-wrap:wrap;gap:4px">${data.sourcesConsulted
-                .map(
-                  (s) =>
-                    `<span style="font-size:11px;padding:3px 8px;background:var(--bg-hover);border-radius:4px;cursor:pointer;color:var(--accent);border:1px solid var(--border-subtle)" onclick="openPage('${esc(s)}')">${esc(s)}</span>`,
-                )
-                .join("")}</div>
-            </div>`;
-            }
-            result.innerHTML = html;
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `HTTP ${res.status}`);
           }
-        } catch {
-          result.innerHTML =
-            '<div style="color:var(--red)">Query failed. Check your API key in Settings.</div>';
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buf = "";
+
+          addCursor();
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            const lines = buf.split("\n");
+            buf = lines.pop() || "";
+
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              let evt;
+              try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+
+              if (evt.type === "phase") {
+                const phaseMap = { searching: 0, analyzing: 1, composing: 2 };
+                const phaseIdx = phaseMap[evt.phase] ?? 0;
+                setPhase(phaseIdx, evt.message || evt.phase);
+              } else if (evt.type === "sources") {
+                sourcesFromStream = evt.sources || [];
+              } else if (evt.type === "token") {
+                // Switch to phase 2 on first token
+                if (rawAnswer === "") setPhase(2, "Composing answer...");
+                rawAnswer += evt.token;
+                // Throttle re-render: every ~80 chars or on punctuation
+                if (rawAnswer.length % 80 === 0 || /[.!?\n]$/.test(rawAnswer)) {
+                  renderStreamChunk();
+                } else {
+                  // Fast path: just append text to avoid full re-render
+                  removeCursor();
+                  const textNode = document.createTextNode(evt.token);
+                  streamBody.appendChild(textNode);
+                  addCursor();
+                }
+              } else if (evt.type === "done") {
+                sourcesFromStream = evt.sources || sourcesFromStream;
+              } else if (evt.type === "error") {
+                removeCursor();
+                // Mark all steps done/error
+                steps.forEach(s => { s.classList.remove("active"); });
+
+                let errHtml = `<div class="query-error-box"><div>${esc(evt.message)}</div><div class="err-action">`;
+                if (evt.isAuthError) {
+                  errHtml += `Add your API key in <span class="err-retry" onclick="openViewTab('settings');renderSettingsSection('models')">Settings → AI Models</span>`;
+                } else if (evt.isRateLimit) {
+                  errHtml += `Rate limited. <span class="err-retry" onclick="submitQuery('${esc(q)}')">Retry</span> or try a different model.`;
+                } else {
+                  errHtml += `<span class="err-retry" onclick="submitQuery('${esc(q)}')">Retry</span> or try a different model.`;
+                }
+                errHtml += `</div></div>`;
+                streamBody.innerHTML = errHtml;
+                btn.disabled = false;
+                btn.textContent = "Ask";
+                return;
+              }
+            }
+          }
+
+          // Final render with full markdown + citations
+          removeCursor();
+          // Check for empty knowledge base
+          if (!rawAnswer.trim()) {
+            streamBody.innerHTML = `<div class="query-empty-hint">No relevant pages found in your knowledge base.<br><a onclick="showView('ingest')">Add sources</a> to get started.</div>`;
+          } else {
+            const finalHtml = injectCitations(renderWikilinks(renderMarkdown(rawAnswer)), sourcesFromStream);
+            streamBody.innerHTML = finalHtml;
+          }
+
+          // Mark all phases done
+          steps.forEach(s => { s.classList.remove("active"); s.classList.add("done"); });
+          phaseLabel.textContent = "";
+          turnEl.querySelector("#q-turn-current").querySelector(".query-phase-bar").style.display = "none";
+
+          // Sources rail
+          if (sourcesFromStream.length) {
+            const rail = document.createElement("div");
+            rail.className = "query-sources-rail";
+            rail.innerHTML = `<div style="font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;width:100%;margin-bottom:4px">Sources</div>` +
+              sourcesFromStream.map((s, i) =>
+                `<span class="query-source-chip" onclick="openPage('${esc(s)}')" title="${esc(s)}"><span class="chip-num">[${i+1}]</span>${esc(s)}</span>`
+              ).join("");
+            streamBody.after(rail);
+          }
+
+          // Follow-up suggestions (generated client-side from answer keywords)
+          const followups = generateFollowups(q, rawAnswer, sourcesFromStream);
+          if (followups.length) {
+            const fuEl = document.createElement("div");
+            fuEl.className = "query-followups";
+            fuEl.innerHTML = `<div class="query-followup-label">Ask a follow-up</div>` +
+              followups.map(f =>
+                `<button class="query-followup-btn" onclick="submitQuery('${esc(f)}')">${esc(f)}</button>`
+              ).join("");
+            streamBody.parentElement.appendChild(fuEl);
+          }
+
+          // Answer action bar
+          const actionsEl = document.createElement("div");
+          actionsEl.className = "query-actions";
+          actionsEl.innerHTML =
+            `<button class="query-action-btn" id="qa-copy" onclick="queryActionCopy(this,'${esc(rawAnswer.replace(/'/g,"\\'"))}')">Copy</button>` +
+            `<button class="query-action-btn" onclick="queryActionSavePage('${esc(q.replace(/'/g,"\\'"))}','${esc(rawAnswer.replace(/'/g,"\\'"))}')">Save as page</button>` +
+            `<button class="query-action-btn" onclick="submitQuery('Please expand and improve the previous answer with more detail and examples.')">Refine</button>`;
+          streamBody.parentElement.appendChild(actionsEl);
+
+        } catch (err) {
+          if (err && err.name === "AbortError") return; // cancelled
+          removeCursor();
+          streamBody.innerHTML = `<div class="query-error-box"><div>${esc(err.message || "Query failed")}</div><div class="err-action">Check your API key in <span class="err-retry" onclick="openViewTab('settings');renderSettingsSection('models')">Settings → AI Models</span></div></div>`;
         }
+
         btn.disabled = false;
         btn.textContent = "Ask";
+        _queryAbortController = null;
+      }
+
+      function generateFollowups(question, answer, sources) {
+        // Heuristic follow-up generation from answer content
+        const suggestions = [];
+        // If sources exist, suggest exploring one
+        if (sources.length > 1) suggestions.push(`Tell me more about [[${sources[0]}]]`);
+        // Generic deepdive
+        suggestions.push(`What are the key takeaways from ${question.length > 40 ? "this topic" : question}?`);
+        if (answer.includes("[[")) {
+          const match = answer.match(/\[\[([^\]]+)\]\]/);
+          if (match) suggestions.push(`What is [[${match[1]}]]?`);
+        }
+        return suggestions.slice(0, 3);
+      }
+
+      function queryActionCopy(btn, text) {
+        navigator.clipboard.writeText(text).then(() => {
+          btn.textContent = "Copied!";
+          btn.classList.add("success");
+          setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("success"); }, 1800);
+        }).catch(() => { btn.textContent = "Failed"; setTimeout(() => { btn.textContent = "Copy"; }, 1500); });
+      }
+
+      async function queryActionSavePage(question, answer) {
+        try {
+          const title = question.length > 60 ? question.substring(0, 60) + "..." : question;
+          const content = `# ${title}\n\n> *Synthesized answer*\n\n${answer}`;
+          const res = await fetch("/api/pages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, content }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (data.slug) {
+            showStatus(`Saved as "${title}"`);
+            loadTree();
+          } else {
+            showStatus("Couldn't save page — check console");
+          }
+        } catch { showStatus("Save failed"); }
       }
 
       // ── URL Ingest ──
@@ -17620,16 +18444,12 @@
           event.data.type === "wikimem-oauth-connected" &&
           event.data.provider
         ) {
-          showToast(
-            event.data.provider.charAt(0).toUpperCase() +
-              event.data.provider.slice(1) +
-              " connected — syncing data...",
-          );
           loadOAuthStatus();
           renderOAuthIntegrations();
           renderHomeConnectors();
           loadSidebarConnectors();
-          syncOAuthProvider(event.data.provider);
+          // UXO-042: show resource picker instead of auto-syncing everything
+          showResourcePicker(event.data.provider);
         }
       });
 
@@ -18527,59 +19347,213 @@
 
       // ── UXO-040: Connectors view ──
 
+      // ── Connector Catalog ──────────────────────────────────────────────────────
+      // method: 'oauth' | 'api_key' | 'bot_token' | 'url' | 'webhook' | 'local' | 'coming_soon'
+      // tokenKey: key used in /api/auth/tokens response to determine connected state
+      //   - oauth connectors use oauthKey (the OAuth provider key)
+      //   - api_key/bot_token connectors use id as the token key (stored via POST /api/auth/tokens/:id)
+      // docsUrl: where to get credentials
+      // keyLabel: human label for the credential input field
       const CONNECTOR_CATALOG = [
-        // Communication
-        { id: "slack",    name: "Slack",          category: "communication", color: "#4A154B", oauthKey: "slack" },
-        { id: "discord",  name: "Discord",        category: "communication", color: "#5865F2" },
-        { id: "teams",    name: "Microsoft Teams", category: "communication", color: "#6264A7" },
-        { id: "telegram", name: "Telegram",       category: "communication", color: "#2CA5E0" },
-        { id: "gmail",    name: "Gmail",          category: "communication", color: "#EA4335", oauthKey: "google" },
-        { id: "outlook",  name: "Outlook",        category: "communication", color: "#0072C6" },
-        // Development
-        { id: "github",   name: "GitHub",         category: "development",   color: "#24292F", oauthKey: "github" },
-        { id: "gitlab",   name: "GitLab",         category: "development",   color: "#FC6D26" },
-        { id: "jira",     name: "Jira",           category: "development",   color: "#0052CC", oauthKey: "jira" },
-        { id: "linear",   name: "Linear",         category: "development",   color: "#5E6AD2", oauthKey: "linear" },
-        { id: "notion",   name: "Notion",         category: "development",   color: "#000000" },
-        { id: "sentry",   name: "Sentry",         category: "development",   color: "#F55247" },
-        // Cloud
-        { id: "gdrive",   name: "Google Drive",   category: "cloud",         color: "#4285F4", oauthKey: "google" },
-        { id: "dropbox",  name: "Dropbox",        category: "cloud",         color: "#0061FF" },
-        { id: "onedrive", name: "OneDrive",       category: "cloud",         color: "#0078D4" },
-        { id: "box",      name: "Box",            category: "cloud",         color: "#0061D5" },
-        { id: "s3",       name: "Amazon S3",      category: "cloud",         color: "#FF9900" },
-        // Productivity
-        { id: "gcal",     name: "Google Calendar", category: "productivity", color: "#1A73E8", oauthKey: "google" },
-        { id: "todoist",  name: "Todoist",        category: "productivity",  color: "#DC4C3F" },
-        { id: "trello",   name: "Trello",         category: "productivity",  color: "#0052CC" },
-        { id: "asana",    name: "Asana",          category: "productivity",  color: "#F06A6A" },
-        { id: "airtable", name: "Airtable",       category: "productivity",  color: "#2D7FF9" },
-        // Social
-        { id: "twitter",  name: "X / Twitter",   category: "social",        color: "#000000" },
-        { id: "reddit",   name: "Reddit",         category: "social",        color: "#FF4500" },
-        { id: "youtube",  name: "YouTube",        category: "social",        color: "#FF0000" },
-        { id: "linkedin", name: "LinkedIn",       category: "social",        color: "#0A66C2" },
-        { id: "hackernews", name: "Hacker News",  category: "social",        color: "#FF6600" },
-        // Knowledge
-        { id: "obsidian", name: "Obsidian",       category: "knowledge",     color: "#7C3AED" },
-        { id: "confluence", name: "Confluence",   category: "knowledge",     color: "#0052CC" },
-        { id: "wikipedia", name: "Wikipedia",     category: "knowledge",     color: "#3366CC" },
-        { id: "roam",     name: "Roam Research",  category: "knowledge",     color: "#8B5CF6" },
-        { id: "logseq",   name: "Logseq",         category: "knowledge",     color: "#3884FF" },
-        { id: "substack", name: "Substack",       category: "knowledge",     color: "#FF6719" },
-        // AI / ML
-        { id: "claude",   name: "Claude",         category: "ai",            color: "#CC7B5C" },
-        { id: "openai",   name: "ChatGPT",        category: "ai",            color: "#00A67E" },
-        { id: "perplexity", name: "Perplexity",   category: "ai",            color: "#20808D" },
-        { id: "huggingface", name: "Hugging Face", category: "ai",           color: "#FFD21E" },
-        { id: "replicate", name: "Replicate",     category: "ai",            color: "#0EA5E9" },
-        // Other
-        { id: "rss",      name: "RSS / Atom",     category: "other",         color: "#F26522" },
-        { id: "webhook",  name: "Webhook",        category: "other",         color: "#4B5563" },
-        { id: "localfolder", name: "Local Folder", category: "other",        color: "#059669" },
-        { id: "gitrepo",  name: "Git Repo",       category: "other",         color: "#F97316" },
-        { id: "sqlite",   name: "SQLite",         category: "other",         color: "#003B57" },
-        { id: "csv",      name: "CSV / Spreadsheet", category: "other",      color: "#217346" },
+        // ── Communication ──
+        { id: "slack",      name: "Slack",           category: "communication", color: "#4A154B",
+          method: "oauth",      oauthKey: "slack" },
+        { id: "discord",    name: "Discord",          category: "communication", color: "#5865F2",
+          method: "bot_token",
+          keyLabel: "Bot Token",
+          docsUrl: "https://discord.com/developers/applications",
+          instructions: "1. Go to Discord Developer Portal → New Application\n2. Bot tab → Add Bot → Copy Token\n3. OAuth2 → URL Generator → bot scope → send messages, read message history\n4. Use generated URL to add bot to your server" },
+        { id: "teams",      name: "Microsoft Teams",  category: "communication", color: "#6264A7",
+          method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
+        { id: "telegram",   name: "Telegram",         category: "communication", color: "#2CA5E0",
+          method: "bot_token",
+          keyLabel: "Bot Token",
+          docsUrl: "https://t.me/BotFather",
+          instructions: "1. Open Telegram and message @BotFather\n2. Send /newbot and follow the prompts\n3. Copy the token BotFather gives you\n4. Add your bot to the channel/group you want to sync" },
+        { id: "gmail",      name: "Gmail",            category: "communication", color: "#EA4335",
+          method: "oauth",      oauthKey: "google" },
+        { id: "outlook",    name: "Outlook",          category: "communication", color: "#0072C6",
+          method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
+        // ── Development ──
+        { id: "github",     name: "GitHub",           category: "development",   color: "#24292F",
+          method: "oauth",      oauthKey: "github" },
+        { id: "gitlab",     name: "GitLab",           category: "development",   color: "#FC6D26",
+          method: "api_key",
+          keyLabel: "Personal Access Token",
+          docsUrl: "https://gitlab.com/-/user_settings/personal_access_tokens",
+          instructions: "1. GitLab → Settings → Access Tokens\n2. Create token with read_api, read_repository scopes\n3. Copy and paste the token here" },
+        { id: "jira",       name: "Jira",             category: "development",   color: "#0052CC",
+          method: "oauth",      oauthKey: "jira" },
+        { id: "linear",     name: "Linear",           category: "development",   color: "#5E6AD2",
+          method: "oauth",      oauthKey: "linear" },
+        { id: "notion",     name: "Notion",           category: "development",   color: "#000000",
+          method: "api_key",
+          keyLabel: "Integration Secret",
+          docsUrl: "https://www.notion.so/my-integrations",
+          instructions: "1. notion.so/my-integrations → New integration\n2. Give it a name, select your workspace\n3. Copy the Internal Integration Secret\n4. Share each database/page with your integration (Share button → invite integration)" },
+        { id: "sentry",     name: "Sentry",           category: "development",   color: "#F55247",
+          method: "api_key",
+          keyLabel: "Auth Token",
+          docsUrl: "https://sentry.io/settings/account/api/auth-tokens/",
+          instructions: "1. Sentry → Settings → Auth Tokens → Create New Token\n2. Select scopes: project:read, event:read\n3. Copy and paste the token here" },
+        // ── Cloud ──
+        { id: "gdrive",     name: "Google Drive",     category: "cloud",         color: "#4285F4",
+          method: "oauth",      oauthKey: "google" },
+        { id: "dropbox",    name: "Dropbox",          category: "cloud",         color: "#0061FF",
+          method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
+        { id: "onedrive",   name: "OneDrive",         category: "cloud",         color: "#0078D4",
+          method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
+        { id: "box",        name: "Box",              category: "cloud",         color: "#0061D5",
+          method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
+        { id: "s3",         name: "Amazon S3",        category: "cloud",         color: "#FF9900",
+          method: "api_key",
+          keyLabel: "Access Key ID",
+          extraFields: [{ name: "secret", label: "Secret Access Key", secret: true }, { name: "bucket", label: "Bucket Name", secret: false }, { name: "region", label: "Region (e.g. us-east-1)", secret: false }],
+          docsUrl: "https://console.aws.amazon.com/iam/home#/users",
+          instructions: "1. AWS Console → IAM → Users → Create user\n2. Attach policy: AmazonS3ReadOnlyAccess\n3. Security Credentials tab → Create Access Key\n4. Copy Access Key ID and Secret Access Key" },
+        // ── Productivity ──
+        { id: "gcal",       name: "Google Calendar",  category: "productivity",  color: "#1A73E8",
+          method: "oauth",      oauthKey: "google" },
+        { id: "todoist",    name: "Todoist",          category: "productivity",  color: "#DC4C3F",
+          method: "api_key",
+          keyLabel: "API Token",
+          docsUrl: "https://todoist.com/prefs/integrations",
+          instructions: "1. Todoist → Settings → Integrations → Developer\n2. Copy your API token" },
+        { id: "trello",     name: "Trello",           category: "productivity",  color: "#0052CC",
+          method: "api_key",
+          keyLabel: "API Key",
+          extraFields: [{ name: "token", label: "API Token", secret: true }],
+          docsUrl: "https://trello.com/app-key",
+          instructions: "1. trello.com/app-key → copy your API Key\n2. Click 'Token' link on that page to generate a token\n3. Enter both here" },
+        { id: "asana",      name: "Asana",            category: "productivity",  color: "#F06A6A",
+          method: "api_key",
+          keyLabel: "Personal Access Token",
+          docsUrl: "https://app.asana.com/0/my-apps",
+          instructions: "1. Asana → My Profile → Apps → Manage Developer Apps\n2. Create new Personal Access Token\n3. Copy and paste here" },
+        { id: "airtable",   name: "Airtable",         category: "productivity",  color: "#2D7FF9",
+          method: "api_key",
+          keyLabel: "Personal Access Token",
+          docsUrl: "https://airtable.com/create/tokens",
+          instructions: "1. Airtable → Account → Developer Hub → Personal Access Tokens\n2. Create token with data.records:read, schema.bases:read scopes\n3. Copy and paste here" },
+        // ── Social ──
+        { id: "twitter",    name: "X / Twitter",      category: "social",        color: "#000000",
+          method: "api_key",
+          keyLabel: "Bearer Token",
+          docsUrl: "https://developer.twitter.com/en/portal/dashboard",
+          instructions: "1. developer.twitter.com → Projects & Apps → New Project\n2. Keys and Tokens tab → Bearer Token\n3. Copy and paste here" },
+        { id: "reddit",     name: "Reddit",           category: "social",        color: "#FF4500",
+          method: "api_key",
+          keyLabel: "Client ID",
+          extraFields: [{ name: "secret", label: "Client Secret", secret: true }],
+          docsUrl: "https://www.reddit.com/prefs/apps",
+          instructions: "1. reddit.com/prefs/apps → Create App (type: script)\n2. Note the Client ID (below app name) and Secret\n3. Enter both here" },
+        { id: "youtube",    name: "YouTube",          category: "social",        color: "#FF0000",
+          method: "api_key",
+          keyLabel: "API Key",
+          docsUrl: "https://console.cloud.google.com/apis/credentials",
+          instructions: "1. Google Cloud Console → APIs & Services → Credentials\n2. Create API Key, restrict to YouTube Data API v3\n3. Copy and paste here" },
+        { id: "linkedin",   name: "LinkedIn",         category: "social",        color: "#0A66C2",
+          method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
+        { id: "hackernews", name: "Hacker News",      category: "social",        color: "#FF6600",
+          method: "url",
+          urlLabel: "Username (optional)",
+          urlPlaceholder: "your_hn_username",
+          docsUrl: "https://news.ycombinator.com",
+          instructions: "HN is public — enter your username to sync your submissions and comments, or leave blank to sync the front page." },
+        // ── Knowledge ──
+        { id: "obsidian",   name: "Obsidian",         category: "knowledge",     color: "#7C3AED",
+          method: "local",
+          urlLabel: "Vault Path",
+          urlPlaceholder: "/Users/you/Documents/my-vault",
+          docsUrl: "https://obsidian.md",
+          instructions: "Enter the full path to your Obsidian vault folder. WikiMem will read your markdown files directly." },
+        { id: "confluence", name: "Confluence",       category: "knowledge",     color: "#0052CC",
+          method: "api_key",
+          keyLabel: "API Token",
+          extraFields: [{ name: "domain", label: "Domain (e.g. mycompany.atlassian.net)", secret: false }, { name: "email", label: "Account Email", secret: false }],
+          docsUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
+          instructions: "1. id.atlassian.com → Security → API tokens → Create API token\n2. Enter your domain, email, and the token here" },
+        { id: "wikipedia",  name: "Wikipedia",        category: "knowledge",     color: "#3366CC",
+          method: "url",
+          urlLabel: "Search query or article title",
+          urlPlaceholder: "e.g. Machine learning",
+          docsUrl: "https://en.wikipedia.org",
+          instructions: "Enter a search term or exact article title. WikiMem will fetch and sync the article content." },
+        { id: "roam",       name: "Roam Research",    category: "knowledge",     color: "#8B5CF6",
+          method: "coming_soon", docsUrl: "https://github.com/naman10parikh/llmwiki" },
+        { id: "logseq",     name: "Logseq",           category: "knowledge",     color: "#3884FF",
+          method: "local",
+          urlLabel: "Graph Path",
+          urlPlaceholder: "/Users/you/logseq-graph",
+          docsUrl: "https://logseq.com",
+          instructions: "Enter the full path to your Logseq graph folder. WikiMem will read your markdown and org-mode files directly." },
+        { id: "substack",   name: "Substack",         category: "knowledge",     color: "#FF6719",
+          method: "url",
+          urlLabel: "Substack URL or username",
+          urlPlaceholder: "https://username.substack.com",
+          docsUrl: "https://substack.com",
+          instructions: "Enter your Substack publication URL. WikiMem will sync posts via the RSS feed." },
+        // ── AI / ML ──
+        { id: "claude",     name: "Claude",           category: "ai",            color: "#CC7B5C",
+          method: "api_key",
+          keyLabel: "API Key",
+          docsUrl: "https://console.anthropic.com/account/keys",
+          instructions: "1. console.anthropic.com → API Keys → Create Key\n2. Copy and paste here\nUsed for AI-powered ingestion and summarization." },
+        { id: "openai",     name: "ChatGPT / OpenAI", category: "ai",            color: "#00A67E",
+          method: "api_key",
+          keyLabel: "API Key",
+          docsUrl: "https://platform.openai.com/api-keys",
+          instructions: "1. platform.openai.com → API Keys → Create new secret key\n2. Copy and paste here" },
+        { id: "perplexity", name: "Perplexity",       category: "ai",            color: "#20808D",
+          method: "api_key",
+          keyLabel: "API Key",
+          docsUrl: "https://www.perplexity.ai/settings/api",
+          instructions: "1. perplexity.ai → Settings → API → Generate\n2. Copy and paste here" },
+        { id: "huggingface", name: "Hugging Face",    category: "ai",            color: "#FFD21E",
+          method: "api_key",
+          keyLabel: "Access Token",
+          docsUrl: "https://huggingface.co/settings/tokens",
+          instructions: "1. huggingface.co → Settings → Access Tokens → New Token\n2. Select 'Read' role\n3. Copy and paste here" },
+        { id: "replicate",  name: "Replicate",        category: "ai",            color: "#0EA5E9",
+          method: "api_key",
+          keyLabel: "API Token",
+          docsUrl: "https://replicate.com/account/api-tokens",
+          instructions: "1. replicate.com → Account → API Tokens → Create token\n2. Copy and paste here" },
+        // ── Other ──
+        { id: "rss",        name: "RSS / Atom",       category: "other",         color: "#F26522",
+          method: "url",
+          urlLabel: "Feed URL",
+          urlPlaceholder: "https://example.com/feed.xml",
+          docsUrl: "https://validator.w3.org/feed/",
+          instructions: "Enter the RSS or Atom feed URL. WikiMem will fetch and sync new items automatically." },
+        { id: "webhook",    name: "Webhook",          category: "other",         color: "#4B5563",
+          method: "webhook",
+          docsUrl: "https://github.com/naman10parikh/llmwiki#webhook",
+          instructions: "POST JSON to this URL with fields: content (required), title, source, tags.\nExample: {\"title\":\"My note\",\"content\":\"...\"}" },
+        { id: "localfolder", name: "Local Folder",   category: "other",         color: "#059669",
+          method: "local",
+          urlLabel: "Folder Path",
+          urlPlaceholder: "/Users/you/Documents/notes",
+          docsUrl: "https://github.com/naman10parikh/llmwiki",
+          instructions: "Enter the full path to a local folder. WikiMem will watch for changes and auto-ingest files." },
+        { id: "gitrepo",    name: "Git Repo",         category: "other",         color: "#F97316",
+          method: "url",
+          urlLabel: "Git Repository URL",
+          urlPlaceholder: "https://github.com/owner/repo or /local/path/to/repo",
+          docsUrl: "https://git-scm.com",
+          instructions: "Enter a Git repository URL (HTTPS or SSH) or local path. WikiMem will clone/pull and ingest markdown files." },
+        { id: "sqlite",     name: "SQLite",           category: "other",         color: "#003B57",
+          method: "local",
+          urlLabel: "Database Path",
+          urlPlaceholder: "/Users/you/data.db",
+          docsUrl: "https://www.sqlite.org",
+          instructions: "Enter the full path to your SQLite database file. WikiMem will read tables and convert rows to wiki pages." },
+        { id: "csv",        name: "CSV / Spreadsheet", category: "other",       color: "#217346",
+          method: "local",
+          urlLabel: "File Path",
+          urlPlaceholder: "/Users/you/data.csv",
+          docsUrl: "https://github.com/naman10parikh/llmwiki",
+          instructions: "Enter the full path to a CSV or TSV file. Each row will become a wiki page." },
       ];
 
       let _connectorTokenStatus = {};
@@ -18921,11 +19895,10 @@
           );
           if (changed) {
             changed.scrollIntoView({ behavior: "smooth", block: "center" });
-            changed.style.outline = "1px solid var(--accent)";
-            changed.style.outlineOffset = "2px";
+            changed.classList.add("tl-glow-flash");
             setTimeout(() => {
-              changed.style.outline = "none";
-            }, 1200);
+              changed.classList.remove("tl-glow-flash");
+            }, 2000);
           }
         });
       }
@@ -20434,6 +21407,192 @@
           hideMentionPopup();
         }
       });
+
+      /* ══════════════════════════════════════════════
+         UXO-011  Reading Experience — JS
+         ══════════════════════════════════════════════ */
+
+      // ── Reading time bar ──
+      function updateReadingBar(wordCount) {
+        const bar = document.getElementById("page-reading-bar");
+        const timeEl = document.getElementById("reading-bar-time");
+        const wordsEl = document.getElementById("reading-bar-words");
+        if (!bar || !timeEl || !wordsEl) return;
+        const mins = estimateReadingMinutes(wordCount);
+        timeEl.textContent = mins + " min read";
+        wordsEl.textContent = (Number(wordCount) || 0).toLocaleString() + " words";
+        bar.classList.add("visible");
+      }
+
+      // ── TOC scroll spy ──
+      let _tocSpyCleanup = null;
+
+      function initTocScrollSpy() {
+        if (_tocSpyCleanup) {
+          _tocSpyCleanup();
+          _tocSpyCleanup = null;
+        }
+        const tocEl = document.getElementById("page-toc");
+        if (!tocEl || !tocEl.innerHTML) return;
+        const container = document.getElementById("content");
+        if (!container) return;
+
+        const items = Array.from(tocEl.querySelectorAll(".toc-item"));
+        if (!items.length) return;
+
+        const headingIds = items.map((a) => {
+          const m = a.getAttribute("onclick")?.match(/getElementById\('([^']+)'\)/);
+          return m ? m[1] : null;
+        }).filter(Boolean);
+
+        function onScroll() {
+          const containerTop = container.getBoundingClientRect().top;
+          let activeId = headingIds[0];
+          for (const id of headingIds) {
+            const el = document.getElementById(id);
+            if (!el) continue;
+            const rect = el.getBoundingClientRect();
+            if (rect.top - containerTop <= 80) {
+              activeId = id;
+            }
+          }
+          items.forEach((a) => {
+            const m = a.getAttribute("onclick")?.match(/getElementById\('([^']+)'\)/);
+            const id = m ? m[1] : null;
+            a.classList.toggle("toc-active", id === activeId);
+          });
+        }
+
+        container.addEventListener("scroll", onScroll, { passive: true });
+        _tocSpyCleanup = () =>
+          container.removeEventListener("scroll", onScroll);
+        onScroll();
+      }
+
+      // ── Back to top button ──
+      (function initBackToTop() {
+        const btn = document.createElement("button");
+        btn.id = "back-to-top";
+        btn.title = "Back to top";
+        btn.setAttribute("aria-label", "Scroll to top");
+        btn.innerHTML =
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>';
+        document.body.appendChild(btn);
+
+        const container = document.getElementById("content");
+        if (!container) return;
+
+        container.addEventListener("scroll", () => {
+          btn.classList.toggle("visible", container.scrollTop > 300);
+        }, { passive: true });
+
+        btn.addEventListener("click", () => {
+          container.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      })();
+
+      // ── Wikilink hover preview ──
+      (function initWikilinkPreview() {
+        const popup = document.createElement("div");
+        popup.id = "wikilink-preview";
+        document.body.appendChild(popup);
+
+        let _hoverTimer = null;
+        let _hideTimer = null;
+        let _currentTarget = null;
+
+        function showPreview(el, title) {
+          clearTimeout(_hideTimer);
+          if (_currentTarget === el && popup.classList.contains("visible")) return;
+          _currentTarget = el;
+
+          const page = (state.allPages || []).find(
+            (p) => p.title.toLowerCase() === title.toLowerCase()
+          );
+
+          if (!page) {
+            popup.innerHTML =
+              `<div class="preview-title">${esc(title)}</div>` +
+              `<div class="preview-empty">Page not found in wiki</div>`;
+          } else {
+            const snippet = (page.summary || page.content || "")
+              .replace(/^---[\s\S]*?---\s*/m, "")
+              .replace(/^#+\s.*$/m, "")
+              .replace(/[*_`[\]]/g, "")
+              .trim()
+              .slice(0, 160);
+            popup.innerHTML =
+              `<div class="preview-title">${esc(page.title)}</div>` +
+              (snippet
+                ? `<div class="preview-snippet">${esc(snippet)}…</div>`
+                : `<div class="preview-empty">No preview available</div>`);
+          }
+
+          // Position popup near the element
+          const rect = el.getBoundingClientRect();
+          const popupW = 280;
+          const gap = 8;
+          let left = rect.left;
+          let top = rect.bottom + gap;
+
+          // Flip above if too close to bottom
+          if (top + 100 > window.innerHeight) {
+            top = rect.top - gap - 80;
+          }
+          // Clamp to viewport
+          if (left + popupW > window.innerWidth - 16) {
+            left = window.innerWidth - popupW - 16;
+          }
+          if (left < 8) left = 8;
+
+          popup.style.left = left + "px";
+          popup.style.top = top + "px";
+          popup.classList.add("visible");
+        }
+
+        function hidePreview() {
+          _hideTimer = setTimeout(() => {
+            popup.classList.remove("visible");
+            _currentTarget = null;
+          }, 80);
+        }
+
+        // Delegate on body — catches wikilinks inside page-body
+        document.body.addEventListener("mouseover", (e) => {
+          const link = e.target.closest(".wikilink[data-wikilink]");
+          if (!link) return;
+          // Only show in read mode (not editing)
+          if (state.editing) return;
+          clearTimeout(_hoverTimer);
+          _hoverTimer = setTimeout(() => {
+            const title = link.getAttribute("data-wikilink") || link.textContent;
+            showPreview(link, title);
+          }, 300);
+        });
+
+        document.body.addEventListener("mouseout", (e) => {
+          const link = e.target.closest(".wikilink[data-wikilink]");
+          if (!link) return;
+          clearTimeout(_hoverTimer);
+          hidePreview();
+        });
+      })();
+
+      // ── Patch openPage to wire up reading bar + TOC spy ──
+      const _origOpenPage = openPage;
+      openPage = async function (title, fromTab) {
+        const result = await _origOpenPage.call(this, title, fromTab);
+        // Reading bar
+        const page = (state.allPages || []).find(
+          (p) => p.title.toLowerCase() === title.toLowerCase()
+        );
+        if (page && page.wordCount != null) {
+          updateReadingBar(page.wordCount);
+        }
+        // TOC scroll spy — slight delay so buildToc has run
+        setTimeout(initTocScrollSpy, 50);
+        return result;
+      };
     </script>
   </body>
 </html>

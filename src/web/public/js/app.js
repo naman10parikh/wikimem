@@ -1338,11 +1338,36 @@ async function viewRawFile(filepath) {
         html += `<div class="img-preview"><img src="${fileUrl}" alt="${esc(filename)}" /></div>`;
         break;
       case "video":
-        html += `<div class="video-container"><video controls preload="metadata"><source src="${fileUrl}" /></video></div>`;
+        html += `<div class="video-container">
+          <video id="raw-video-player" controls preload="metadata">
+            <source src="${fileUrl}" />
+          </video>
+          <div class="video-kbd-hint">Space = play/pause · ← → = seek 5s · F = fullscreen</div>
+        </div>`;
         break;
-      case "audio":
-        html += `<div class="video-container"><audio controls preload="metadata"><source src="${fileUrl}" /></audio></div>`;
+      case "audio": {
+        // Use wavesurfer.js for waveform visualization if available, else native fallback
+        const audioId = "waveform-" + Date.now();
+        html += `<div class="waveform-container">
+          <div id="${audioId}" class="waveform-canvas"></div>
+          <div class="waveform-controls">
+            <button class="waveform-btn" id="${audioId}-play" onclick="waveformToggle('${audioId}')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            </button>
+            <span class="waveform-time" id="${audioId}-time">0:00</span>
+            <div class="waveform-track" id="${audioId}-track">
+              <div class="waveform-progress" id="${audioId}-progress"></div>
+            </div>
+            <span class="waveform-dur" id="${audioId}-dur">—</span>
+          </div>
+          <audio id="${audioId}-audio" preload="metadata" style="display:none">
+            <source src="${fileUrl}" />
+          </audio>
+        </div>`;
+        // Bootstrap wavesurfer after DOM is set
+        setTimeout(() => initWaveform(audioId, fileUrl), 50);
         break;
+      }
       case "spreadsheet":
         if (meta.extension === ".csv") {
           try {
@@ -1392,18 +1417,108 @@ async function viewRawFile(filepath) {
         }
         break;
       }
-      case "document":
-        html += `<div style="text-align:center;padding:48px 24px;color:var(--text-muted)">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" style="opacity:0.4;margin-bottom:16px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <p style="font-size:14px;color:var(--text-secondary);margin-bottom:6px;font-weight:500">${typeLabel}</p>
-        <p style="font-size:12px;margin-bottom:4px">${sizeStr}${modDate ? " · Modified " + modDate : ""}</p>
-        <p style="font-size:11px;margin-bottom:20px;color:var(--text-dim)">Preview not available locally. Download to view in native app.</p>
-        <a class="raw-download-btn" href="${fileUrl}" download="${esc(filename)}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download
-        </a>
-      </div>`;
+      case "document": {
+        const ext = meta.extension;
+        if (ext === ".docx" || ext === ".doc") {
+          // Rich DOCX preview via mammoth on server
+          html += `<div class="docx-preview-wrap">
+            <div class="docx-toolbar">
+              <span class="docx-label">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Word Document
+              </span>
+              <a class="raw-download-btn" href="${fileUrl}" download="${esc(filename)}" style="margin-top:0;padding:4px 10px;font-size:12px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download
+              </a>
+            </div>
+            <div class="docx-body" id="docx-body-content">
+              <div style="color:var(--text-muted);font-size:13px;padding:32px;text-align:center">Loading document…</div>
+            </div>
+          </div>`;
+          // Load DOCX HTML asynchronously after render
+          setTimeout(async () => {
+            const target = document.getElementById("docx-body-content");
+            if (!target) return;
+            try {
+              const r = await fetch("/api/raw/docx-html?path=" + encodeURIComponent(filepath));
+              const d = await r.json();
+              if (d.html) {
+                target.innerHTML = `<div class="docx-content">${d.html}</div>`;
+              } else {
+                target.innerHTML = `<p style="color:var(--red);padding:16px">Failed to render document: ${esc(d.error || "Unknown error")}</p>`;
+              }
+            } catch (e) {
+              target.innerHTML = `<p style="color:var(--red);padding:16px">Failed to load document preview.</p>`;
+            }
+          }, 50);
+        } else if (ext === ".pptx" || ext === ".ppt") {
+          // PowerPoint slide viewer
+          html += `<div class="pptx-viewer" id="pptx-viewer">
+            <div class="pptx-toolbar">
+              <span class="pptx-label">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                PowerPoint
+              </span>
+              <div class="pptx-nav">
+                <button class="pptx-btn" id="pptx-prev" onclick="pptxPrev()" disabled>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,18 9,12 15,6"/></svg>
+                </button>
+                <span class="pptx-counter" id="pptx-counter">— / —</span>
+                <button class="pptx-btn" id="pptx-next" onclick="pptxNext()" disabled>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+                </button>
+              </div>
+              <a class="raw-download-btn" href="${fileUrl}" download="${esc(filename)}" style="margin-top:0;padding:4px 10px;font-size:12px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download
+              </a>
+            </div>
+            <div class="pptx-stage">
+              <div class="pptx-slide-wrap" id="pptx-slide-wrap">
+                <div style="color:var(--text-muted);font-size:13px;text-align:center;padding:48px">Loading slides…</div>
+              </div>
+              <div class="pptx-notes-wrap" id="pptx-notes-wrap" style="display:none">
+                <div class="pptx-notes-label">Speaker Notes</div>
+                <div class="pptx-notes-body" id="pptx-notes-body"></div>
+              </div>
+            </div>
+            <div class="pptx-thumb-strip" id="pptx-thumb-strip"></div>
+          </div>`;
+          // Load slides asynchronously
+          setTimeout(async () => {
+            try {
+              const r = await fetch("/api/raw/pptx-slides?path=" + encodeURIComponent(filepath));
+              const d = await r.json();
+              if (d.slides && d.slides.length > 0) {
+                window._pptxSlides = d.slides;
+                window._pptxCurrent = 0;
+                renderPptxSlide(0);
+                renderPptxThumbs();
+              } else {
+                const w = document.getElementById("pptx-slide-wrap");
+                if (w) w.innerHTML = `<p style="color:var(--text-muted);padding:32px;text-align:center">No slide content could be extracted.</p>`;
+              }
+            } catch (e) {
+              const w = document.getElementById("pptx-slide-wrap");
+              if (w) w.innerHTML = `<p style="color:var(--red);padding:32px;text-align:center">Failed to load slides.</p>`;
+            }
+          }, 50);
+        } else {
+          // Fallback for other doc formats
+          html += `<div style="text-align:center;padding:48px 24px;color:var(--text-muted)">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" style="opacity:0.4;margin-bottom:16px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <p style="font-size:14px;color:var(--text-secondary);margin-bottom:6px;font-weight:500">${typeLabel}</p>
+            <p style="font-size:12px;margin-bottom:4px">${sizeStr}${modDate ? " · Modified " + modDate : ""}</p>
+            <p style="font-size:11px;margin-bottom:20px;color:var(--text-dim)">Download to view in native app.</p>
+            <a class="raw-download-btn" href="${fileUrl}" download="${esc(filename)}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </a>
+          </div>`;
+        }
         break;
+      }
       default:
         html += `<div style="text-align:center;padding:48px 24px;color:var(--text-muted)">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" style="opacity:0.4;margin-bottom:16px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>

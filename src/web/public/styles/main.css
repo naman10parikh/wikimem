@@ -1568,19 +1568,20 @@ body {
 }
 .meta-row {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  min-height: 22px;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
 }
 .meta-key {
   font-size: 12px;
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  color: #858585;
   min-width: 64px;
   flex-shrink: 0;
-  padding-top: 2px;
+  padding-top: 0;
+  line-height: 1.4;
   font-family: var(--font);
 }
 .meta-val {
@@ -1592,6 +1593,8 @@ body {
   min-width: 0;
   font-size: 13px;
   font-weight: 400;
+  line-height: 1.5;
+  color: #cccccc;
   font-family: var(--font);
 }
 .meta-badge {
@@ -1612,11 +1615,15 @@ body {
   font-family: var(--font-mono);
 }
 .meta-tag {
-  background: var(--accent-dim);
-  color: var(--accent);
+  background: rgba(79, 158, 255, 0.15);
+  color: #9cdcfe;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
   cursor: default;
   transition: background 0.15s;
-  border: 1px solid rgba(79, 158, 255, 0.15);
+  border: none;
   position: relative;
   display: inline-flex;
   align-items: center;
