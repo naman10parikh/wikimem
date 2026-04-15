@@ -16,3 +16,4 @@ config.yaml
 # Test/personal wikis
 my-wiki/
 test-wiki/
+.test-vault-*/

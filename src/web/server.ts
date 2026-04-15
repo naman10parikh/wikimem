@@ -30,6 +30,9 @@ interface GraphData {
   links: GraphLink[];
 }
 
+// In-memory cache for /api/graph — invalidated when wiki dir mtime changes
+let graphCache: { data: GraphData; mtime: number } | null = null;
+
 function buildGraph(config: VaultConfig): GraphData {
   const pages = listWikiPages(config.wikiDir);
   const nodesMap = new Map<string, GraphNode>();
@@ -534,11 +537,14 @@ export function createServer(vaultRoot: string, port: number): void {
     }
   });
 
-  // API: knowledge graph data
+  // API: knowledge graph data (cached, invalidated by wiki dir mtime)
   app.get('/api/graph', (_req, res) => {
     try {
-      const graph = buildGraph(config);
-      res.json(graph);
+      const dirMtime = statSync(config.wikiDir).mtimeMs;
+      if (!graphCache || graphCache.mtime < dirMtime) {
+        graphCache = { data: buildGraph(config), mtime: dirMtime };
+      }
+      res.json(graphCache.data);
     } catch (err) {
       res.status(500).json({ error: 'Failed to build graph' });
     }
@@ -3976,6 +3982,164 @@ export function createServer(vaultRoot: string, port: number): void {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.status(500).json({ error: msg });
+    }
+  });
+
+  // === AGENTDIAL WEBHOOK ENDPOINTS ===
+  // Gives wikimem an agent identity on Slack and Email via AgentDial.
+  // These endpoints accept webhook payloads and route to the ingest/query pipeline.
+  // They do NOT call out to Slack/AgentMail APIs — callers (AgentDial gateway) do that.
+
+  // POST /api/agentdial/email — AgentMail webhook: ingest email body as wiki knowledge
+  // Expected payload: { subject, body, from, attachments?: [{ name, content, contentType }] }
+  // Response: { ingested: true, title, summary, sources }
+  app.post('/api/agentdial/email', async (req, res) => {
+    try {
+      const { subject, body, from, attachments } = req.body as {
+        subject?: string;
+        body?: string;
+        from?: string;
+        attachments?: Array<{ name: string; content: string; contentType?: string }>;
+      };
+
+      if (!body && (!attachments || attachments.length === 0)) {
+        res.status(400).json({ error: 'Missing body or attachments' });
+        return;
+      }
+
+      const { ingestSource } = await import('../core/ingest.js');
+      const { createProviderFromUserConfig } = await import('../providers/index.js');
+      const { loadConfig } = await import('../core/config.js');
+      const userConfig = loadConfig(config.configPath);
+      const provider = createProviderFromUserConfig(userConfig);
+
+      const ingestResults: Array<{ title: string; pagesUpdated: number }> = [];
+
+      // Ingest email body as plain text
+      if (body && body.trim().length > 0) {
+        const { join: pathJoin } = await import('node:path');
+        const { writeFileSync, mkdirSync } = await import('node:fs');
+        const { randomBytes } = await import('node:crypto');
+
+        // Write body to a temp file and ingest it
+        const tmpDir = pathJoin(config.rawDir, '_agentdial_tmp');
+        mkdirSync(tmpDir, { recursive: true });
+        const slug = (subject ?? 'email').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 60);
+        const tmpFile = pathJoin(tmpDir, `${slug}-${randomBytes(4).toString('hex')}.txt`);
+        const content = subject ? `# ${subject}\n\nFrom: ${from ?? 'unknown'}\n\n${body}` : body;
+        writeFileSync(tmpFile, content, 'utf-8');
+
+        const result = await ingestSource(tmpFile, config, provider, {
+          verbose: false,
+          addedBy: 'webhook',
+          tags: ['email', 'agentdial'],
+          metadata: { source_email: from ?? '', original_subject: subject ?? '' },
+        });
+        ingestResults.push({ title: result.title, pagesUpdated: result.pagesUpdated });
+      }
+
+      // Ingest any text/plain or text/html attachments
+      if (attachments && attachments.length > 0) {
+        const { writeFileSync, mkdirSync } = await import('node:fs');
+        const { join: pathJoin } = await import('node:path');
+        const { randomBytes } = await import('node:crypto');
+        const tmpDir = pathJoin(config.rawDir, '_agentdial_tmp');
+        mkdirSync(tmpDir, { recursive: true });
+
+        for (const att of attachments) {
+          const isText = !att.contentType || att.contentType.startsWith('text/');
+          if (!isText) continue;
+          const tmpFile = pathJoin(tmpDir, `${att.name}-${randomBytes(4).toString('hex')}.txt`);
+          writeFileSync(tmpFile, att.content, 'utf-8');
+          const result = await ingestSource(tmpFile, config, provider, {
+            verbose: false,
+            addedBy: 'webhook',
+            tags: ['email', 'attachment', 'agentdial'],
+          });
+          ingestResults.push({ title: result.title, pagesUpdated: result.pagesUpdated });
+        }
+      }
+
+      const totalPages = ingestResults.reduce((sum, r) => sum + r.pagesUpdated, 0);
+      const titles = ingestResults.map((r) => r.title);
+
+      // Build a plain-text reply suitable for AgentDial to forward back to sender
+      const replyText = ingestResults.length === 0
+        ? 'Nothing ingested — email had no text body or text attachments.'
+        : `Ingested into your wiki:\n${titles.map((t) => `- ${t}`).join('\n')}\n\n${totalPages} page${totalPages !== 1 ? 's' : ''} updated.`;
+
+      res.json({
+        ingested: ingestResults.length > 0,
+        titles,
+        pagesUpdated: totalPages,
+        reply: replyText,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `AgentDial email ingest failed: ${msg}` });
+    }
+  });
+
+  // POST /api/agentdial/slack — Slack event webhook: answer questions via wiki query
+  // Expected payload: { event: { type, text, user, channel, ts } } (Slack Events API shape)
+  // Also accepts flat shape: { text, user, channel }
+  // Response: { answer, sources, reply } — caller (AgentDial gateway) posts reply to Slack
+  app.post('/api/agentdial/slack', async (req, res) => {
+    try {
+      // Support both Slack Events API envelope and flat shape
+      const body = req.body as {
+        type?: string;
+        challenge?: string;
+        event?: { type?: string; text?: string; user?: string; channel?: string; ts?: string };
+        text?: string;
+        user?: string;
+        channel?: string;
+      };
+
+      // Slack URL verification handshake
+      if (body.type === 'url_verification' && body.challenge) {
+        res.json({ challenge: body.challenge });
+        return;
+      }
+
+      const rawText = (body.event?.text ?? body.text ?? '').trim();
+      const channel = body.event?.channel ?? body.channel ?? '';
+
+      if (!rawText) {
+        res.status(400).json({ error: 'Missing text field' });
+        return;
+      }
+
+      // Strip @mention prefix if present (e.g. "<@U12345> what is X?" → "what is X?")
+      const question = rawText.replace(/^<@[A-Z0-9]+>\s*/i, '').trim();
+      if (!question) {
+        res.status(400).json({ error: 'Question is empty after stripping mention' });
+        return;
+      }
+
+      const { queryWiki } = await import('../core/query.js');
+      const { createProviderFromUserConfig } = await import('../providers/index.js');
+      const { loadConfig } = await import('../core/config.js');
+      const userConfig = loadConfig(config.configPath);
+      const provider = createProviderFromUserConfig(userConfig);
+
+      const result = await queryWiki(question, config, provider, { fileBack: false });
+
+      // Format Slack-friendly reply with source links
+      const sourceList = result.sourcesConsulted.length > 0
+        ? `\n\nSources: ${result.sourcesConsulted.map((s) => `*${s}*`).join(', ')}`
+        : '';
+      const replyText = `${result.answer}${sourceList}`;
+
+      res.json({
+        answer: result.answer,
+        sources: result.sourcesConsulted,
+        channel,
+        reply: replyText,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `AgentDial Slack query failed: ${msg}` });
     }
   });
 

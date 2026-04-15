@@ -303,19 +303,19 @@ Code: walkthrough of ingest pipeline for a research PDF
 
 WikiMem turns your raw sources into a structured, interlinked knowledge base — automatically.
 
-Drop a PDF, audio file, video, spreadsheet, Slack export, or URL. WikiMem detects the type, extracts the content, and compiles it into structured wiki pages: source summaries, entity pages (people, organizations, tools), concept pages, and syntheses. Everything cross-referenced with `[[wikilinks]]` and committed to git.
+Drop a PDF, audio file, video, spreadsheet, or URL — or connect any of 38 OAuth/API-key sources: GitHub, Slack, Gmail, Notion, Discord, Google Drive, Airtable, Linear, Jira, and more. WikiMem detects the type, extracts the content, and compiles it into structured wiki pages: source summaries, entity pages (people, organizations, tools), concept pages, and syntheses. Everything cross-referenced with `[[wikilinks]]` and committed to git.
 
-Three automations run the system:
+Three live automations run the system:
 
-**Ingest** — File watcher on your raw/ folder. Drop a file, get wiki pages. Zero friction.
+**Smart Sourcing** — File watcher on your raw/ folder. Drop a file, get wiki pages. Zero friction.
 
-**Scrape** — Configure RSS feeds, GitHub queries, and URLs. WikiMem fetches them on schedule and deposits results for automatic ingestion.
+**Pipeline Watcher** — Configure RSS feeds, GitHub queries, and URLs. WikiMem fetches them on schedule and deposits results for automatic ingestion.
 
-**Observe** — Nightly LLM quality review. Scores coverage, consistency, and cross-linking. Connects orphan pages. Flags contradictions. Fixes sparse entries. Your wiki improves while you're not using it.
+**Observer** — Nightly LLM quality review with 24-point scoring across five dimensions. Built on Jeff Clune's open-endedness principles. Connects orphan pages. Flags contradictions. Fixes sparse entries. Logs every run to the experiment log. Your wiki improves while you're not using it.
 
-The web IDE at localhost:3141 has an interactive D3 knowledge graph, time-lapse viewer (watch your wiki grow commit-by-commit), WYSIWYG editing, Cmd+K search, and pipeline visualization.
+The web IDE at localhost:3141 has an interactive D3 knowledge graph, time-lapse viewer (watch your wiki grow commit-by-commit), WYSIWYG editing, Cmd+K search, and pipeline visualization. Zero console errors.
 
-Ships with an MCP server — add 5 lines to .mcp.json and Claude Code gains native tools to search and read your knowledge base in any conversation.
+Ships with an MCP server and slash commands — add 5 lines to .mcp.json and Claude Code gains native tools to search and read your knowledge base in any conversation.
 
 Works with Claude, GPT-4o, or Ollama (fully local, no API keys). Obsidian-compatible — open the vault folder in Obsidian and it just works.
 
@@ -325,7 +325,7 @@ cd my-wiki
 npx wikimem serve
 ```
 
-MIT licensed. 17 CLI commands.
+MIT licensed. 17 CLI commands. 38 connectors, all functional.
 
 ---
 
@@ -384,6 +384,11 @@ I'll be here all day answering questions.
 
 - v0.8.6 on npm
 - 17 CLI commands, 13+ format processors
+- **38 connectors — every one functional** (GitHub, Slack, Gmail, Notion, Discord, and 33 more)
+- 3 live automations: Smart Sourcing, Pipeline Watcher, Observer
+- Observer: 24-point scoring, experiment log, Jeff Clune open-endedness principles
+- Claude Code native: MCP server + slash commands
+- Zero console errors, 5 root-cause bugs fixed
 - Obsidian-compatible output
 - Works with Claude, GPT-4o, Ollama (local)
 - MIT licensed

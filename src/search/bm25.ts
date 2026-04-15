@@ -20,13 +20,34 @@ const B = 0.75;
 
 export function bm25Search(query: string, documents: Document[]): SearchResult[] {
   const queryTerms = tokenize(query);
-  const avgDocLength = documents.reduce((sum, d) => sum + tokenize(d.content).length, 0) / Math.max(documents.length, 1);
 
-  // Calculate IDF for each query term
+  // Tokenization cache — tokenize() is called many times per doc; cache results keyed by path.
+  const tokenCache = new Map<string, string[]>();
+  const getTokens = (path: string, text: string): string[] => {
+    if (!tokenCache.has(path)) tokenCache.set(path, tokenize(text));
+    return tokenCache.get(path)!;
+  };
+  const getTitleTokens = (path: string, title: string): string[] => {
+    const key = `__title__${path}`;
+    if (!tokenCache.has(key)) tokenCache.set(key, tokenize(title));
+    return tokenCache.get(key)!;
+  };
+
+  // Pre-tokenize all documents once before the double-loop below
+  const docTokens = documents.map((d) => ({
+    combined: getTokens(d.path, d.content + ' ' + d.title),
+    title: getTitleTokens(d.path, d.title),
+  }));
+
+  const avgDocLength =
+    docTokens.reduce((sum, t) => sum + t.combined.length, 0) /
+    Math.max(documents.length, 1);
+
+  // Calculate IDF for each query term using cached token sets
   const idf = new Map<string, number>();
   for (const term of queryTerms) {
-    const docsWithTerm = documents.filter((d) =>
-      tokenize(d.content).includes(term) || tokenize(d.title).includes(term),
+    const docsWithTerm = docTokens.filter(
+      (t) => t.combined.includes(term),
     ).length;
     const idfValue = Math.log(
       (documents.length - docsWithTerm + 0.5) / (docsWithTerm + 0.5) + 1,
@@ -34,11 +55,12 @@ export function bm25Search(query: string, documents: Document[]): SearchResult[]
     idf.set(term, idfValue);
   }
 
-  // Score each document
+  // Score each document using pre-tokenized arrays
   const results: SearchResult[] = [];
 
-  for (const doc of documents) {
-    const docTerms = tokenize(doc.content + ' ' + doc.title);
+  for (let i = 0; i < documents.length; i++) {
+    const doc = documents[i]!;
+    const { combined: docTerms, title: titleTerms } = docTokens[i]!;
     const docLength = docTerms.length;
     let score = 0;
 
@@ -51,7 +73,6 @@ export function bm25Search(query: string, documents: Document[]): SearchResult[]
     }
 
     // Boost title matches (additive, not multiplicative — avoids exponential blowup)
-    const titleTerms = tokenize(doc.title);
     let titleBoost = 0;
     for (const term of queryTerms) {
       if (titleTerms.includes(term)) {

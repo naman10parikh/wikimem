@@ -1,0 +1,122 @@
+# AGENTS.md.example — Sample Wiki Pages
+
+> This file shows what well-formed wiki pages look like.
+> Copy the frontmatter patterns into your own wiki pages.
+
+---
+
+## Example 1: Source Page (wiki/sources/)
+
+```markdown
+---
+title: "Attention Is All You Need"
+type: source
+category: paper
+tags: [transformer, attention, nlp, deep-learning, sequence-modeling]
+summary: "Seminal 2017 paper by Vaswani et al. introducing the Transformer architecture."
+tldr: "Proposes a model built entirely on self-attention, eliminating recurrence and convolutions, achieving state-of-the-art on translation tasks with superior parallelism."
+sources: ["raw/2024-01-10/vaswani2017attention.pdf"]
+related: ["[[Transformer Architecture]]", "[[Self-Attention Mechanism]]", "[[Google Brain]]"]
+created: "2024-01-10"
+updated: "2024-01-10"
+confidence: high
+validation_status: verified
+---
+
+# Attention Is All You Need
+
+**Authors:** Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser, Illia Polosukhin
+**Published:** 2017 | **Venue:** NeurIPS 2017
+
+## Overview
+
+Introduces the [[Transformer Architecture]] — a sequence-to-sequence model relying solely on [[Self-Attention Mechanism|self-attention]] rather than recurrent or convolutional layers. Achieves 28.4 BLEU on WMT 2014 English-to-German translation, surpassing all prior models.
+
+## Key Points
+
+- **Multi-head attention** allows the model to attend to information from different representation subspaces simultaneously.
+- **Positional encodings** (sinusoidal) substitute for recurrence to retain sequence order.
+- **Encoder-decoder architecture**: 6 identical layers each; each layer has self-attention + feed-forward sub-layers.
+- **Training speed**: substantially more parallelizable than RNNs — trains in 12 hours on 8 P100 GPUs for the base model.
+- **Scaled dot-product attention**: `Attention(Q, K, V) = softmax(QK^T / √d_k) V`
+
+## Entities Mentioned
+
+- [[Google Brain]] — primary affiliation of the authors
+- [[University of Toronto]] — Gomez affiliation
+- [[Google Research]] — Uszkoreit affiliation
+
+## Concepts Discussed
+
+- [[Self-Attention Mechanism]] — the core mechanism introduced
+- [[Transformer Architecture]] — the model architecture this paper defines
+- [[Positional Encoding]] — technique to inject sequence position information
+- [[Multi-Head Attention]] — the multi-subspace attention variant
+
+## Notable Quotes
+
+> "We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely."
+```
+
+---
+
+## Example 2: Entity Page — Technology (wiki/entities/)
+
+```markdown
+---
+title: "Transformer Architecture"
+type: entity
+category: technology
+tags: [deep-learning, nlp, attention, sequence-modeling, neural-network]
+summary: "Neural network architecture based on self-attention, foundational to modern LLMs."
+tldr: "The Transformer replaced RNNs as the dominant sequence modeling architecture and is the backbone of GPT, BERT, T5, and virtually every large language model."
+sources: ["raw/2024-01-10/vaswani2017attention.pdf"]
+related: ["[[Self-Attention Mechanism]]", "[[BERT]]", "[[GPT]]", "[[Attention Is All You Need]]"]
+created: "2024-01-10"
+updated: "2024-01-10"
+confidence: high
+validation_status: verified
+---
+
+# Transformer Architecture
+
+## Overview
+
+A neural network architecture introduced in [[Attention Is All You Need]] (Vaswani et al., 2017). Replaces recurrence with [[Self-Attention Mechanism|self-attention]] to model relationships between all positions in a sequence simultaneously. The Transformer is the foundation of virtually every major large language model, including [[GPT]], [[BERT]], and [[T5]].
+
+## Key Facts
+
+| Property          | Value                                               |
+| ----------------- | --------------------------------------------------- |
+| Introduced        | 2017 (NeurIPS)                                      |
+| Original use case | Neural machine translation                          |
+| Core mechanism    | Multi-head self-attention + feed-forward layers     |
+| Key advantage     | Full parallelism (no sequential dependency)         |
+| Derived models    | BERT, GPT, T5, PaLM, LLaMA, Claude, and many more  |
+
+## How It Works
+
+The Transformer encodes input tokens via an **encoder stack** (for understanding) and generates output via a **decoder stack** (for generation). Each layer applies:
+
+1. **[[Multi-Head Attention]]** — attend to all positions in parallel across multiple subspaces.
+2. **Feed-forward network** — two linear transformations with a ReLU in between.
+3. **Layer normalization + residual connections** — stabilize training.
+
+[[Positional Encoding]] (sinusoidal or learned) is added to token embeddings to preserve sequence order.
+
+## Related Entities
+
+- [[OpenAI]] — developed GPT series based on Transformer decoder
+- [[Google Brain]] — original authors' affiliation; developed T5 and PaLM
+- [[Hugging Face]] — primary open-source hub for Transformer models
+
+## Related Concepts
+
+- [[Self-Attention Mechanism]] — the core computation inside each Transformer layer
+- [[Positional Encoding]] — mechanism to inject sequence order
+- [[Scaling Laws]] — empirical rules governing Transformer performance vs. compute
+
+## Sources
+
+- [[Attention Is All You Need]] — original paper defining this architecture
+```

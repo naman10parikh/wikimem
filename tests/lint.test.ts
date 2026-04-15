@@ -138,11 +138,15 @@ describe('lint', () => {
     // Two pages that link to each other with summaries
     writeWikiPage(join(config.wikiDir, 'alpha.md'), 'Alpha links to [[Beta]] for more details about the topic.', {
       title: 'Alpha',
+      type: 'concepts',
       summary: 'Alpha page',
+      tldr: 'Alpha is a concept linked to Beta for context.',
     });
     writeWikiPage(join(config.wikiDir, 'beta.md'), 'Beta links to [[Alpha]] for background information about it.', {
       title: 'Beta',
+      type: 'concepts',
       summary: 'Beta page',
+      tldr: 'Beta is a concept linked to Alpha for context.',
     });
 
     const result = await lintWiki(config, stubProvider, { fix: false });

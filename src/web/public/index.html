@@ -15339,6 +15339,13 @@
           };
         }
 
+        // O(1) node lookup for tick handler — avoids O(n) .find() at 60fps
+        const nodeMap = new Map(
+          (typeof data !== "undefined" && data.nodes ? data.nodes : []).map(
+            (n) => [n.id, n],
+          ),
+        );
+
         const sim = d3
           .forceSimulation(data.nodes)
           .alphaDecay(0.05)

@@ -2,6 +2,52 @@
 
 All notable changes to wikimem are documented here.
 
+## [0.9.0] - 2026-04-14
+
+### 🎉 Features
+
+- **38/44 connectors live** — One-click connect for Notion, Linear, Jira, GitHub, Google Drive, Gmail, Slack, RSS, and more via OAuth, API key, bot token, or webhook. Full connector catalog with 9 category tabs and real-time search filter.
+- **Box connector** — Developer token auth added as a P0 moat connector (`feat: Box connector via developer token`).
+- **Observer v2 — Open-Endedness Engine** (+478L `observer.ts`) — 5 automated discovery functions: vault gap detection, semantic contradiction surfacing, missing page suggestions, temporal staleness scoring, and serendipitous connection proposals. Budget caps prevent runaway LLM spend.
+- **7 new MCP tools** (`mcp-tools-extended.ts`) — `ingest_url`, `search`, `ask`, `run_observer`, `list_connectors`, `stats`, `lint` — full Claude Code integration for wikimem vaults.
+- **Streaming query improvements** — Real-time streamed LLM responses in the web UI.
+- **TLDR extraction** — Every ingested page now auto-generates a `tldr` frontmatter field via LLM pipeline.
+- **Rich UI Polish wave** — Single-click inline edit (UXO-031), markdown shortcuts (UXO-032), datetime stamps (UXO-093), bookmark system (UXO-038/039), vault hierarchy in Explorer, raw file dates, recent item timestamps, time-lapse prefetch progress bar.
+- **Per-area model config** — Separate LLM model selection for ingest, query, and observer pipelines.
+- **Scheduler** (`scheduler.ts`) — Central automation management for sync jobs across all connectors.
+- **Privacy audit module** (`privacy.ts`, +239L) — Sensitive data scanner, `.gitignore` enforcement, and vault privacy health report.
+- **Sync preview mode** — Cost estimation before committing a full sync on GitHub, Gmail, Notion, RSS, Slack connectors.
+- **Resource picker with sync filters** — Fine-grained control over what gets synced per connector.
+
+### 🔒 Security
+
+- **Server bound to `127.0.0.1` only** — Eliminated LAN exposure of `/api/auth/tokens` which previously had no authentication and was accessible on the local network.
+- **`tokens.json` hardened** — `chmod 0600` on tokens file, `chmod 0700` on `.wikimem/` directory. Credentials no longer world-readable.
+- **`postMessage` origin scoped** — OAuth popup messages now validate `event.origin === localhost:port` instead of wildcard `*`, preventing cross-origin token hijacking.
+- **OAuth callback error sanitization** — Internal error details (file paths, stack traces) no longer leaked in OAuth callback responses.
+
+### 🐛 Bug Fixes
+
+- **TDZ crash on Connectors view** — `_connectorTokenStatus` was referenced at line 11818 but declared at line 19944; router fires early on `#connectors` hash causing a Temporal Dead Zone ReferenceError. Fixed by hoisting all variable declarations to top of script block.
+- **`closeCxModal`/`closeObsModal` ref guard** — Modal close functions referenced before assignment during `init → loadHome` flow; guarded with existence checks to prevent startup crash.
+- **Command palette `syncAllConnectors` TDZ** — Palette registered `syncAllConnectors` by reference before its definition; wrapped in arrow function to defer evaluation.
+- **Intermittent 500 on `/api/status`** — Missing vault dirs caused spurious 500 responses on cold starts; added `ensureVaultDirs()` + retry + structured error logging.
+- **Rate-limited partial writes** — Agent touch-up prevents partial page writes when LLM provider rate-limits mid-ingest.
+
+### 🎨 Polish
+
+- **Card animations and hover states** — `components.css` (+252L): focus rings, card hover lift, empty/loading state illustrations, semantic color tokens.
+- **Explorer vault hierarchy** — File tree now renders nested vault folder structure instead of a flat list.
+- **Connector cards** — All 44 connector cards show OAuth/connection status badges with real-time polling from `/api/auth/tokens`.
+
+### 📚 Docs
+
+- **`docs/value-prop-claude-code.md`** — New doc covering Claude Code integration value proposition for wikimem.
+- **`LAUNCH-CONTENT.md`** — Ready-to-post launch assets for X, HN, Reddit, DEV.to, and Product Hunt.
+- **`README-LAUNCH.md`** — Launch-oriented README rewrite (361L) with cleaner install story.
+
+---
+
 ## [0.5.1] - 2026-04-08
 
 ### Fixed (E2E Audit — Ralph Loop)

@@ -1,6 +1,6 @@
 # wikimem
 
-**A knowledge compiler. Drop anything — PDF, audio, video, URL — and get a structured, self-improving wiki.**
+**A knowledge compiler. Drop anything — PDF, audio, video, URL, or connect 38 OAuth/API sources — and get a structured, self-improving wiki.**
 
 [![npm version](https://img.shields.io/npm/v/wikimem.svg)](https://www.npmjs.com/package/wikimem)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -100,7 +100,7 @@ Output is Obsidian-compatible: wikilinks, YAML frontmatter, standard markdown. O
 
 Notion AI answers questions about your existing Notion content. WikiMem ingests any format — not just what you've already organized in Notion — and produces a structured knowledge graph you can browse, search, and give to an LLM.
 
-The other difference: Notion AI doesn't improve your knowledge base. WikiMem's Observer automation scores quality and applies fixes nightly.
+The other difference: Notion AI doesn't improve your knowledge base. WikiMem's Observer automation scores quality on a 24-point scale and applies fixes nightly.
 
 ### vs RAG
 
@@ -116,11 +116,13 @@ Perplexity Spaces searches and summarizes public web content. WikiMem compiles y
 
 The knowledge stays on your machine. Nothing is sent anywhere except LLM API calls (optional if you use Ollama).
 
-### vs Rowboat
+### vs Mem0
 
-Rowboat is a multi-agent API orchestration framework. WikiMem is a knowledge compiler with a native Claude Code integration.
+Mem0 is a memory API — you push facts in, query them back out. WikiMem is a structured knowledge compiler you browse and edit. It produces wiki pages, entity graphs, and concept maps — not a JSON memory store. And unlike Mem0, the Observer improves your knowledge base automatically without you pushing anything.
 
-They solve different problems. WikiMem does not orchestrate agents. It builds the knowledge base that agents can read.
+### vs Dex / personal CRM tools
+
+Dex and similar tools are optimized for contacts and relationships. WikiMem ingests any domain: research papers, codebases, audio recordings, Slack exports. If the knowledge lives somewhere, WikiMem can compile it.
 
 ---
 
