@@ -5,6 +5,6 @@ type: log
 
 # Wiki Log
 
-## [2026-04-15 00:43] ingest | external-source
+## [2026-04-15 00:57] ingest | typescript-article
 
-Processed /Users/naman/llmwiki/.test-vault-ingest/external-source.md. Created/updated 2 pages.
+Processed /Users/naman/llmwiki/.test-vault-ingest/raw/typescript-article.md. Created/updated 2 pages.
