@@ -15576,12 +15576,12 @@
           node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
           godRing
             .attr("cx", (d) => {
-              const n = data.nodes.find((n) => n.id === d.id);
-              return n?.x || 0;
+              const n = nodeMap.get(d.id);
+              return (n && typeof n.x !== "undefined" ? n.x : null) || 0;
             })
             .attr("cy", (d) => {
-              const n = data.nodes.find((n) => n.id === d.id);
-              return n?.y || 0;
+              const n = nodeMap.get(d.id);
+              return (n && typeof n.y !== "undefined" ? n.y : null) || 0;
             });
           label.attr("x", (d) => d.x).attr("y", (d) => d.y);
         });

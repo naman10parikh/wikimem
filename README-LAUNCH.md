@@ -16,7 +16,7 @@ npx wikimem@latest
 
 Most personal knowledge tools store what you write. WikiMem compiles what you feed it.
 
-Drop a research PDF, an audio recording, a video call, a Slack export, a spreadsheet, or a URL. WikiMem detects the format, extracts the content, and produces structured wiki pages: a source summary, entity pages for people and organizations mentioned, concept pages for ideas and frameworks, and cross-references between them. Everything linked with `[[wikilinks]]`, committed to git, and scored for quality on a nightly cycle.
+Drop a research PDF, an audio recording, a video call, a Slack export, a spreadsheet, or a URL — or connect any of 38 OAuth/API-key sources: GitHub, Slack, Gmail, Notion, Discord, Google Drive, Airtable, Linear, Jira, Confluence, and more. Every connector is functional. WikiMem detects the format, extracts the content, and produces structured wiki pages: a source summary, entity pages for people and organizations mentioned, concept pages for ideas and frameworks, and cross-references between them. Everything linked with `[[wikilinks]]`, committed to git, and scored for quality on a nightly cycle via the Observer (24-point scoring, experiment log).
 
 It is not a note-taking app. You do not have to write anything.
 
