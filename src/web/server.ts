@@ -4362,6 +4362,42 @@ export function createServer(vaultRoot: string, port: number): void {
     }
   }
 
+  // GET /.well-known/oauth-client-metadata.json — Client ID Metadata Document
+  // (CIMD, draft-parecki-oauth-client-id-metadata-document, MCP SEP-991/1032,
+  // Nov 2025). When an AS supports CIMD, WikiMem advertises THIS URL as its
+  // `client_id` on /authorize and /token requests. The AS fetches the JSON
+  // here to discover our `client_name`, `redirect_uris`, etc. — replacing
+  // the per-install RFC 7591 DCR call. See src/core/mcp-client/cimd.ts.
+  //
+  // Public, no auth, cacheable. The bundled file is the canonical source
+  // (package.json build copies src/web/public → dist/web/public). We hand-
+  // serve the route instead of relying on express.static dotfile fallthrough
+  // so this endpoint is guaranteed to exist even when publicDir is missing.
+  app.get('/.well-known/oauth-client-metadata.json', (_req, res) => {
+    try {
+      const candidates = [
+        join(__dirname, 'public', '.well-known', 'oauth-client-metadata.json'),
+        join(__dirname, '..', '..', 'src', 'web', 'public', '.well-known', 'oauth-client-metadata.json'),
+        join(__dirname, '..', '..', 'public', '.well-known', 'oauth-client-metadata.json'),
+      ];
+      for (const path of candidates) {
+        if (existsSync(path)) {
+          // express.sendFile rejects dotfile paths by default; the
+          // `.well-known` segment trips that check. Read + send instead.
+          const json = readFileSync(path, 'utf-8');
+          res.set('Content-Type', 'application/json');
+          res.set('Cache-Control', 'public, max-age=300');
+          res.send(json);
+          return;
+        }
+      }
+      res.status(404).json({ error: 'CIMD metadata file not found in build' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
+
   // POST /api/mcp-client/register — begin OAuth flow for a new MCP server URL.
   // Body: { mcpUrl: string, label?: string, staticClientId?: string }
   // Returns: { authorizeUrl, state } — caller opens `authorizeUrl` in a popup.

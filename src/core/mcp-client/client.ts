@@ -30,6 +30,7 @@ import {
   useStaticClientId,
   type RegisteredMcpClient,
 } from './dcr.js';
+import { asSupportsCimd, prepareClientForCimd } from './cimd.js';
 import { canonicalizeResource, generatePkce, generateState } from './oauth-pkce.js';
 import {
   getTokenEntry,
@@ -54,6 +55,12 @@ export interface ConnectInput {
   staticClientId?: string;
   /** Matching client_secret (only when the AS issued one). */
   staticClientSecret?: string;
+  /**
+   * Override the CIMD canonical metadata URL. Most callers should leave
+   * this unset — `buildCimdClientId()` picks the right default based on
+   * `WIKIMEM_CIMD_LOCAL`. Mainly used by tests.
+   */
+  cimdClientIdUrl?: string;
 }
 
 export interface ConnectPrepared {
@@ -172,6 +179,19 @@ export class McpClient {
     const mcpUrl = canonicalizeResource(input.mcpUrl);
     const discovery = await discoverMcpServer(mcpUrl);
 
+    // Spec ladder (mcp-first-connectors.md §4): CIMD > DCR > static client_id.
+    //
+    // 1. Caller-supplied static client_id wins (explicit > implicit). Anthropic
+    //    surfaces this as "Advanced settings" — when a user pastes a
+    //    pre-registered ID we honour it regardless of what the AS supports.
+    // 2. Otherwise, prefer CIMD when the AS advertises support. CIMD lets us
+    //    skip /register entirely — the AS fetches our published metadata at
+    //    runtime. This is the OSS-native path: zero per-user registration.
+    // 3. Fall back to DCR (RFC 7591) when the AS publishes a
+    //    `registration_endpoint`. Each new install POSTs and gets back a
+    //    fresh `client_id`. Costs the AS a DB row per client.
+    // 4. With none of the above, we cannot proceed — bail with a message
+    //    pointing the user at the static-client_id escape hatch.
     let client: RegisteredMcpClient;
     if (input.staticClientId) {
       client = useStaticClientId(
@@ -179,6 +199,14 @@ export class McpClient {
         [input.redirectUri],
         input.staticClientSecret,
       );
+    } else if (asSupportsCimd(discovery.asm)) {
+      const cimdInput: Parameters<typeof prepareClientForCimd>[0] = {
+        redirectUris: [input.redirectUri],
+      };
+      if (input.cimdClientIdUrl !== undefined) {
+        cimdInput.canonicalCimdUrl = input.cimdClientIdUrl;
+      }
+      client = prepareClientForCimd(cimdInput);
     } else if (discovery.asm.registration_endpoint) {
       client = await registerDynamicClient(discovery.asm, {
         clientName: this.clientName,
@@ -187,7 +215,7 @@ export class McpClient {
       });
     } else {
       throw new Error(
-        'MCP server advertises no registration_endpoint and no static client_id was supplied. Pass staticClientId to connect().',
+        'Server does not support DCR or CIMD; supply a pre-registered client_id.',
       );
     }
 

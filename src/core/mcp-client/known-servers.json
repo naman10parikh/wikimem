@@ -1,6 +1,6 @@
 {
   "$schema": "./known-servers.schema",
-  "updated_at": "2026-04-24-pm",
+  "updated_at": "2026-04-26",
   "description": "Curated catalog of well-known remote MCP servers that speak OAuth 2.1 per the 2025-06-18 spec (or public no-auth for reference servers). Users get one-click add from the Connectors page. Every entry has a verified reachable URL — expected codes are 401 (auth required, server alive) or 405 (wrong HTTP verb for HEAD, server alive) for OAuth-protected servers, 200 for public servers. URLs may change; file is refreshed on every wikimem release.",
   "docs_url": "https://support.claude.com/en/articles/11503834",
   "verification_notes": {
@@ -17,12 +17,16 @@
       "url": "http://127.0.0.1:3456/mcp",
       "category": "knowledge",
       "description": "Local WikiMem instance. Proves the client can OAuth against our own server end-to-end. Required entry — bootstrap target for every `pnpm test`.",
-      "scopes": ["read:wiki", "write:wiki"],
+      "scopes": [
+        "read:wiki",
+        "write:wiki"
+      ],
       "badge": "self-test",
       "authMode": "oauth2.1",
+      "auth_modes": ["dcr"],
       "verified_by": "naman10parikh",
       "added_at": "2026-04-23",
-      "notes": "Only shown when WIKIMEM_SHOW_SELF_TEST=1 or when running on localhost."
+      "notes": "Only shown when WIKIMEM_SHOW_SELF_TEST=1 or when running on localhost. WikiMem's own MCP server (src/mcp/) implements RFC 7591 Dynamic Client Registration; CIMD support is planned for v0.11."
     },
     {
       "id": "slack",
@@ -30,9 +34,17 @@
       "url": "https://mcp.slack.com/mcp",
       "category": "communication",
       "description": "Search Slack channels, post messages, manage canvases, query users. First-party Anthropic Claude Connector. OAuth 2.1 + PKCE S256. Pre-registered client (Slack Enterprise/Grid).",
-      "scopes": ["search:read.public", "search:read.private", "chat:write", "channels:history", "groups:history", "users:read"],
+      "scopes": [
+        "search:read.public",
+        "search:read.private",
+        "chat:write",
+        "channels:history",
+        "groups:history",
+        "users:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
+      "auth_modes": ["static_client_id"],
       "docs_url": "https://docs.slack.dev/ai/slack-mcp-server/",
       "verified_http_code": 401,
       "verified_by": "catalog-expand-2026-04-24",
@@ -45,9 +57,14 @@
       "url": "https://gmailmcp.googleapis.com/mcp/v1",
       "category": "productivity",
       "description": "Google Workspace remote MCP — Gmail, Drive, Calendar, Chat, Docs, Sheets, People. Official Google MCP. OAuth 2.0 — pre-registered client (Google Cloud Console). Multi-endpoint: this entry covers Gmail; sibling endpoints exist at drivemcp/calendarmcp/chatmcp/docsmcp/sheetsmcp.googleapis.com.",
-      "scopes": ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/drive.readonly", "https://www.googleapis.com/auth/calendar.readonly"],
+      "scopes": [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
+      "auth_modes": ["static_client_id"],
       "docs_url": "https://developers.google.com/workspace/guides/configure-mcp-servers",
       "verified_http_code": 405,
       "verified_by": "catalog-expand-2026-04-24",
@@ -60,9 +77,13 @@
       "url": "https://mcp.svc.cloud.microsoft/enterprise",
       "category": "productivity",
       "description": "Microsoft 365 MCP Server for Enterprise — Outlook Mail, Calendar, Teams, OneDrive, SharePoint via Microsoft Graph. Official Microsoft MCP. OAuth 2.0 (Microsoft Entra ID). Tenant-provisioned (admin must Grant-EntraBetaMCPServerPermission).",
-      "scopes": ["MCP.User.Read.All", "MCP.Application.Read.All"],
+      "scopes": [
+        "MCP.User.Read.All",
+        "MCP.Application.Read.All"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
+      "auth_modes": ["static_client_id"],
       "docs_url": "https://learn.microsoft.com/en-us/graph/mcp-server/get-started",
       "verified_http_code": 401,
       "verified_by": "catalog-expand-2026-04-24",
@@ -75,9 +96,12 @@
       "url": "https://gitlab.com/api/v4/mcp",
       "category": "development",
       "description": "GitLab MCP Server — query and modify GitLab issues, merge requests, pipelines, and code. Official GitLab MCP. OAuth 2.0 + Dynamic Client Registration. Premium/Ultimate tier required for gitlab.com; self-managed instances supported (replace host).",
-      "scopes": ["mcp"],
+      "scopes": [
+        "mcp"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
+      "auth_modes": ["dcr"],
       "docs_url": "https://docs.gitlab.com/user/gitlab_duo/model_context_protocol/mcp_server/",
       "verified_http_code": 401,
       "verified_by": "catalog-expand-2026-04-24",
@@ -90,9 +114,16 @@
       "url": "https://mcp.dropbox.com/mcp",
       "category": "cloud",
       "description": "Browse, search, read, and write Dropbox files. Official Dropbox MCP. OAuth 2.0 (Dropbox app authorization).",
-      "scopes": ["account_info.read", "files.metadata.read", "files.content.read", "files.content.write", "sharing.write"],
+      "scopes": [
+        "account_info.read",
+        "files.metadata.read",
+        "files.content.read",
+        "files.content.write",
+        "sharing.write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
+      "auth_modes": ["static_client_id"],
       "docs_url": "https://www.dropbox.com/developers/documentation/mcp",
       "verified_http_code": 401,
       "verified_by": "catalog-expand-2026-04-24",
@@ -105,9 +136,15 @@
       "url": "https://mcp.airtable.com/mcp",
       "category": "productivity",
       "description": "Search, create, and update Airtable bases, tables, and records. Official Airtable MCP. OAuth 2.0 (with PAT fallback).",
-      "scopes": ["data.records:read", "data.records:write", "schema.bases:read", "workspacesAndBases:read"],
+      "scopes": [
+        "data.records:read",
+        "data.records:write",
+        "schema.bases:read",
+        "workspacesAndBases:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
+      "auth_modes": ["static_client_id"],
       "docs_url": "https://support.airtable.com/docs/using-the-airtable-mcp-server",
       "verified_http_code": 401,
       "verified_by": "catalog-expand-2026-04-24",
@@ -120,7 +157,10 @@
       "url": "https://mcp.cloudflare.com/mcp",
       "category": "development",
       "description": "Codemode-style access to the entire Cloudflare API — 2,500+ endpoints across DNS, Workers, R2, Zero Trust. Official Cloudflare MCP. OAuth 2.1.",
-      "scopes": ["account:read", "account:write"],
+      "scopes": [
+        "account:read",
+        "account:write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -135,7 +175,9 @@
       "url": "https://radar.mcp.cloudflare.com/mcp",
       "category": "development",
       "description": "Query Cloudflare Radar for global internet traffic insights, BGP, DNS, attack data, and traffic anomalies. Public web telemetry. OAuth 2.1.",
-      "scopes": ["radar:read"],
+      "scopes": [
+        "radar:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -149,7 +191,9 @@
       "url": "https://browser.mcp.cloudflare.com/mcp",
       "category": "development",
       "description": "Render web pages, screenshot, scrape, and interact with browsers via Cloudflare's hosted Chromium. OAuth 2.1.",
-      "scopes": ["browser:render"],
+      "scopes": [
+        "browser:render"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -163,7 +207,9 @@
       "url": "https://ai-gateway.mcp.cloudflare.com/mcp",
       "category": "ai",
       "description": "Query AI Gateway logs and analytics — see token usage, latency, and request patterns. OAuth 2.1.",
-      "scopes": ["ai-gateway:read"],
+      "scopes": [
+        "ai-gateway:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -177,7 +223,9 @@
       "url": "https://builds.mcp.cloudflare.com/mcp",
       "category": "development",
       "description": "Manage Cloudflare Workers builds — view build status, trigger rebuilds, inspect logs. OAuth 2.1.",
-      "scopes": ["workers:builds:read"],
+      "scopes": [
+        "workers:builds:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -191,7 +239,10 @@
       "url": "https://containers.mcp.cloudflare.com/mcp",
       "category": "development",
       "description": "Manage Cloudflare Containers — deploy, monitor, and scale container workloads. OAuth 2.1.",
-      "scopes": ["containers:read", "containers:write"],
+      "scopes": [
+        "containers:read",
+        "containers:write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -205,7 +256,9 @@
       "url": "https://dns-analytics.mcp.cloudflare.com/mcp",
       "category": "development",
       "description": "Query DNS analytics across Cloudflare zones — query volume, response codes, country breakdowns. OAuth 2.1.",
-      "scopes": ["dns:analytics:read"],
+      "scopes": [
+        "dns:analytics:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -219,7 +272,9 @@
       "url": "https://logs.mcp.cloudflare.com/mcp",
       "category": "development",
       "description": "Query Cloudflare HTTP, firewall, and Logpush logs across zones. OAuth 2.1.",
-      "scopes": ["logs:read"],
+      "scopes": [
+        "logs:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -233,7 +288,10 @@
       "url": "https://autorag.mcp.cloudflare.com/mcp",
       "category": "ai",
       "description": "Cloudflare AutoRAG — managed RAG over your indexed sources. Query, ingest, manage retrievers. OAuth 2.1.",
-      "scopes": ["autorag:read", "autorag:write"],
+      "scopes": [
+        "autorag:read",
+        "autorag:write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -247,7 +305,9 @@
       "url": "https://auditlogs.mcp.cloudflare.com/mcp",
       "category": "development",
       "description": "Query Cloudflare account audit logs — who did what, when, from which IP. OAuth 2.1.",
-      "scopes": ["audit:read"],
+      "scopes": [
+        "audit:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -261,7 +321,9 @@
       "url": "https://graphql.mcp.cloudflare.com/mcp",
       "category": "development",
       "description": "Run Cloudflare GraphQL Analytics queries across all data sources. OAuth 2.1.",
-      "scopes": ["graphql:read"],
+      "scopes": [
+        "graphql:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -275,7 +337,9 @@
       "url": "https://casb.mcp.cloudflare.com/mcp",
       "category": "development",
       "description": "Query Cloudflare One CASB findings — SaaS security misconfigurations, sensitive data exposure. OAuth 2.1.",
-      "scopes": ["casb:read"],
+      "scopes": [
+        "casb:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -289,7 +353,9 @@
       "url": "https://dex.mcp.cloudflare.com/mcp",
       "category": "development",
       "description": "Cloudflare Digital Experience Monitoring — synthetic tests, real user monitoring, app health. OAuth 2.1.",
-      "scopes": ["dex:read"],
+      "scopes": [
+        "dex:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -318,9 +384,13 @@
       "url": "https://mcp.linear.app/sse",
       "category": "productivity",
       "description": "Read and write Linear issues, projects, and cycles. First-party Claude Connector. OAuth 2.1 + DCR.",
-      "scopes": ["read", "write"],
+      "scopes": [
+        "read",
+        "write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
+      "auth_modes": ["dcr"],
       "docs_url": "https://linear.app/developers/mcp",
       "verified_http_code": 401,
       "added_at": "2026-04-24"
@@ -331,9 +401,14 @@
       "url": "https://mcp.notion.com/mcp",
       "category": "productivity",
       "description": "Search and write Notion workspace pages, databases, and blocks. First-party Claude Connector. OAuth 2.1 + DCR.",
-      "scopes": ["read_content", "update_content", "insert_content"],
+      "scopes": [
+        "read_content",
+        "update_content",
+        "insert_content"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
+      "auth_modes": ["dcr"],
       "docs_url": "https://developers.notion.com/docs/get-started-with-mcp",
       "verified_http_code": 401,
       "added_at": "2026-04-24"
@@ -344,7 +419,10 @@
       "url": "https://mcp.atlassian.com/v1/sse",
       "category": "productivity",
       "description": "Query Jira tickets and Confluence pages across your Atlassian cloud. First-party Claude Connector — uses pre-registered client (requires site URL during auth).",
-      "scopes": ["read:jira-work", "read:confluence-content.all"],
+      "scopes": [
+        "read:jira-work",
+        "read:confluence-content.all"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://support.atlassian.com/rovo/docs/atlassians-remote-mcp-server/",
@@ -358,7 +436,9 @@
       "url": "https://mcp.asana.com/sse",
       "category": "productivity",
       "description": "Query and manage Asana tasks, projects, and workspaces. First-party Claude Connector. OAuth 2.1 + DCR.",
-      "scopes": ["default"],
+      "scopes": [
+        "default"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.asana.com/docs/mcp",
@@ -371,7 +451,9 @@
       "url": "https://mcp.intercom.com/sse",
       "category": "communication",
       "description": "Search conversations, contacts, and tickets in Intercom. First-party Claude Connector.",
-      "scopes": ["read"],
+      "scopes": [
+        "read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.intercom.com/docs/mcp",
@@ -384,7 +466,10 @@
       "url": "https://mcp.sentry.dev/mcp",
       "category": "development",
       "description": "Query errors, performance issues, and deploy monitoring from Sentry. Official Sentry MCP — full OAuth 2.1 + DCR via Cloudflare Workers-OAuth-Provider. Use /mcp (Streamable HTTP); /sse endpoint is deprecated.",
-      "scopes": ["read:events", "read:projects"],
+      "scopes": [
+        "read:events",
+        "read:projects"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://github.com/getsentry/sentry-mcp",
@@ -397,7 +482,11 @@
       "url": "https://api.githubcopilot.com/mcp",
       "category": "development",
       "description": "Browse repos, search code, read/write issues and PRs. Official GitHub remote MCP. OAuth 2.1 — pre-registered client (Copilot subscription required).",
-      "scopes": ["repo", "issues", "pull_requests"],
+      "scopes": [
+        "repo",
+        "issues",
+        "pull_requests"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://github.com/github/github-mcp-server",
@@ -411,7 +500,10 @@
       "url": "https://mcp.supabase.com/mcp",
       "category": "database",
       "description": "Query Supabase Postgres database, run SQL, inspect schema, manage migrations. Official Supabase MCP. OAuth 2.1 + DCR.",
-      "scopes": ["database:read", "database:write"],
+      "scopes": [
+        "database:read",
+        "database:write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://supabase.com/docs/guides/getting-started/mcp",
@@ -424,7 +516,9 @@
       "url": "https://mcp.vercel.com/",
       "category": "development",
       "description": "Inspect deployments, tail build logs, manage project config. Official Vercel MCP. OAuth 2.1 + DCR.",
-      "scopes": ["project:read"],
+      "scopes": [
+        "project:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://vercel.com/docs/mcp",
@@ -437,7 +531,10 @@
       "url": "https://mcp.neon.tech/mcp",
       "category": "database",
       "description": "Serverless Postgres database management — run queries, branch databases, view logs. Official Neon MCP. OAuth 2.1 + DCR.",
-      "scopes": ["read", "write"],
+      "scopes": [
+        "read",
+        "write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://neon.tech/docs/ai/neon-mcp-server",
@@ -450,7 +547,10 @@
       "url": "https://mcp.prisma.io/mcp",
       "category": "database",
       "description": "Serverless Postgres with Prisma ORM integration. Run queries and inspect schema. Official Prisma MCP.",
-      "scopes": ["database:read", "database:write"],
+      "scopes": [
+        "database:read",
+        "database:write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://www.prisma.io/docs/orm/prisma-schema/overview/mcp",
@@ -463,7 +563,10 @@
       "url": "https://bindings.mcp.cloudflare.com/sse",
       "category": "development",
       "description": "Manage Cloudflare Workers, KV, R2, D1, and Durable Objects via MCP. Official Cloudflare MCP.",
-      "scopes": ["workers:read", "workers:write"],
+      "scopes": [
+        "workers:read",
+        "workers:write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -476,7 +579,9 @@
       "url": "https://observability.mcp.cloudflare.com/sse",
       "category": "development",
       "description": "Query Workers logs and analytics. Useful for debugging your own deployed Workers. OAuth against Cloudflare account.",
-      "scopes": ["account:read"],
+      "scopes": [
+        "account:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
@@ -489,7 +594,10 @@
       "url": "https://netlify-mcp.netlify.app/mcp",
       "category": "development",
       "description": "Manage Netlify sites, deploys, and environment variables. Official Netlify MCP. OAuth 2.1 + DCR.",
-      "scopes": ["site:read", "site:write"],
+      "scopes": [
+        "site:read",
+        "site:write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://docs.netlify.com/extend/mcp/",
@@ -516,7 +624,9 @@
       "url": "https://mcp.paypal.com/sse",
       "category": "development",
       "description": "PayPal transactions, invoicing, and subscription management. Official PayPal MCP. OAuth via PayPal Developer.",
-      "scopes": ["payments:read"],
+      "scopes": [
+        "payments:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developer.paypal.com/tools/mcp-server/",
@@ -529,7 +639,10 @@
       "url": "https://mcp.squareup.com/sse",
       "category": "development",
       "description": "Query Square payments, orders, and inventory. Official Square MCP.",
-      "scopes": ["payments:read", "orders:read"],
+      "scopes": [
+        "payments:read",
+        "orders:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developer.squareup.com/docs/mcp",
@@ -542,7 +655,9 @@
       "url": "https://api.dashboard.plaid.com/mcp/sse",
       "category": "development",
       "description": "Connect to bank accounts, view transactions via Plaid Dashboard. Official Plaid MCP — pre-registered client required.",
-      "scopes": ["dashboard:read"],
+      "scopes": [
+        "dashboard:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://plaid.com/docs/api/mcp/",
@@ -556,7 +671,10 @@
       "url": "https://mcp.canva.com/mcp",
       "category": "productivity",
       "description": "Create and manage Canva designs from MCP clients. Official Canva MCP. OAuth 2.1 + DCR.",
-      "scopes": ["design:read", "design:write"],
+      "scopes": [
+        "design:read",
+        "design:write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://www.canva.dev/docs/connect/mcp/",
@@ -569,7 +687,10 @@
       "url": "https://mcp.webflow.com/sse",
       "category": "development",
       "description": "Read and publish Webflow CMS items. Official Webflow MCP.",
-      "scopes": ["cms:read", "cms:write"],
+      "scopes": [
+        "cms:read",
+        "cms:write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.webflow.com/v2.0.0/data/reference/mcp",
@@ -582,7 +703,10 @@
       "url": "https://mcp.wix.com/sse",
       "category": "development",
       "description": "Manage Wix sites, CMS collections, and e-commerce. Official Wix MCP.",
-      "scopes": ["site:read", "site:write"],
+      "scopes": [
+        "site:read",
+        "site:write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://dev.wix.com/docs/mcp-server",
@@ -595,7 +719,10 @@
       "url": "https://mcp.monday.com/sse",
       "category": "productivity",
       "description": "Query and update monday.com boards, items, and columns. Official monday.com MCP.",
-      "scopes": ["boards:read", "boards:write"],
+      "scopes": [
+        "boards:read",
+        "boards:write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developer.monday.com/apps/docs/mcp",
@@ -608,7 +735,10 @@
       "url": "https://mcp.attio.com/mcp",
       "category": "productivity",
       "description": "Modern CRM — read and write companies, people, deals, and notes. Official Attio MCP. OAuth 2.1 + DCR.",
-      "scopes": ["read", "write"],
+      "scopes": [
+        "read",
+        "write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://attio.com/developers/mcp",
@@ -621,7 +751,9 @@
       "url": "https://mcp.close.com/mcp",
       "category": "productivity",
       "description": "Close CRM — read leads, contacts, opportunities, and call logs. Official Close MCP. Pre-registered only.",
-      "scopes": ["leads:read"],
+      "scopes": [
+        "leads:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developer.close.com/resources/mcp/",
@@ -635,7 +767,9 @@
       "url": "https://app.hubspot.com/mcp/v1/http",
       "category": "productivity",
       "description": "HubSpot CRM — contacts, deals, companies, and marketing. Official HubSpot MCP. Uses API key (HubSpot Access Token).",
-      "scopes": ["crm.objects.contacts.read"],
+      "scopes": [
+        "crm.objects.contacts.read"
+      ],
       "badge": "official",
       "authMode": "apikey",
       "docs_url": "https://developers.hubspot.com/docs/api/mcp",
@@ -649,7 +783,9 @@
       "url": "https://mcp.box.com",
       "category": "cloud",
       "description": "Browse, search, and read Box files and folders. Official Box MCP. Pre-registered only (Box developer console).",
-      "scopes": ["root_readonly"],
+      "scopes": [
+        "root_readonly"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developer.box.com/guides/mcp/",
@@ -663,7 +799,10 @@
       "url": "https://asset-management.mcp.cloudinary.com/sse",
       "category": "development",
       "description": "Manage Cloudinary media assets — upload, transform, search. Official Cloudinary MCP.",
-      "scopes": ["media:read", "media:write"],
+      "scopes": [
+        "media:read",
+        "media:write"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://cloudinary.com/documentation/mcp_server",
@@ -676,7 +815,9 @@
       "url": "https://huggingface.co/mcp",
       "category": "ai",
       "description": "Search models, datasets, Spaces, and papers on the Hugging Face Hub. Official HF MCP. Optional OAuth via ?login query param; otherwise public read access with HF_TOKEN header.",
-      "scopes": ["hub:read"],
+      "scopes": [
+        "hub:read"
+      ],
       "badge": "official",
       "authMode": "hybrid",
       "docs_url": "https://huggingface.co/docs/hub/en/hf-mcp-server",
@@ -717,7 +858,9 @@
       "url": "https://mcp.stytch.dev/mcp",
       "category": "development",
       "description": "Manage Stytch users, sessions, and OAuth connections. Official Stytch MCP. OAuth 2.1 + DCR.",
-      "scopes": ["admin:read"],
+      "scopes": [
+        "admin:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://stytch.com/docs/mcp",
@@ -730,7 +873,10 @@
       "url": "https://mcp.buildkite.com/mcp",
       "category": "development",
       "description": "Query CI pipelines, builds, and agents. Official Buildkite MCP.",
-      "scopes": ["read_pipelines", "read_builds"],
+      "scopes": [
+        "read_pipelines",
+        "read_builds"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://buildkite.com/docs/apis/mcp",
@@ -743,7 +889,9 @@
       "url": "https://mcp.globalping.dev/sse",
       "category": "development",
       "description": "Run pings, traceroutes, DNS, and HTTP checks from 500+ global locations. Official jsdelivr Globalping MCP.",
-      "scopes": ["measurements:create"],
+      "scopes": [
+        "measurements:create"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://globalping.io/docs/api/mcp",
@@ -835,7 +983,9 @@
       "url": "https://mcp.turkishtechlab.com/mcp",
       "category": "productivity",
       "description": "Check flight status, schedules, and book Turkish Airlines flights. Official THY MCP.",
-      "scopes": ["read:flights"],
+      "scopes": [
+        "read:flights"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://mcp.turkishtechlab.com",
@@ -848,7 +998,9 @@
       "url": "https://mcp.port.io/v1",
       "category": "development",
       "description": "Query your Port IDP — services, entities, scorecards, and actions. Official Port MCP.",
-      "scopes": ["entities:read"],
+      "scopes": [
+        "entities:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://docs.port.io/ai-agents/mcp/overview",
@@ -861,7 +1013,9 @@
       "url": "https://mcp.jam.dev/mcp",
       "category": "development",
       "description": "Query Jam bug replays — console logs, network requests, and user sessions. Official Jam MCP.",
-      "scopes": ["jams:read"],
+      "scopes": [
+        "jams:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://jam.dev/docs/mcp",
@@ -874,7 +1028,9 @@
       "url": "https://api.fireflies.ai/mcp",
       "category": "productivity",
       "description": "Search meeting transcripts, summaries, and action items from Fireflies.ai. Official Fireflies MCP.",
-      "scopes": ["meetings:read"],
+      "scopes": [
+        "meetings:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://fireflies.ai/developers/mcp",
@@ -887,7 +1043,9 @@
       "url": "https://mcp-server.egnyte.com/sse",
       "category": "cloud",
       "description": "Enterprise file management — search, read, and share Egnyte documents. Official Egnyte MCP.",
-      "scopes": ["files:read"],
+      "scopes": [
+        "files:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://developers.egnyte.com/docs/mcp",
@@ -900,7 +1058,9 @@
       "url": "https://mcp.instantdb.com/mcp",
       "category": "database",
       "description": "Query InstantDB — real-time reactive database for apps. Official Instant MCP.",
-      "scopes": ["apps:read"],
+      "scopes": [
+        "apps:read"
+      ],
       "badge": "official",
       "authMode": "oauth2.1",
       "docs_url": "https://www.instantdb.com/docs/mcp",
@@ -920,6 +1080,42 @@
       "verified_http_code": 200,
       "added_at": "2026-04-24",
       "notes": "Template URL: https://gitmcp.io/{owner}/{repo} — replace the path to query any public repo."
+    },
+    {
+      "id": "todoist",
+      "name": "Todoist",
+      "url": "https://ai.todoist.net/mcp",
+      "category": "productivity",
+      "description": "Official Todoist remote MCP server (Doist). Manage tasks, projects, labels, comments via natural language. OAuth 2.1 with PRM at /.well-known/oauth-protected-resource/mcp.",
+      "scopes": [
+        "data:read_write"
+      ],
+      "badge": "official",
+      "authMode": "oauth2.1",
+      "auth_modes": [
+        "static_client_id"
+      ],
+      "verified_http_code": 401,
+      "verified_by": "registry-lite-2026-04-26",
+      "added_at": "2026-04-26",
+      "docs_url": "https://www.pulsemcp.com/servers/todoist",
+      "notes": "PRM verified: resource=https://ai.todoist.net/mcp, authorization_servers=[https://todoist.com], bearer_methods_supported=[header], scopes_supported=[data:read_write]. Returns 401 with WWW-Authenticate: Bearer resource_metadata=<PRM-URL> per RFC 9728. Maintained by Doist (Doist/todoist-ai repo). Pre-registered client model — register a Todoist app to obtain client_id."
+    },
+    {
+      "id": "openai-docs",
+      "name": "OpenAI Developer Docs",
+      "url": "https://developers.openai.com/mcp",
+      "category": "docs",
+      "description": "Official OpenAI Developers documentation MCP — read-only search and page fetching over OpenAI docs. Public no-auth server. NOT the OpenAI API itself; documentation queries only.",
+      "scopes": [],
+      "badge": "official",
+      "authMode": "none",
+      "auth_modes": [],
+      "verified_http_code": 200,
+      "verified_by": "registry-lite-2026-04-26",
+      "added_at": "2026-04-26",
+      "docs_url": "https://developers.openai.com/api/docs/mcp",
+      "notes": "Verified: initialize call returns valid MCP response with serverInfo.name=openai-docs-mcp, protocolVersion=2025-06-18, capabilities.tools.listChanged=true. Streamable HTTP transport, hosted on Vercel. Public — no OAuth required. Documentation-only; does NOT call OpenAI API on user behalf."
     }
   ],
   "preregistered_only_setup": {

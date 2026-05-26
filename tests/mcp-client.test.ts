@@ -41,6 +41,13 @@ import {
   canonicalizeResource,
 } from '../src/core/mcp-client/oauth-pkce.js';
 import { registerDynamicClient, useStaticClientId } from '../src/core/mcp-client/dcr.js';
+import {
+  asSupportsCimd,
+  buildCimdClientId,
+  prepareClientForCimd,
+  DEFAULT_CIMD_URL,
+  LOCAL_CIMD_URL,
+} from '../src/core/mcp-client/cimd.js';
 
 const VAULT_ROOT = join(process.cwd(), '.test-vault-mcp-client');
 const MOCK_PORT = 5900;
@@ -611,5 +618,402 @@ describe('End-to-end: connect → finalize → tools/list → tools/call', () =>
     expect(client._getEntry(MCP_URL)).toBeTruthy();
     client.disconnect(MCP_URL);
     expect(client._getEntry(MCP_URL)).toBeUndefined();
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════
+// CIMD (Client ID Metadata Documents — Nov 2025 spec, draft-parecki)
+// ════════════════════════════════════════════════════════════════════════
+//
+// We stand up a SECOND mock MCP server on a separate port that advertises
+// `client_id_metadata_document_supported: true`. The client should detect
+// CIMD and skip the /register endpoint entirely — using the canonical
+// CIMD URL as its `client_id` directly. We assert that no /register call
+// is observed by the mock AS.
+
+const CIMD_PORT = 5901;
+const CIMD_BASE = `http://127.0.0.1:${CIMD_PORT}`;
+const CIMD_MCP_URL = `${CIMD_BASE}/mcp`;
+// Override the canonical CIMD URL for the test so the AS can resolve it.
+const TEST_CIMD_CLIENT_ID = `${CIMD_BASE}/.well-known/oauth-client-metadata.json`;
+const VAULT_ROOT_CIMD = join(process.cwd(), '.test-vault-mcp-client-cimd');
+
+interface CimdAuthCode {
+  code: string;
+  client_id: string;
+  redirect_uri: string;
+  code_challenge: string;
+  resource: string;
+  scope: string;
+}
+
+interface CimdToken {
+  access_token: string;
+  refresh_token: string;
+  client_id: string;
+  resource: string;
+  scope: string;
+  expires_at: number;
+}
+
+const cimdState = {
+  // Whether the server advertises BOTH (DCR + CIMD). When true the test
+  // asserts the client picks CIMD (preference order per cimd.ts).
+  advertiseDcr: false,
+  // Tracks whether /register was ever called. If CIMD works correctly
+  // this MUST stay 0 — the whole point is to skip DCR.
+  registerCalls: 0,
+  codes: new Map<string, CimdAuthCode>(),
+  tokens: new Map<string, CimdToken>(),
+  // Capture the metadata file fetches so we can prove the AS would have
+  // resolved our CIMD URL. (We don't actually require the AS to fetch it
+  // for the test to pass — most ASes cache, and the CIMD spec only says
+  // SHOULD validate.)
+  cimdMetadataFetches: 0,
+  lastAuthorizeQuery: null as URLSearchParams | null,
+  lastTokenBody: null as URLSearchParams | null,
+};
+
+let cimdServer: http.Server;
+
+async function startCimdMockServer(): Promise<void> {
+  cimdServer = http.createServer(async (req, res) => {
+    const url = new URL(req.url || '/', CIMD_BASE);
+
+    // ── PRM ──────────────────────────────────────────────────────────
+    if (req.method === 'GET' && url.pathname === '/.well-known/oauth-protected-resource') {
+      sendJson(res, 200, {
+        resource: CIMD_MCP_URL,
+        authorization_servers: [CIMD_BASE],
+        scopes_supported: ['read:cimd'],
+        bearer_methods_supported: ['header'],
+      });
+      return;
+    }
+
+    // ── ASM (CIMD-aware) ─────────────────────────────────────────────
+    if (req.method === 'GET' && url.pathname === '/.well-known/oauth-authorization-server') {
+      const body: Record<string, unknown> = {
+        issuer: CIMD_BASE,
+        authorization_endpoint: `${CIMD_BASE}/oauth/authorize`,
+        token_endpoint: `${CIMD_BASE}/oauth/token`,
+        code_challenge_methods_supported: ['S256'],
+        grant_types_supported: ['authorization_code', 'refresh_token'],
+        response_types_supported: ['code'],
+        scopes_supported: ['read:cimd'],
+        client_id_metadata_document_supported: true,
+      };
+      // Toggle: when both DCR and CIMD are advertised, we expect the
+      // client to prefer CIMD. cimdState.advertiseDcr controls that.
+      if (cimdState.advertiseDcr) {
+        body['registration_endpoint'] = `${CIMD_BASE}/oauth/register`;
+      }
+      sendJson(res, 200, body);
+      return;
+    }
+
+    // ── CIMD client metadata document ────────────────────────────────
+    // Self-host the test client's metadata document. Mirrors the
+    // production file at src/web/public/.well-known/oauth-client-metadata.json
+    // but with a `client_id` matching this test server's URL.
+    if (req.method === 'GET' && url.pathname === '/.well-known/oauth-client-metadata.json') {
+      cimdState.cimdMetadataFetches += 1;
+      sendJson(res, 200, {
+        client_id: TEST_CIMD_CLIENT_ID,
+        client_name: 'WikiMem (CIMD test)',
+        client_uri: 'https://wikimem.dev',
+        redirect_uris: ['http://127.0.0.1:9/cb'],
+        token_endpoint_auth_method: 'none',
+        grant_types: ['authorization_code', 'refresh_token'],
+        response_types: ['code'],
+        scope: 'read:cimd',
+        software_id: 'wikimem',
+      });
+      return;
+    }
+
+    // ── /register: track if called (it MUST NOT be when CIMD wins) ───
+    if (req.method === 'POST' && url.pathname === '/oauth/register') {
+      cimdState.registerCalls += 1;
+      // Even if called, return a sensible response so the test can
+      // distinguish "called and used" from "skipped entirely".
+      sendJson(res, 200, {
+        client_id: 'dcr_should_not_be_used',
+        token_endpoint_auth_method: 'none',
+        redirect_uris: ['http://127.0.0.1:9/cb'],
+      });
+      return;
+    }
+
+    // ── /authorize ───────────────────────────────────────────────────
+    if (req.method === 'GET' && url.pathname === '/oauth/authorize') {
+      cimdState.lastAuthorizeQuery = url.searchParams;
+      const clientId = url.searchParams.get('client_id') ?? '';
+      const redirect = url.searchParams.get('redirect_uri') ?? '';
+      const codeChallenge = url.searchParams.get('code_challenge') ?? '';
+      const method = url.searchParams.get('code_challenge_method') ?? '';
+      const resource = url.searchParams.get('resource') ?? '';
+      const scope = url.searchParams.get('scope') ?? '';
+      const stateParam = url.searchParams.get('state') ?? '';
+      // CIMD-aware AS: client_id MUST be the metadata URL.
+      if (clientId !== TEST_CIMD_CLIENT_ID && clientId !== 'dcr_should_not_be_used') {
+        sendJson(res, 400, { error: 'invalid_client_id_for_cimd_as', received: clientId });
+        return;
+      }
+      if (method !== 'S256' || !codeChallenge) {
+        sendJson(res, 400, { error: 'pkce_required' });
+        return;
+      }
+      const code = randomToken('cimd_code');
+      cimdState.codes.set(code, { code, client_id: clientId, redirect_uri: redirect, code_challenge: codeChallenge, resource, scope });
+      const target = new URL(redirect);
+      target.searchParams.set('code', code);
+      target.searchParams.set('state', stateParam);
+      res.writeHead(302, { Location: target.toString() });
+      res.end();
+      return;
+    }
+
+    // ── /token ───────────────────────────────────────────────────────
+    if (req.method === 'POST' && url.pathname === '/oauth/token') {
+      const raw = await readBody(req);
+      const body = new URLSearchParams(raw);
+      cimdState.lastTokenBody = body;
+      const grant = body.get('grant_type');
+      if (grant === 'authorization_code') {
+        const code = body.get('code') ?? '';
+        const verifier = body.get('code_verifier') ?? '';
+        const reqResource = body.get('resource') ?? '';
+        const sentClientId = body.get('client_id') ?? '';
+        const entry = cimdState.codes.get(code);
+        if (!entry) { sendJson(res, 400, { error: 'invalid_grant' }); return; }
+        const derived = base64UrlFromSha256(verifier);
+        if (derived !== entry.code_challenge) { sendJson(res, 400, { error: 'invalid_pkce' }); return; }
+        if (reqResource !== entry.resource) { sendJson(res, 400, { error: 'invalid_resource' }); return; }
+        if (sentClientId !== entry.client_id) { sendJson(res, 400, { error: 'client_id_mismatch' }); return; }
+        const access = randomToken('cimd_access');
+        const refresh = randomToken('cimd_refresh');
+        cimdState.tokens.set(access, {
+          access_token: access,
+          refresh_token: refresh,
+          client_id: entry.client_id,
+          resource: entry.resource,
+          scope: entry.scope,
+          expires_at: Date.now() + 60_000,
+        });
+        sendJson(res, 200, {
+          access_token: access,
+          refresh_token: refresh,
+          token_type: 'Bearer',
+          expires_in: 60,
+          scope: entry.scope,
+        });
+        return;
+      }
+      sendJson(res, 400, { error: 'unsupported_grant_type' });
+      return;
+    }
+
+    // ── /mcp: bearer-guarded; minimal tools/list ─────────────────────
+    if (url.pathname === '/mcp') {
+      const authHeader = req.headers['authorization'];
+      const m = typeof authHeader === 'string' && /^Bearer\s+(.+)$/i.exec(authHeader);
+      if (!m) {
+        res.writeHead(401, {
+          'Content-Type': 'application/json',
+          'WWW-Authenticate': `Bearer realm="cimd-mock", resource_metadata="${CIMD_BASE}/.well-known/oauth-protected-resource"`,
+        });
+        res.end(JSON.stringify({ error: 'invalid_token' }));
+        return;
+      }
+      const access = m[1];
+      const tok = cimdState.tokens.get(access!);
+      if (!tok) {
+        res.writeHead(401, {
+          'Content-Type': 'application/json',
+          'WWW-Authenticate': `Bearer realm="cimd-mock", resource_metadata="${CIMD_BASE}/.well-known/oauth-protected-resource"`,
+        });
+        res.end(JSON.stringify({ error: 'invalid_token' }));
+        return;
+      }
+      const raw = await readBody(req);
+      const rpc = JSON.parse(raw || '{}') as { id?: number; method?: string };
+      if (rpc.method === 'tools/list') {
+        sendJson(res, 200, {
+          jsonrpc: '2.0',
+          id: rpc.id,
+          result: { tools: [{ name: 'cimd_ping', description: 'cimd-only tool' }] },
+        });
+        return;
+      }
+      sendJson(res, 200, { jsonrpc: '2.0', id: rpc.id, error: { code: -32601, message: 'method not found' } });
+      return;
+    }
+
+    res.writeHead(404);
+    res.end('not found');
+  });
+
+  await new Promise<void>((resolve) => cimdServer.listen(CIMD_PORT, '127.0.0.1', resolve));
+}
+
+describe('CIMD primitives', () => {
+  it('buildCimdClientId returns the canonical URL by default', () => {
+    delete process.env['WIKIMEM_CIMD_LOCAL'];
+    expect(buildCimdClientId()).toBe(DEFAULT_CIMD_URL);
+  });
+
+  it('buildCimdClientId honors caller override', () => {
+    expect(buildCimdClientId({ canonicalCimdUrl: 'https://example.com/.well-known/x.json' }))
+      .toBe('https://example.com/.well-known/x.json');
+  });
+
+  it('buildCimdClientId returns the local URL when WIKIMEM_CIMD_LOCAL=1', () => {
+    process.env['WIKIMEM_CIMD_LOCAL'] = '1';
+    try {
+      expect(buildCimdClientId()).toBe(LOCAL_CIMD_URL);
+    } finally {
+      delete process.env['WIKIMEM_CIMD_LOCAL'];
+    }
+  });
+
+  it('asSupportsCimd is true only when AS advertises support, false otherwise', () => {
+    const baseAsm = {
+      issuer: 'x',
+      authorization_endpoint: 'x',
+      token_endpoint: 'x',
+      code_challenge_methods_supported: ['S256'],
+      grant_types_supported: ['authorization_code'],
+      response_types_supported: ['code'],
+    };
+    expect(asSupportsCimd(baseAsm as never)).toBe(false);
+    expect(asSupportsCimd({ ...baseAsm, client_id_metadata_document_supported: true } as never)).toBe(true);
+    // Spec-draft alternates accepted only when explicitly true.
+    expect(asSupportsCimd({ ...baseAsm, cimd_supported: true } as never)).toBe(true);
+    expect(asSupportsCimd({ ...baseAsm, client_id_metadata_documents_supported: true } as never)).toBe(true);
+    // Falsy / absent → false.
+    expect(asSupportsCimd({ ...baseAsm, client_id_metadata_document_supported: false } as never)).toBe(false);
+  });
+
+  it('prepareClientForCimd returns the URL as client_id without a secret', () => {
+    const c = prepareClientForCimd({
+      redirectUris: ['http://127.0.0.1:9/cb'],
+      canonicalCimdUrl: 'https://example.com/.well-known/y.json',
+    });
+    expect(c.client_id).toBe('https://example.com/.well-known/y.json');
+    expect(c.token_endpoint_auth_method).toBe('none');
+    expect(c.client_secret).toBeUndefined();
+    expect(c.redirect_uris).toEqual(['http://127.0.0.1:9/cb']);
+  });
+});
+
+describe('CIMD end-to-end against a CIMD-aware mock AS', () => {
+  beforeAll(async () => {
+    if (existsSync(VAULT_ROOT_CIMD)) rmSync(VAULT_ROOT_CIMD, { recursive: true, force: true });
+    mkdirSync(VAULT_ROOT_CIMD, { recursive: true });
+    await startCimdMockServer();
+  });
+
+  afterAll(async () => {
+    await new Promise<void>((resolve) => cimdServer.close(() => resolve()));
+    if (existsSync(VAULT_ROOT_CIMD)) rmSync(VAULT_ROOT_CIMD, { recursive: true, force: true });
+  });
+
+  it('CIMD-only AS: client uses metadata URL as client_id and SKIPS /register', async () => {
+    cimdState.advertiseDcr = false; // CIMD-only
+    cimdState.registerCalls = 0;
+    const client = new McpClient({ vaultRoot: VAULT_ROOT_CIMD, clientName: 'wikimem-cimd-test' });
+    const prepared = await client.connect({
+      mcpUrl: CIMD_MCP_URL,
+      redirectUri: 'http://127.0.0.1:9/cb',
+      cimdClientIdUrl: TEST_CIMD_CLIENT_ID,
+    });
+
+    expect(prepared.client.client_id).toBe(TEST_CIMD_CLIENT_ID);
+    expect(prepared.client.client_secret).toBeUndefined();
+    // Critical: the whole point of CIMD is to skip DCR.
+    expect(cimdState.registerCalls).toBe(0);
+    // Authorize URL carries our CIMD URL as client_id.
+    const auth = new URL(prepared.authorizeUrl);
+    expect(auth.searchParams.get('client_id')).toBe(TEST_CIMD_CLIENT_ID);
+    expect(auth.searchParams.get('code_challenge_method')).toBe('S256');
+    expect(auth.searchParams.get('resource')).toBe(canonicalizeResource(CIMD_MCP_URL));
+
+    // Walk the rest of the flow to prove the registered client_id round-trips.
+    const u = new URL(prepared.authorizeUrl);
+    const consent = await new Promise<{ code: string; state: string }>((resolve, reject) => {
+      const r = http.request(
+        { method: 'GET', hostname: u.hostname, port: u.port, path: u.pathname + u.search },
+        (res) => {
+          res.resume();
+          const loc = res.headers['location'];
+          if (res.statusCode !== 302 || typeof loc !== 'string') {
+            reject(new Error(`Expected 302, got ${res.statusCode}`));
+            return;
+          }
+          const t = new URL(loc);
+          const code = t.searchParams.get('code');
+          const st = t.searchParams.get('state');
+          if (!code || !st) { reject(new Error('missing code/state')); return; }
+          resolve({ code, state: st });
+        },
+      );
+      r.on('error', reject);
+      r.end();
+    });
+    expect(consent.state).toBe(prepared.state);
+    const entry = await client.finalize(prepared, consent.code);
+    expect(entry.client_id).toBe(TEST_CIMD_CLIENT_ID);
+    expect(entry.access_token).toMatch(/^cimd_access_/);
+    // The /register endpoint must STILL not have been called after the
+    // full token exchange — CIMD path is registration-free end-to-end.
+    expect(cimdState.registerCalls).toBe(0);
+    // tools/list works with the bearer.
+    const tools = await client.listTools(CIMD_MCP_URL);
+    expect(tools.map((t) => t.name)).toEqual(['cimd_ping']);
+  });
+
+  it('AS advertises BOTH DCR + CIMD: client prefers CIMD (no /register call)', async () => {
+    cimdState.advertiseDcr = true; // Both modes advertised
+    cimdState.registerCalls = 0;
+    // Use a fresh vault to avoid token-store pollution from the previous test.
+    const VAULT2 = join(process.cwd(), '.test-vault-mcp-client-cimd-pref');
+    if (existsSync(VAULT2)) rmSync(VAULT2, { recursive: true, force: true });
+    mkdirSync(VAULT2, { recursive: true });
+    try {
+      const client = new McpClient({ vaultRoot: VAULT2 });
+      const prepared = await client.connect({
+        mcpUrl: CIMD_MCP_URL,
+        redirectUri: 'http://127.0.0.1:9/cb',
+        cimdClientIdUrl: TEST_CIMD_CLIENT_ID,
+      });
+      // Documented preference (cimd.ts spec ladder): when both modes are
+      // available, CIMD wins because it avoids the /register round-trip
+      // and the per-install AS DB row.
+      expect(prepared.client.client_id).toBe(TEST_CIMD_CLIENT_ID);
+      expect(cimdState.registerCalls).toBe(0);
+    } finally {
+      if (existsSync(VAULT2)) rmSync(VAULT2, { recursive: true, force: true });
+    }
+  });
+
+  it('staticClientId still wins over CIMD when caller supplies it explicitly', async () => {
+    cimdState.advertiseDcr = false;
+    cimdState.registerCalls = 0;
+    const VAULT3 = join(process.cwd(), '.test-vault-mcp-client-static');
+    if (existsSync(VAULT3)) rmSync(VAULT3, { recursive: true, force: true });
+    mkdirSync(VAULT3, { recursive: true });
+    try {
+      const client = new McpClient({ vaultRoot: VAULT3 });
+      const prepared = await client.connect({
+        mcpUrl: CIMD_MCP_URL,
+        redirectUri: 'http://127.0.0.1:9/cb',
+        staticClientId: 'user-pasted-client',
+      });
+      expect(prepared.client.client_id).toBe('user-pasted-client');
+      expect(cimdState.registerCalls).toBe(0);
+    } finally {
+      if (existsSync(VAULT3)) rmSync(VAULT3, { recursive: true, force: true });
+    }
   });
 });

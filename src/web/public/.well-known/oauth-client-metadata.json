@@ -1,0 +1,19 @@
+{
+  "client_id": "https://wikimem.dev/.well-known/oauth-client-metadata.json",
+  "client_name": "WikiMem",
+  "client_uri": "https://wikimem.dev",
+  "logo_uri": "https://wikimem.dev/logo.png",
+  "tos_uri": "https://wikimem.dev/terms",
+  "policy_uri": "https://wikimem.dev/privacy",
+  "redirect_uris": [
+    "http://127.0.0.1:3456/api/mcp-client/callback",
+    "http://localhost:3456/api/mcp-client/callback",
+    "http://127.0.0.1:4567/api/mcp-client/callback"
+  ],
+  "token_endpoint_auth_method": "none",
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "scope": "openid profile email read",
+  "software_id": "wikimem",
+  "software_version": "0.10.0"
+}

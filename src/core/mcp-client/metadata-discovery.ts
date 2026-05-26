@@ -32,6 +32,18 @@ export interface AuthorizationServerMetadata {
   grant_types_supported: string[];
   response_types_supported: string[];
   scopes_supported?: string[];
+  /**
+   * CIMD support flag (draft-parecki-oauth-client-id-metadata-document,
+   * MCP SEP-991/1032, Nov 2025). When `true`, clients can use a published
+   * metadata URL as `client_id` instead of calling `/register` (DCR).
+   * Pre-spec implementations may also use `cimd_supported` or
+   * `client_id_metadata_documents_supported` — see cimd.ts:asSupportsCimd.
+   */
+  client_id_metadata_document_supported?: boolean;
+  /** Pre-IETF alternate spelling (accepted as positive hint only). */
+  cimd_supported?: boolean;
+  /** Pre-IETF alternate spelling (accepted as positive hint only). */
+  client_id_metadata_documents_supported?: boolean;
 }
 
 export interface DiscoveryResult {
@@ -164,6 +176,16 @@ export async function fetchAuthorizationServerMetadata(
       : ['code'],
     ...(Array.isArray(body['scopes_supported'])
       ? { scopes_supported: (body['scopes_supported'] as unknown[]).map(String) }
+      : {}),
+    // Preserve CIMD-support flags exactly as advertised — cimd.ts inspects
+    // these to decide whether to skip DCR. We only forward `true` values
+    // (false / missing → undefined → asSupportsCimd returns false).
+    ...(body['client_id_metadata_document_supported'] === true
+      ? { client_id_metadata_document_supported: true }
+      : {}),
+    ...(body['cimd_supported'] === true ? { cimd_supported: true } : {}),
+    ...(body['client_id_metadata_documents_supported'] === true
+      ? { client_id_metadata_documents_supported: true }
       : {}),
   };
 }

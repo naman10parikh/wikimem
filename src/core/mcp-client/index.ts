@@ -38,6 +38,16 @@ export {
 } from './dcr.js';
 
 export {
+  asSupportsCimd,
+  buildCimdClientId,
+  prepareClientForCimd,
+  DEFAULT_CIMD_URL,
+  LOCAL_CIMD_URL,
+  type CimdClientIdOpts,
+  type PrepareCimdInput,
+} from './cimd.js';
+
+export {
   generatePkce,
   generateState,
   canonicalizeResource,
