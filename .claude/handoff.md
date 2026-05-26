@@ -2,7 +2,7 @@
 
 ## Active Mission: WikiMem v0.9.0 Complete Build
 
-Chairman directive: complete WikiMem entirely. Focus on differentiating features (connectors, OAuth E2E, document processors, automations, CC integration), NOT low-ROI security fixes.
+Maintainer directive: complete WikiMem entirely. Focus on differentiating features (connectors, OAuth E2E, document processors, automations, CC integration), NOT low-ROI security fixes.
 
 ## What Was Accomplished This Session
 
@@ -84,12 +84,12 @@ Chairman directive: complete WikiMem entirely. Focus on differentiating features
 ## Server Start Command
 
 ```bash
-cd /Users/naman/llmwiki && ANTHROPIC_API_KEY="$(grep WIKIMEM_ANTHROPIC_API_KEY /Users/naman/energy/.env | cut -d= -f2)" OPENAI_API_KEY="$(grep WIKIMEM_OPENAI_API_KEY /Users/naman/energy/.env | cut -d= -f2)" node dist/index.js serve --vault /Users/naman/test-wiki --port 3456
+cd $HOME/wikimem && ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" OPENAI_API_KEY="$OPENAI_API_KEY" node dist/index.js serve --vault $HOME/test-wiki --port 3456
 ```
 
 ## Key Architecture Notes
 
-- **Test vault**: ALWAYS use `/Users/naman/test-wiki`, NOT `energy/my-wiki` (30s+ git latency)
+- **Test vault**: ALWAYS use `$HOME/test-wiki`, NOT `./my-wiki` (30s+ git latency)
 - **OAuth providers**: 5 configured (GitHub, Slack, Google, Linear, Jira) in server.ts OAUTH_PROVIDERS
 - **Sync modules**: 8 exist (GitHub, Slack, Gmail, GDrive, Linear, Notion, Jira, RSS) in `src/core/sync/`
 - **Document processors**: 10 types (pdf, pptx, xlsx, csv, docx, image, audio, video, text, url)
@@ -103,6 +103,6 @@ Tier 1 FULL POWER (Day 0, Friday). No warnings received.
 ## Next Session First Actions
 
 1. Check if MCP agent (ac87394c60d4c6feb) completed — collect results
-2. `cd /Users/naman/llmwiki && pnpm build` to verify clean build
+2. `cd $HOME/wikimem && pnpm build` to verify clean build
 3. Start server, open browser, begin E2E testing
 4. Work through P0 list above
