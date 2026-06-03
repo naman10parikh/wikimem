@@ -1,0 +1,23 @@
+# `wikimem`
+
+> Self-improving wiki IDE. Ingest anything. Query with any LLM. Three automations.
+
+## Documentation
+
+- [README.md](README.md): Self-improving wiki IDE. Ingest anything. Query with any LLM. Three automations.
+- [AGENTS.md](AGENTS.md): How AI agents (Claude Code, sub-agents, the nightly observer) work inside this
+- [CLAUDE.md](CLAUDE.md): > Forged from the Energy harness formula via harness-forge. One repo = one recursively
+- [QUICKSTART.md](QUICKSTART.md): WikiMem is a self-improving local-first wiki IDE. Two ways in: use it as a tool, or
+- [CONTRIBUTING.md](CONTRIBUTING.md): Thanks for your interest in contributing. wikimem is an open-source project and we welcome contributions of all kinds.
+- [docs/OAUTH-APP-REGISTRATION.md](docs/OAUTH-APP-REGISTRATION.md)
+- [docs/agentdial-integration.md](docs/agentdial-integration.md)
+- [docs/architecture.md](docs/architecture.md)
+- [docs/competitive-landscape.md](docs/competitive-landscape.md)
+- [docs/configuration.md](docs/configuration.md)
+- [docs/connector-architecture-reference.md](docs/connector-architecture-reference.md)
+- [docs/value-prop-claude-code.md](docs/value-prop-claude-code.md)
+
+## Notes
+
+- This file follows the llms.txt convention (https://llmstxt.org) so AI agents can
+  discover this repo's docs without scraping. Generated from the README + key docs.
