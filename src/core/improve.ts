@@ -1,10 +1,11 @@
-import { readFileSync, existsSync, statSync, writeFileSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join, basename, extname } from 'node:path';
 import type { LLMProvider } from '../providers/types.js';
 import type { VaultConfig } from './vault.js';
 import { listWikiPages, readWikiPage, writeWikiPage, getVaultStats, extractWikilinks } from './vault.js';
 import { lintWiki } from './lint.js';
 import { appendLog } from './log-manager.js';
+import { scorePage, MAX_SCORE, buildIncomingLinksMap } from './observer.js';
 
 export interface ImproveAction {
   type: 'reorganize' | 'cross-link' | 'flag-contradiction' | 'suggest-page' | 'cleanup';
@@ -29,24 +30,50 @@ export async function improveWiki(
   options: ImproveOptions,
 ): Promise<ImproveResult> {
   // Phase 1: Score — evaluate wiki quality across dimensions
-  const stats = getVaultStats(config);
+  // Uses the shared observer scorePage() so both automation-2 (observer) and
+  // automation-3 (improve) report the same quality numbers.
   const lintResult = await lintWiki(config, provider, { fix: false });
 
   const pages = listWikiPages(config.wikiDir);
   const pageCount = pages.length;
 
-  // Calculate dimension scores
+  // Build shared incoming-links map (needed by scorePage)
+  const incomingLinks = buildIncomingLinksMap(pages);
+
+  // Aggregate per-page scores from the canonical observer scorer into 5 dimensions
+  const pageScores = pages.map((p) => {
+    try { return scorePage(p, incomingLinks); } catch { return null; }
+  }).filter(Boolean) as Array<ReturnType<typeof scorePage>>;
+
+  const avgScoreNorm = pageScores.length > 0
+    ? pageScores.reduce((s, ps) => s + (ps.score / MAX_SCORE) * 100, 0) / pageScores.length
+    : 0;
+  const avgFreshness = pageScores.length > 0
+    ? pageScores.reduce((s, ps) => s + (ps.breakdown.freshness / 3) * 100, 0) / pageScores.length
+    : 100;
+  const avgCrossLink = pageScores.length > 0
+    ? pageScores.reduce((s, ps) => s + (ps.breakdown.crossReferencing / 4) * 100, 0) / pageScores.length
+    : 100;
+  const avgOrg = pageScores.length > 0
+    ? pageScores.reduce((s, ps) => s + (ps.breakdown.readability / 3) * 100, 0) / pageScores.length
+    : 100;
+
+  const stats = getVaultStats(config);
+  const coverage = calculateCoverage(config, pageCount, stats);
+
   const dimensions: Record<string, number> = {
-    coverage: calculateCoverage(config, pageCount),
+    coverage: Math.round(coverage),
     consistency: Math.max(0, 100 - lintResult.issues.filter((i) => i.category === 'contradiction').length * 15),
-    crossLinking: calculateCrossLinking(stats, pageCount),
-    freshness: calculateFreshness(config, pages),
-    organization: calculateOrganization(lintResult.issues),
+    crossLinking: Math.round(avgCrossLink),
+    freshness: Math.round(avgFreshness),
+    organization: Math.round(avgOrg),
   };
 
-  const score = Math.round(
+  // Overall score: weighted blend of per-page quality norm (60%) + dimension avg (40%)
+  const dimAvg = Math.round(
     Object.values(dimensions).reduce((sum, s) => sum + s, 0) / Object.keys(dimensions).length,
   );
+  const score = Math.round(avgScoreNorm * 0.6 + dimAvg * 0.4);
 
   // Phase 2: Decide — if score >= threshold, no action needed
   if (score >= options.threshold) {
@@ -101,26 +128,13 @@ export async function improveWiki(
   return { score, dimensions, actions };
 }
 
-function calculateCoverage(config: VaultConfig, pageCount: number): number {
-  const stats = getVaultStats(config);
+/** Coverage: fraction of expected pages that exist. Accepts pre-fetched stats to avoid double-read. */
+function calculateCoverage(config: VaultConfig, pageCount: number, stats: ReturnType<typeof getVaultStats>): number {
+  void config; // kept in signature for future per-vault tuning
   if (stats.sourceCount === 0) return 0;
   // Rough heuristic: each source should produce ~3 pages
   const expectedPages = stats.sourceCount * 3;
   return Math.min(100, Math.round((pageCount / expectedPages) * 100));
-}
-
-function calculateCrossLinking(stats: VaultStats, pageCount: number): number {
-  if (pageCount <= 1) return 100;
-  // Target: at least 2 links per page
-  const targetLinks = pageCount * 2;
-  return Math.min(100, Math.round((stats.wikilinks / targetLinks) * 100));
-}
-
-function calculateOrganization(issues: Array<{ category: string }>): number {
-  const orgIssues = issues.filter((i) =>
-    i.category === 'orphan' || i.category === 'no-summary' || i.category === 'empty',
-  ).length;
-  return Math.max(0, 100 - orgIssues * 8);
 }
 
 async function proposeImprovements(
@@ -177,27 +191,9 @@ async function proposeImprovements(
   return actions;
 }
 
-function calculateFreshness(config: VaultConfig, pages: string[]): number {
-  if (pages.length === 0) return 100;
-
-  const now = Date.now();
-  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-  let totalScore = 0;
-
-  for (const pagePath of pages) {
-    try {
-      const stat = statSync(pagePath);
-      const ageMs = now - stat.mtimeMs;
-      // Pages updated within 30 days get 100, linearly decaying to 0 at 180 days
-      const pageScore = Math.max(0, Math.min(100, Math.round(100 - (ageMs / (thirtyDaysMs * 6)) * 100)));
-      totalScore += pageScore;
-    } catch {
-      totalScore += 50; // Default for unreadable files
-    }
-  }
-
-  return Math.round(totalScore / pages.length);
-}
+// calculateFreshness, calculateCrossLinking, and calculateOrganization were removed
+// when the scorer was unified with observer.scorePage() (CP117). Those dimensions
+// are now derived from the per-page breakdown fields in scorePage output.
 
 async function applyAction(
   action: ImproveAction,
@@ -383,5 +379,3 @@ async function applyAction(
   }
 }
 
-// Re-export for type use
-import type { VaultStats } from './vault.js';

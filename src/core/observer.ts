@@ -134,9 +134,10 @@ function scoreSourceQuality(frontmatter: Record<string, unknown>, content: strin
   return sq;
 }
 
-const MAX_SCORE = 24; // expanded from 14
+export const MAX_SCORE = 24; // expanded from 14
 
-function scorePage(pagePath: string, incomingLinks: Map<string, number>): PageScore {
+/** Score a single wiki page. Exported so other modules (e.g. improve.ts) share one scorer. */
+export function scorePage(pagePath: string, incomingLinks: Map<string, number>): PageScore {
   const page = readWikiPage(pagePath);
   const slug = basename(pagePath, '.md');
   const issues: string[] = [];
@@ -338,7 +339,8 @@ function findGaps(pagePaths: string[]): KnowledgeGap[] {
 
 // ─── Inbound Link Map ─────────────────────────────────────────────────────────
 
-function buildIncomingLinksMap(pagePaths: string[]): Map<string, number> {
+/** Build a slug→inbound-count map across all pages. Exported for reuse in improve.ts. */
+export function buildIncomingLinksMap(pagePaths: string[]): Map<string, number> {
   const titleToSlug = new Map<string, string>();
 
   // Build title → slug lookup

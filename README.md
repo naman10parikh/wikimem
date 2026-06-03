@@ -97,8 +97,12 @@ Sync external sources into your vault automatically.
 | Git repos | ✅ Shipped |
 | GitHub | ✅ Shipped |
 | Webhooks | ✅ Shipped |
-| Slack | 🔜 Coming soon |
-| Gmail | 🔜 Coming soon |
+| Slack | ✅ Shipped |
+| Gmail / Google Drive | ✅ Shipped |
+| RSS feeds | ✅ Shipped |
+| Discord | ✅ Shipped |
+| Notion / Linear / Jira | ✅ Shipped |
+| Microsoft 365 / LinkedIn | 🔜 Coming soon |
 
 ### MCP Server
 
@@ -132,6 +136,7 @@ Ollama runs fully local — no API keys, no network, no data leaves your machine
 | `wikimem status` | Vault statistics: pages, words, sources, links, orphans |
 | `wikimem watch` | Auto-ingest files dropped into `raw/` |
 | `wikimem scrape` | Fetch from configured RSS/GitHub/URL sources |
+| `wikimem observe` | Run observer on demand — page scoring, orphans, gaps, discoveries (`--improve`, `--budget 2.0`, `--json`) |
 | `wikimem improve` | Run self-improvement cycle (`--dry-run`, `--threshold 90`) |
 | `wikimem export` | Export wiki to other formats |
 | `wikimem open` | Open vault in Obsidian |

@@ -21,6 +21,7 @@ import { registerStatusCommand } from './commands/status.js';
 import { registerWatchCommand } from './commands/watch.js';
 import { registerScrapeCommand } from './commands/scrape.js';
 import { registerImproveCommand } from './commands/improve.js';
+import { registerObserveCommand } from './commands/observe.js';
 import { registerDuplicatesCommand } from './commands/duplicates.js';
 import { registerServeCommand } from './commands/serve.js';
 import { registerHistoryCommand } from './commands/history.js';
@@ -51,6 +52,7 @@ export function createProgram(): Command {
   registerWatchCommand(program);
   registerScrapeCommand(program);
   registerImproveCommand(program);
+  registerObserveCommand(program);
   registerDuplicatesCommand(program);
   registerServeCommand(program);
   registerOpenCommand(program);
