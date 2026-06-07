@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "name": "wikimem",
+  "display_name": "WikiMem — Self-Improving Wiki",
+  "description": "Ingest anything (13 formats), query with any LLM, and let an Observer score + improve your wiki nightly. Bundles WikiMem's skills, slash commands, safety hooks, and MCP server so any Claude Code session can treat a directory as a self-improving knowledge base.",
+  "version": "0.10.0",
+  "author": "Naman Parikh <naman10parikh@gmail.com>",
+  "license": "MIT",
+  "repository": "https://github.com/naman10parikh/wikimem",
+  "keywords": [
+    "llm",
+    "wiki",
+    "knowledge-base",
+    "obsidian",
+    "ai",
+    "agent",
+    "markdown",
+    "self-improving",
+    "rag-alternative",
+    "claude"
+  ],
+  "skills": [
+    "./skills/wikimem/SKILL.md",
+    "./skills/wikimem-ingest-pipeline/SKILL.md",
+    "./skills/wikimem-observer/SKILL.md"
+  ],
+  "commands": [
+    "./templates/claude-commands/wikimem-ingest.md",
+    "./templates/claude-commands/wikimem-ask.md",
+    "./templates/claude-commands/wikimem-sync.md",
+    "./templates/claude-commands/wikimem-status.md",
+    "./templates/claude-commands/wikimem-improve.md"
+  ],
+  "hooks": "./.claude/settings.json",
+  "mcp_servers": [
+    {
+      "name": "wikimem",
+      "description": "WikiMem MCP server — exposes wikimem_search, wikimem_ingest, wikimem_ask, wikimem_lint, wikimem_list_connectors and more over stdio, scoped to the --vault directory.",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["dist/mcp-entry.js"],
+      "env": {}
+    }
+  ],
+  "capabilities": {
+    "tools": [
+      {
+        "name": "wikimem_search",
+        "description": "BM25 + optional semantic search across the wiki vault's pages.",
+        "when_to_use": "When you need to find which saved pages are relevant to a query before answering."
+      },
+      {
+        "name": "wikimem_ingest",
+        "description": "Run a file/folder/URL through the WikiMem pipeline (extract → dedup → lint → save as page).",
+        "when_to_use": "When the user wants to add a source to their wiki."
+      },
+      {
+        "name": "wikimem_ask",
+        "description": "LLM-powered Q&A against the wiki with cited pages.",
+        "when_to_use": "When the user asks a question that should be answered from their own saved knowledge."
+      }
+    ]
+  },
+  "install_instructions": "1. Build the package: pnpm build (produces dist/mcp-entry.js used by the MCP server).\n2. Add this plugin to Claude Code: Settings -> Plugins -> Add local plugin -> select this directory.\n3. The wikimem skills, /wikimem-* slash commands, safety hooks, and the wikimem MCP server are now available. Point the server at a vault with `--vault <path>`."
+}

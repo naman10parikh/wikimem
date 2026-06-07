@@ -55,6 +55,7 @@
     "chokidar": "^4.0.0",
     "commander": "^13.0.0",
     "discord.js": "^14.26.3",
+    "e2b": "^2.28.0",
     "express": "^5.2.1",
     "gray-matter": "^4.0.3",
     "mammoth": "^1.12.0",

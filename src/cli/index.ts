@@ -20,6 +20,7 @@ import { registerLintCommand } from './commands/lint.js';
 import { registerStatusCommand } from './commands/status.js';
 import { registerWatchCommand } from './commands/watch.js';
 import { registerScrapeCommand } from './commands/scrape.js';
+import { registerSandboxRunCommand } from './commands/sandbox-run.js';
 import { registerImproveCommand } from './commands/improve.js';
 import { registerObserveCommand } from './commands/observe.js';
 import { registerDuplicatesCommand } from './commands/duplicates.js';
@@ -51,6 +52,7 @@ export function createProgram(): Command {
   registerStatusCommand(program);
   registerWatchCommand(program);
   registerScrapeCommand(program);
+  registerSandboxRunCommand(program);
   registerImproveCommand(program);
   registerObserveCommand(program);
   registerDuplicatesCommand(program);
