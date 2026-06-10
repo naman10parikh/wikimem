@@ -198,6 +198,18 @@ When a Claude Code user says:
 
 → Claude Code should invoke `/wikimem-improve`, show SVG timeline of score delta, and offer to accept/reject the Observer commit.
 
+## Expected output
+
+After this skill routes a request, the user should see:
+
+- **Ingest** — `✓ N page(s) added` with the vault-relative page paths, plus a `wikimem status` one-liner (pages / categories / orphans).
+- **Ask** — a direct answer with `[[wikilink]]` citations to the exact pages it came from; "no relevant pages" is an honest miss, not a hallucinated answer.
+- **Sync** — connector name + items pulled + pages written (e.g. `slack: 42 messages → 3 pages`).
+- **Status** — page count, category breakdown, connector health table, last Observer run.
+- **Improve** — Observer report (avg score, weakest pages, gaps) and, if auto-improve ran, exactly ONE git commit hash the user can accept or revert.
+
+Every flow ends by telling the user the vault path it operated on and the next obvious command.
+
 ## Related Resources
 
 | Resource | Path / URL |
