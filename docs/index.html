@@ -106,7 +106,8 @@ figcaption { font-size: 13px; color: var(--mute); margin-top: 8px; }
 .main pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px;
   overflow-x: auto; line-height: 1.5; }
 .main pre code { background: none; padding: 0; border: 0; }
-pre.mermaid { background: none; border: 0; text-align: center; }
+pre.mermaid { background: none; border: 0; text-align: center; overflow-x: auto; }
+pre.mermaid svg { min-width: 640px; }  /* on a phone the diagram scrolls inside its own box, labels stay readable */
 .main table { display: block; overflow-x: auto; }
 </style>
 <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
