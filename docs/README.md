@@ -98,6 +98,7 @@ In that nightly run it also asks the model to improve up to three of the weakest
 For this repository, [.github/workflows/improve.yml](../.github/workflows/improve.yml) runs every Monday.
 It builds, runs the tests and the golden evals, then runs [eval/propose.mjs](../eval/propose.mjs).
 That script points WikiMem at the repository's own notes in [brain/](../brain/) and writes proposals, and a person merges any change.
+The workflow then opens one issue labelled `proposal`, or updates the one already open, so a person can review them.
 [dsip.json](../dsip.json) names no level. It lists the steps observe, score, propose, validate and ship.
 
 **How do I run its tests or evals?**
