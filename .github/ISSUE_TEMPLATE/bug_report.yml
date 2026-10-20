@@ -1,0 +1,28 @@
+name: Bug report
+description: Something does not work the way the README says.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the report. A quick look at the open issues first saves us both time.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where you ran it
+      options: [Claude Code, Codex, Cursor, Gemini CLI, OpenCode, GitHub Copilot, The command line, Other]

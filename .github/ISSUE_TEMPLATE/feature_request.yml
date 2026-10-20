@@ -1,0 +1,20 @@
+name: Feature request
+description: Something it should do, or do better.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you need
+      description: The job you are trying to get done, and where it falls short today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where you would use it
+      options: [Claude Code, Codex, Cursor, Gemini CLI, OpenCode, GitHub Copilot, The command line, Other]

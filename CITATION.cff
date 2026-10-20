@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it as below.
+title: "WikiMem: Self-improving memory for agents: ingest anything, query everything."
+type: software
+authors:
+  - family-names: Parikh
+    given-names: Naman
+repository-code: "https://github.com/naman10parikh/wikimem"
+license: MIT
+version: "0.10.0"
+abstract: "Self-improving memory for agents: ingest anything, query everything."
+keywords: ["agent-native", "agent-memory", "knowledge-base", "obsidian"]
