@@ -20,7 +20,7 @@ WikiMem is an agent employee, a packaged specialist agent with its own skills, m
 
 _WikiMem is part of an agent-native play for agent-native systems that can eventually be recursively self-improving and evolving, operated by agent employees._
 
-<p align="center"><img alt="WikiMem on the command line" src="assets/terminal.svg" width="880"></p>
+<p align="center"><img alt="WikiMem: a real task, run offline" src="assets/demo.svg" width="880"></p>
 <!-- fleet:header:end -->
 
 WikiMem gives an agent a memory it can read, search and improve. Drop in files, links or a connected app, and it

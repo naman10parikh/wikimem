@@ -124,7 +124,7 @@ mermaid.initialize({ startOnLoad: true, theme: "neutral" });</script>
 <div class="layout">
   <nav class="rail" aria-label="Contents"><ul><li><a href="#install">Install</a></li><li><a href="#how">How it works</a></li><li><a href="#skills">Skills</a></li><li><a href="#tools">MCP tools</a></li><li><a href="#agents">For agents</a></li></ul></nav>
   <main class="main">
-    <p><img class="hero" alt="WikiMem on the command line" src="https://raw.githubusercontent.com/naman10parikh/wikimem/main/assets/terminal.svg"></p>
+    <p><img class="hero" alt="WikiMem on the command line" src="https://raw.githubusercontent.com/naman10parikh/wikimem/main/assets/demo.svg"></p>
     <section class="sec" id="install"><h2>Install</h2><p dir="auto"><strong>Claude Code</strong>: the plugin brings the skills, sub-agents, hooks and MCP server.</p>
 <pre class="notranslate"><code class="notranslate">/plugin marketplace add naman10parikh/wikimem
 /plugin install wikimem@wikimem
@@ -243,6 +243,7 @@ In that nightly run it also asks the model to improve up to three of the weakest
 For this repository, <a href="https://github.com/naman10parikh/wikimem/blob/main/github/workflows/improve.yml">.github/workflows/improve.yml</a> runs every Monday.<br>
 It builds, runs the tests and the golden evals, then runs <a href="https://github.com/naman10parikh/wikimem/blob/main/eval/propose.mjs">eval/propose.mjs</a>.<br>
 That script points WikiMem at the repository's own notes in <a href="https://github.com/naman10parikh/wikimem/blob/main/brain">brain/</a> and writes proposals, and a person merges any change.<br>
+The workflow then opens one issue labelled <code class="notranslate">proposal</code>, or updates the one already open, so a person can review them.<br>
 <a href="https://github.com/naman10parikh/wikimem/blob/main/dsip.json">dsip.json</a> names no level. It lists the steps observe, score, propose, validate and ship.</p>
 <p dir="auto"><strong>How do I run its tests or evals?</strong><br>
 Run <code class="notranslate">pnpm install</code> and <code class="notranslate">pnpm build</code>.<br>
