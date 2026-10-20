@@ -103,6 +103,22 @@ describe('lint', () => {
     expect(brokenLinks).toHaveLength(0);
   });
 
+  it('resolves Obsidian-style links by file name, any case, with an alias or a heading', async () => {
+    const config = getVaultConfig(TEST_ROOT);
+    writeWikiPage(join(config.wikiDir, 'notes.md'), 'See [[rag]], [[RAG|retrieval]] and [[rag#Limits]].', {
+      title: 'Notes',
+      summary: 'A page that links by file name',
+    });
+    writeWikiPage(join(config.wikiDir, 'rag.md'), 'Retrieval-augmented generation content here.', {
+      title: 'Retrieval-Augmented Generation',
+      summary: 'The target',
+    });
+
+    const result = await lintWiki(config, stubProvider, { fix: false });
+    expect(result.issues.filter((i) => i.category === 'missing-link')).toHaveLength(0);
+    expect(result.issues.filter((i) => i.category === 'orphan' && i.page?.endsWith('rag.md'))).toHaveLength(0);
+  });
+
   it('detects empty pages (< 10 words)', async () => {
     const config = getVaultConfig(TEST_ROOT);
     writeWikiPage(join(config.wikiDir, 'tiny.md'), 'Short.', {

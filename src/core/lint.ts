@@ -21,6 +21,10 @@ interface LintOptions {
   fix: boolean;
 }
 
+// A wikilink names a page by its title or its file name, in any case, and may carry an |alias or a #heading
+// (Obsidian's rules), so links and pages are compared on this key.
+const linkKey = (link: string): string => (link.split('|')[0] ?? '').split('#')[0]!.trim().toLowerCase();
+
 export async function lintWiki(
   config: VaultConfig,
   _provider: LLMProvider,
@@ -41,9 +45,10 @@ export async function lintWiki(
   for (const pagePath of pages) {
     try {
       const page = readWikiPage(pagePath);
-      allTitles.add(page.title);
+      allTitles.add(linkKey(page.title));
+      allTitles.add(linkKey(basename(pagePath, '.md')));
       for (const link of page.wikilinks) {
-        allLinkedTo.add(link);
+        allLinkedTo.add(linkKey(link));
       }
       pageData.push({
         path: pagePath,
@@ -66,7 +71,7 @@ export async function lintWiki(
   const structuralPages = new Set(['index', 'log', 'Wiki Index', 'Wiki Log']);
   for (const page of pageData) {
     if (structuralPages.has(page.title) || page.path.endsWith('/index.md') || page.path.endsWith('/log.md')) continue;
-    if (!allLinkedTo.has(page.title)) {
+    if (!allLinkedTo.has(linkKey(page.title)) && !allLinkedTo.has(linkKey(basename(page.path, '.md')))) {
       issues.push({
         category: 'orphan',
         severity: 'warning',
@@ -79,7 +84,7 @@ export async function lintWiki(
   // Check 2: Broken wikilinks (link to non-existent page)
   for (const page of pageData) {
     for (const link of page.wikilinks) {
-      if (!allTitles.has(link)) {
+      if (!allTitles.has(linkKey(link))) {
         issues.push({
           category: 'missing-link',
           severity: 'warning',
