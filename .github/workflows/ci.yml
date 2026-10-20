@@ -31,6 +31,9 @@ jobs:
 
       - run: pnpm test
 
+      - name: Golden evals
+        run: pnpm eval
+
       - name: Verify CLI
         run: node dist/index.js --help
 

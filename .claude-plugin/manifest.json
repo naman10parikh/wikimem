@@ -4,7 +4,7 @@
   "display_name": "WikiMem — Self-Improving Wiki",
   "description": "Ingest anything (13 formats), query with any LLM, and let an Observer score + improve your wiki nightly. Bundles WikiMem's skills, slash commands, safety hooks, and MCP server so any Claude Code session can treat a directory as a self-improving knowledge base.",
   "version": "0.10.0",
-  "author": "Naman Parikh <naman10parikh@gmail.com>",
+  "author": "Naman Parikh (https://github.com/naman10parikh)",
   "license": "MIT",
   "repository": "https://github.com/naman10parikh/wikimem",
   "keywords": [

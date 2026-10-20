@@ -42,6 +42,14 @@ WikiMem lets Claude Code treat any directory as a **self-improving knowledge bas
 - Pure conversation memory (use Claude Code's built-in memory instead)
 - When user is just asking Claude a question that doesn't need their personal knowledge
 
+## Steps
+
+1. Find the vault: the folder with `config.yaml` and `wiki/`. If there is none, create one with `wikimem init <dir>`.
+2. Route the user's intent to a command with the table above (or the matching `wikimem_*` MCP tool).
+3. Run it with `--vault <path>`. Ingest, ask and improve need an LLM: check for `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or a running Ollama first.
+4. After any command that writes pages, run `wikimem lint --vault <path>` and fix what it reports.
+5. Report the result in the shape described under **Expected output**.
+
 ## Prerequisites
 
 ### 1. Install WikiMem (once)
@@ -71,9 +79,9 @@ wikimem init --from-repo https://github.com/user/repo --include "**/*.md" --excl
 ### 3. Set API keys (in `~/my-wiki/.env` or shell env)
 
 ```bash
-export WIKIMEM_ANTHROPIC_API_KEY=sk-...      # for LLM query + Observer
+export ANTHROPIC_API_KEY=sk-...      # for LLM query + Observer
 # optional
-export WIKIMEM_OPENAI_API_KEY=sk-...          # fallback/alternate
+export OPENAI_API_KEY=sk-...          # fallback/alternate
 ```
 
 ### 4. Start the local server (for web UI)
@@ -172,11 +180,11 @@ WikiMem exposes itself as a Claude Connector over MCP. In Claude.ai:
 
 - **Professional, minimal, elegant, friendly, sleek** — per chairman directives #77 and #78
 - Dark mode first (Obsidian-inspired)
-- Design system at `/Users/naman/llmwiki/docs/DESIGN-SYSTEM.md`
+- Design tokens are CSS variables at `:root` in the web app's stylesheets (`src/web/public/styles/`)
 - Typography: system-ui sans-serif for UI, no thin weights (no `font-weight: 300`), design tokens at `:root`
 - One accent color throughout (`--accent`)
 - Unified spacing on a 4px grid
-- Source of truth is `MASTER-TODOS.md` at `/Users/naman/energy/wikimem/`
+- Propose changes through issues and pull requests (see `CONTRIBUTING.md`)
 
 ## Invocation Recipes for Claude Code
 
@@ -214,15 +222,13 @@ Every flow ends by telling the user the vault path it operated on and the next o
 
 | Resource | Path / URL |
 |----------|------------|
-| Master TODOs (source of truth) | `/Users/naman/energy/wikimem/MASTER-TODOS.md` |
-| WikiMem Bible (product vision) | `/Users/naman/energy/wikimem/WIKIMEM-BIBLE.md` |
-| Design system | `/Users/naman/llmwiki/docs/DESIGN-SYSTEM.md` |
-| Competitor UX audit | `/Users/naman/energy/wikimem/COMPETITOR-UX-2026-04-17.md` |
-| Design audit | `/Users/naman/energy/wikimem/DESIGN-AUDIT-2026-04-17.md` |
-| CHANGELOG | `/Users/naman/llmwiki/CHANGELOG.md` |
+| Agent instructions | `AGENTS.md` |
+| Architecture | `docs/architecture.md` |
+| Configuration | `docs/configuration.md` |
+| Connector architecture | `docs/connector-architecture-reference.md` |
+| CHANGELOG | `CHANGELOG.md` |
 | npm | `https://www.npmjs.com/package/wikimem` |
 | GitHub | `https://github.com/naman10parikh/wikimem` |
-| Launch drafts | `/Users/naman/llmwiki/launch-drafts/` |
 
 ## Installation Flow (one-liner for new Claude Code users)
 
@@ -238,7 +244,7 @@ cp "$(npm root -g)/wikimem/skills/wikimem/SKILL.md" ~/.claude/skills/wikimem/
 wikimem init ~/my-wiki
 
 # 3. set API key in your shell profile
-echo 'export WIKIMEM_ANTHROPIC_API_KEY="sk-..."' >> ~/.zshrc
+echo 'export ANTHROPIC_API_KEY="sk-..."' >> ~/.zshrc
 
 # 4. start using it
 wikimem serve --vault ~/my-wiki --port 3456 &

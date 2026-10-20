@@ -20,9 +20,11 @@
   ],
   "scripts": {
     "build": "tsc && chmod +x dist/index.js && rm -rf dist/web/public && cp -r src/web/public dist/web/ 2>/dev/null; cp src/core/mcp-client/known-servers.json dist/core/mcp-client/known-servers.json 2>/dev/null || true",
+    "prepare": "npm run build",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",
+    "eval": "node eval/run.mjs",
     "lint": "tsc --noEmit",
     "prepublishOnly": "pnpm build && pnpm test"
   },
@@ -40,10 +42,20 @@
     "personal-wiki",
     "claude",
     "openai",
-    "ollama"
+    "ollama",
+    "agent-native",
+    "agent-memory",
+    "mcp",
+    "mcp-server",
+    "claude-code"
   ],
-  "author": "Naman Parikh <naman10parikh@gmail.com>",
+  "author": "Naman Parikh (https://github.com/naman10parikh)",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/naman10parikh/wikimem.git"
+  },
+  "homepage": "https://github.com/naman10parikh/wikimem#readme",
   "engines": {
     "node": ">=18.0.0"
   },

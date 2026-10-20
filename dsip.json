@@ -1,0 +1,16 @@
+{
+  "dsip": "0.1",
+  "product": "wikimem",
+  "levels": ["agent", "user"],
+  "loop": {
+    "cadence": "nightly",
+    "steps": ["observe", "score", "propose", "validate", "ship"]
+  },
+  "selection": "performance",
+  "eval": {
+    "rubric": "eval/run.mjs (7 golden tasks, binary, pass^3) and tests/ (Vitest); the observer's page scores inside each vault",
+    "gate": "pnpm test and pnpm eval pass; a lower eval score blocks the change; a person merges every change"
+  },
+  "snapback": { "granularity": ["skill", "employee"], "vcs": "git" },
+  "externalIntelligence": { "enabled": true, "source": "the scrape automation (RSS, GitHub search and URLs configured per vault)" }
+}

@@ -1,0 +1,3 @@
+# Reviewed false positives (CP158). Each line is a gitleaks fingerprint for a finding that is not a secret.
+# docs/planning/MASTER-TODOS.md:1606 is prose about keyboard keys ("keys navigate"), not a key.
+e594bbfd54edff7b549443fedcca9228c686bc7c:docs/planning/MASTER-TODOS.md:generic-api-key:1606

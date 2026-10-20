@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
  * CEO vibe-audit script — screenshots every WikiMem surface + captures console errors.
- * Runs against localhost:3456. Writes to /Users/naman/energy/content/screenshots/wikimem-audit-2026-04-24/.
+ * Runs against localhost:3456. Writes to $WIKIMEM_AUDIT_OUT, or screenshots/wikimem-audit under the current folder.
  * Usage: node scripts/vibe-audit.mjs [round-tag]
  */
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
-const OUT = '/Users/naman/energy/content/screenshots/wikimem-audit-2026-04-24';
+const OUT = process.env.WIKIMEM_AUDIT_OUT ?? 'screenshots/wikimem-audit';
 const BASE = 'http://localhost:3456';
 const round = process.argv[2] || `r${Date.now().toString().slice(-4)}`;
 

@@ -1,0 +1,17 @@
+{
+  "name": "wikimem",
+  "owner": {
+    "name": "Naman Parikh",
+    "url": "https://github.com/naman10parikh"
+  },
+  "metadata": {
+    "description": "WikiMem: self-improving memory for agents, as a Claude Code plugin (skills, sub-agents, a vault hook and an MCP server)."
+  },
+  "plugins": [
+    {
+      "name": "wikimem",
+      "source": "./",
+      "description": "Self-improving memory for agents: ingest anything, query everything."
+    }
+  ]
+}

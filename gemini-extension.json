@@ -1,0 +1,17 @@
+{
+  "name": "wikimem",
+  "version": "0.10.0",
+  "description": "Self-improving memory for agents: ingest anything, query everything.",
+  "contextFileName": "GEMINI.md",
+  "mcpServers": {
+    "wikimem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "-p",
+        "github:naman10parikh/wikimem",
+        "wikimem-mcp"
+      ]
+    }
+  }
+}

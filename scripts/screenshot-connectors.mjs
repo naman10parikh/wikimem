@@ -5,7 +5,9 @@ await page.goto('http://localhost:3456/', { waitUntil: 'domcontentloaded', timeo
 await page.waitForTimeout(1200);
 await page.click('#rail-connectors');
 await page.waitForTimeout(2500);
-await page.screenshot({ path: '/Users/naman/energy/content/screenshots/wikimem-audit-2026-04-24/connectors-concierge-v2.png', fullPage: false });
+// Output folder: WIKIMEM_AUDIT_OUT if set, else screenshots/wikimem-audit under the current folder.
+const out = process.env.WIKIMEM_AUDIT_OUT ?? 'screenshots/wikimem-audit';
+await page.screenshot({ path: `${out}/connectors-concierge-v2.png`, fullPage: false });
 const inputPresent = await page.isVisible('#mcp-server-url');
 const btnPresent = await page.isVisible('#mcp-server-connect');
 const listPresent = await page.isVisible('#mcp-connected-servers');

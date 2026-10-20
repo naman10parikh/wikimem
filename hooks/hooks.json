@@ -1,0 +1,15 @@
+{
+  "description": "WikiMem plugin hooks: tell the agent when a session opens inside a WikiMem vault.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/vault-context.mjs\""
+          }
+        ]
+      }
+    ]
+  }
+}

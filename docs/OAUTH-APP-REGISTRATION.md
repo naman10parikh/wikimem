@@ -398,7 +398,7 @@ Replace `YOUR_JIRA_CLIENT_ID` and `YOUR_JIRA_CLIENT_SECRET` with the actual valu
 Once you've pasted all credentials into `src/core/oauth-defaults.ts`, build, test, and publish:
 
 ```bash
-cd /Users/naman/llmwiki
+cd wikimem   # your clone of this repository
 
 # Build and verify
 pnpm build

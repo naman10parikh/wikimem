@@ -1,0 +1,36 @@
+{
+  "name": "Codex",
+  "description": "Self-improving memory for agents: ingest anything, query everything.",
+  "url": "https://github.com/naman10parikh/wikimem",
+  "version": "0.10.0",
+  "provider": {
+    "organization": "Naman Parikh",
+    "url": "https://github.com/naman10parikh"
+  },
+  "capabilities": {
+    "streaming": false
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "wikimem",
+      "name": "wikimem",
+      "description": "Use it to ingest, search, ask, sync a connector or expose a vault over MCP."
+    },
+    {
+      "id": "wikimem-ingest-pipeline",
+      "name": "wikimem-ingest-pipeline",
+      "description": "Use it to turn files, folders or URLs into linted, linked wiki pages, incrementally."
+    },
+    {
+      "id": "wikimem-observer",
+      "name": "wikimem-observer",
+      "description": "Use it to score every page, find weak, orphan and missing pages, and improve a budget-capped set."
+    }
+  ]
+}

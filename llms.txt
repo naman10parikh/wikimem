@@ -1,23 +1,40 @@
-# `wikimem`
+# WikiMem
 
-> Self-improving wiki IDE. Ingest anything. Query with any LLM. Three automations.
+> Self-improving memory for agents: ingest anything, query everything. A local-first Markdown wiki with a command line (`wikimem`), an MCP server (`wikimem-mcp`, 19 tools), three skills and a Claude Code plugin. Its agent employee is Codex.
 
-## Documentation
+WikiMem turns files, links and connected apps into linked wiki pages, answers questions from them with citations, and scores and improves its own pages with an observer loop. Every vault is a folder of Markdown files, a git repository and an Obsidian vault.
 
-- [README.md](README.md): Self-improving wiki IDE. Ingest anything. Query with any LLM. Three automations.
-- [AGENTS.md](AGENTS.md): How AI agents (Claude Code, sub-agents, the nightly observer) work inside this
-- [CLAUDE.md](CLAUDE.md): > Forged from the Energy harness formula via harness-forge. One repo = one recursively
-- [QUICKSTART.md](QUICKSTART.md): WikiMem is a self-improving local-first wiki IDE. Two ways in: use it as a tool, or
-- [CONTRIBUTING.md](CONTRIBUTING.md): Thanks for your interest in contributing. wikimem is an open-source project and we welcome contributions of all kinds.
-- [docs/OAUTH-APP-REGISTRATION.md](docs/OAUTH-APP-REGISTRATION.md)
-- [docs/agentdial-integration.md](docs/agentdial-integration.md)
-- [docs/architecture.md](docs/architecture.md)
-- [docs/competitive-landscape.md](docs/competitive-landscape.md)
-- [docs/configuration.md](docs/configuration.md)
-- [docs/connector-architecture-reference.md](docs/connector-architecture-reference.md)
-- [docs/value-prop-claude-code.md](docs/value-prop-claude-code.md)
+## Start here
 
-## Notes
+- [AGENTS.md](AGENTS.md): what it does, every tool and how to call it, what not to do
+- [README.md](README.md): install from any coding agent, quick start, how it works
+- [SOUL.md](identity/SOUL.md): Codex, the agent employee behind WikiMem: persona, boundaries, operating model
 
-- This file follows the llms.txt convention (https://llmstxt.org) so AI agents can
-  discover this repo's docs without scraping. Generated from the README + key docs.
+## Skills
+
+- [wikimem](skills/wikimem/SKILL.md): ingest, search, ask, sync a connector, or expose a vault over MCP
+- [wikimem-ingest-pipeline](skills/wikimem-ingest-pipeline/SKILL.md): turn files, folders or URLs into linted, linked pages, incrementally
+- [wikimem-observer](skills/wikimem-observer/SKILL.md): score every page, find weak and missing pages, improve a budget-capped set
+
+## MCP tools
+
+- [MCP server over stdio](src/mcp-server.ts): wikimem_search, wikimem_read, wikimem_list, wikimem_status, wikimem_ask, wikimem_ingest, wikimem_ingest_url, wikimem_pipeline, wikimem_scrape, wikimem_observe, wikimem_run_observer, wikimem_get_report, wikimem_improve, wikimem_lint, wikimem_connectors, wikimem_list_connectors, wikimem_connect, wikimem_sync, wikimem_preview
+- [MCP over HTTP with OAuth 2.1](src/mcp/http-server.ts): the same tools at `/mcp` when `wikimem serve` runs
+- [Claude Code plugin](.claude-plugin/plugin.json): skills, sub-agents, a vault hook and the MCP server in one install
+- [A2A agent card](.well-known/agent-card.json): name, description and skills for agent-to-agent discovery
+
+## Docs
+
+- [Architecture](docs/architecture.md): the raw and wiki layers and the three automations
+- [Configuration](docs/configuration.md): `config.yaml`, providers, sources and schedules
+- [Connector architecture](docs/connector-architecture-reference.md): how connectors sync into a vault
+- [OAuth app registration](docs/OAUTH-APP-REGISTRATION.md): registering your own OAuth apps for connectors
+- [Evals](eval/README.md): the golden tasks (`pnpm eval`) and the weekly self-review
+- [Self-improvement contract](dsip.json): the loop, its evals and how a change is rolled back
+
+## Optional
+
+- [Heartbeat](identity/HEARTBEAT.md): what runs on a schedule and what happens when it fails
+- [Memory](memory/MEMORY.md): long-term facts; [LEARNINGS.md](memory/LEARNINGS.md) holds corrections that became rules
+- [CHANGELOG.md](CHANGELOG.md): release history
+- [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md)

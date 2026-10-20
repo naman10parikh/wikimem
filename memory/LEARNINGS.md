@@ -25,3 +25,18 @@ Every error → root cause → rule. Auto-compressed when >500 lines (memory-com
   `memory/`) was layered on top of WikiMem without touching `src/`, `tests/`, `docs/`.
 - **Rule:** Adding the harness must never modify product code; the eval gate
   (`pnpm build && pnpm test && wikimem --help`, 123 tests) proves zero regression.
+
+## 2026-10-19 — Docs that name a setting the code never reads
+
+- **What:** the README told users to set `WIKIMEM_VAULT` for the MCP server, and the `wikimem` skill told them to
+  set `WIKIMEM_ANTHROPIC_API_KEY`. The code reads neither: the server uses `--vault` (or the current folder) and the
+  providers read `ANTHROPIC_API_KEY`.
+- **Rule:** before a doc names an environment variable or a flag, grep `src/` for it. A golden eval now runs the
+  real commands (`pnpm eval`), so a doc example can be checked against the binary.
+
+## 2026-10-19 — Lint and the observer resolve wikilinks by title only
+
+- **What:** a page linking `[[rag]]` to `rag.md` (title "RAG") is reported as a broken link and leaves `rag.md` an
+  orphan, although Obsidian resolves it by file name. Pages WikiMem writes link by title, so its own output is fine.
+- **Rule:** open item for the improvement loop: resolve a wikilink by title or by file name, case-insensitively,
+  in `src/core/lint.ts` and `src/core/observer.ts`, and add an eval task with a file-name link first.

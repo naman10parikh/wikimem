@@ -1,0 +1,47 @@
+name: Improve
+
+# WikiMem's self-improvement loop for this repository. Weekly (and on demand) it builds, runs the tests and the
+# golden evals, points WikiMem at the repository's own notes, and writes a proposals report to the run summary and
+# as an artifact. It needs no secret, writes nothing back to the repository and never merges.
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  self-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - run: pnpm test
+
+      - name: Evals and proposals
+        run: node eval/propose.mjs proposals.md
+
+      - name: Publish the proposals
+        if: always()
+        run: test -f proposals.md && cat proposals.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: proposals
+          path: proposals.md
+          if-no-files-found: ignore

@@ -7,23 +7,25 @@
 WikiMem already ships a real, runnable eval surface. This directory documents it and
 gives the agent (and any contributor) one place to learn how to prove a change is safe.
 
-## The three eval layers
+## The eval layers
 
 | Layer | What it checks | Command | Cost | When |
 | ----- | -------------- | ------- | ---- | ---- |
 | 1. Unit + integration | Core logic: ingest, OAuth/MCP client, connectors, observer budget, source manifest | `pnpm test` | $0 | After every change (regression gate) |
 | 2. Build | TypeScript compiles, CLI bin is executable, web assets copy | `pnpm build` | $0 | Before any commit |
-| 3. Live UI vibe-audit | The running server renders every page-shell route with no console errors | `node scripts/vibe-audit.mjs <round-tag>` | ~browser | Before a release or after UI work |
+| 3. Golden tasks | Seven behaviours, each pass or fail, each run three times (pass^3): init, BM25 search, lint, status, observer, MCP over stdio, the DSIP contract. Offline; LLM keys are removed | `pnpm eval` (`node eval/run.mjs`) | $0 | Every change; CI gates on it |
+| 4. Live UI vibe-audit | The running server renders every page-shell route with no console errors | `node scripts/vibe-audit.mjs <round-tag>` | ~browser | Before a release or after UI work |
 
 ## The gate (run in order)
 
 ```bash
 pnpm build          # 0 TypeScript errors
 pnpm test           # all tests pass — this is THE regression gate
+pnpm eval           # all golden tasks pass, three runs each
 wikimem --help      # CLI still responds (smoke test of the bin entry)
 ```
 
-Only when all three are green is a change eligible to ship. This mirrors the inherited
+Only when all four are green is a change eligible to ship. This mirrors the inherited
 `test-before-signal` and `qa-zero-tolerance` rules in `.claude/rules/`.
 
 ## Eval-as-immune-system
@@ -37,6 +39,10 @@ itself.
 ## Where the actual evals live
 
 - `tests/` — the Vitest suites (the layer-1 gate).
+- `eval/run.mjs` — the golden tasks (layer 3); `--json` prints machine-readable results.
+- `eval/propose.mjs` — the weekly self-review: runs the golden tasks, points WikiMem at this repository's own
+  notes (`brain/`) and writes proposed fixes. `.github/workflows/improve.yml` runs it every Monday and on demand;
+  it never merges.
 - `scripts/vibe-audit.mjs` — the canonical live UI audit (layer 3). Captures screenshots
   for every route and records console errors to a JSON report.
 - `vitest.config.ts` — test runner config.

@@ -32,7 +32,7 @@
 ## Gap 4 — npm Launch Drafts
 
 - [x] **HARNESS-030** (2026-06-03): Wrote `launch-drafts/2026-06-03-v0.10.0-npm.md` — publish checklist, `npm publish` command, post-publish verification steps, changelog excerpt, and platform post talking points for v0.10.0. Does NOT publish — chairman must run `npm login` and `npm publish` (see chairmanBlocked).
-- [ ] **HARNESS-031**: Chairman action — run `npm login` (as the wikimem account or naman10parikh), then `npm publish --access public` from `/Users/naman/llmwiki`. See `launch-drafts/2026-06-03-v0.10.0-npm.md` for the full checklist.
+- [ ] **HARNESS-031**: Chairman action — run `npm login` (as the wikimem account or naman10parikh), then `npm publish --access public` from the repository root. See `launch-drafts/2026-06-03-v0.10.0-npm.md` for the full checklist.
 - [ ] **HARNESS-032**: After publish: update `launch-drafts/INDEX.md` with v0.10.0 asset and update key numbers (44 connectors, 19 MCP tools, `wikimem observe`).
 
 ## Remaining Open Gaps (not closed in this pass)
