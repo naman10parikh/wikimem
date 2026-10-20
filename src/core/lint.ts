@@ -1,6 +1,6 @@
 import type { LLMProvider } from '../providers/types.js';
 import type { VaultConfig } from './vault.js';
-import { listWikiPages, readWikiPage } from './vault.js';
+import { listWikiPages, readWikiPage, wikilinkTarget } from './vault.js';
 import { basename } from 'node:path';
 import { flagContradictions } from './observer.js';
 
@@ -23,7 +23,7 @@ interface LintOptions {
 
 // A wikilink names a page by its title or its file name, in any case, and may carry an |alias or a #heading
 // (Obsidian's rules), so links and pages are compared on this key.
-const linkKey = (link: string): string => (link.split('|')[0] ?? '').split('#')[0]!.trim().toLowerCase();
+const linkKey = (link: string): string => wikilinkTarget(link).toLowerCase();
 
 export async function lintWiki(
   config: VaultConfig,
@@ -84,7 +84,8 @@ export async function lintWiki(
   // Check 2: Broken wikilinks (link to non-existent page)
   for (const page of pageData) {
     for (const link of page.wikilinks) {
-      if (!allTitles.has(linkKey(link))) {
+      const key = linkKey(link);
+      if (key && !allTitles.has(key)) {
         issues.push({
           category: 'missing-link',
           severity: 'warning',

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { VaultConfig } from './vault.js';
-import { listWikiPages, readWikiPage } from './vault.js';
+import { listWikiPages, readWikiPage, wikilinkTarget } from './vault.js';
 import { basename, extname } from 'node:path';
 
 /**
@@ -186,7 +186,9 @@ export function generateGraphHint(config: VaultConfig): GraphHint {
         type,
         linkCount: page.wikilinks.length,
       });
-      for (const link of page.wikilinks) {
+      for (const raw of page.wikilinks) {
+        const link = wikilinkTarget(raw);
+        if (!link) continue; // [[#heading]] points inside this page
         edges.push({ source: page.title, target: link });
         linkedTo.add(link);
       }

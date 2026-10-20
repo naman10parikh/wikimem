@@ -3,7 +3,7 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync, readdirSync, statSy
 import { join, resolve, extname, basename, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
-import { getVaultConfig, getVaultStats, ensureVaultDirs, listWikiPages, readWikiPage, writeWikiPage, readPageVersions } from '../core/vault.js';
+import { getVaultConfig, getVaultStats, ensureVaultDirs, listWikiPages, readWikiPage, writeWikiPage, readPageVersions, wikilinkTarget } from '../core/vault.js';
 import type { VaultConfig } from '../core/vault.js';
 import { getBundledCredentials, getBundledDeviceFlowClientId, hasBundledDefaults } from '../core/oauth-defaults.js';
 import type { UserConfig } from '../core/config.js';
@@ -36,7 +36,7 @@ interface GraphData {
 // In-memory cache for /api/graph — invalidated when wiki dir mtime changes
 let graphCache: { data: GraphData; mtime: number } | null = null;
 
-function buildGraph(config: VaultConfig): GraphData {
+export function buildGraph(config: VaultConfig): GraphData {
   const pages = listWikiPages(config.wikiDir);
   const nodesMap = new Map<string, GraphNode>();
   const titleToId = new Map<string, string>();
@@ -64,11 +64,14 @@ function buildGraph(config: VaultConfig): GraphData {
     titleToId.set(page.title, id);
     titleToId.set(page.title.toLowerCase(), id);
     titleToId.set(id, id);
+    titleToId.set(id.toLowerCase(), id);
   }
 
   // Resolve wikilinks using title, lowercase title, or slugified title
   for (const { id: sourceId, page } of pageData) {
-    for (const link of page.wikilinks) {
+    for (const raw of page.wikilinks) {
+      const link = wikilinkTarget(raw);
+      if (!link) continue; // [[#heading]] points inside this page
       const targetId = titleToId.get(link)
         ?? titleToId.get(link.toLowerCase())
         ?? titleToId.get(link.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));

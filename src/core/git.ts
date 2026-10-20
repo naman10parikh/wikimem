@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { simpleGit, type SimpleGit, type StatusResult } from 'simple-git';
 import type { VaultConfig } from './vault.js';
+import { wikilinkTarget } from './vault.js';
 
 export interface GitConfig {
   enabled: boolean;
@@ -702,13 +703,15 @@ export async function getGraphAtCommit(
         const linkRegex = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
         let match;
         while ((match = linkRegex.exec(content)) !== null) {
-          if (match[1]) wikilinks.push(match[1]);
+          const target = wikilinkTarget(match[1] ?? ''); // '' for [[#heading]] on the same page
+          if (target) wikilinks.push(target);
         }
 
         pageData.push({ id, title, category, wikilinks });
         titleToId.set(title, id);
         titleToId.set(title.toLowerCase(), id);
         titleToId.set(id, id);
+        titleToId.set(id.toLowerCase(), id);
       } catch {
         // file may not exist at this commit
       }

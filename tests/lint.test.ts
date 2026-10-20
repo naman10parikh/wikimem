@@ -119,6 +119,17 @@ describe('lint', () => {
     expect(result.issues.filter((i) => i.category === 'orphan' && i.page?.endsWith('rag.md'))).toHaveLength(0);
   });
 
+  it('does not call a link to a heading on the same page broken', async () => {
+    const config = getVaultConfig(TEST_ROOT);
+    writeWikiPage(join(config.wikiDir, 'guide.md'), 'Start here, then read [[#Limits]] below.\n\n## Limits\n\nSome.', {
+      title: 'Guide',
+      summary: 'A page that links to its own heading',
+    });
+
+    const result = await lintWiki(config, stubProvider, { fix: false });
+    expect(result.issues.filter((i) => i.category === 'missing-link')).toHaveLength(0);
+  });
+
   it('detects empty pages (< 10 words)', async () => {
     const config = getVaultConfig(TEST_ROOT);
     writeWikiPage(join(config.wikiDir, 'tiny.md'), 'Short.', {

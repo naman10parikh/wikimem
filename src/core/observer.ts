@@ -18,7 +18,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import cron from 'node-cron';
-import { listWikiPages, readWikiPage } from './vault.js';
+import { listWikiPages, readWikiPage, wikilinkTarget } from './vault.js';
 import type { VaultConfig } from './vault.js';
 import { appendAuditEntry } from './audit-trail.js';
 import { runKarp003 } from './observer-patterns/karp-003-categorize.js';
@@ -316,7 +316,9 @@ function findGaps(pagePaths: string[]): KnowledgeGap[] {
   for (const p of pagePaths) {
     try {
       const page = readWikiPage(p);
-      for (const link of page.wikilinks) {
+      for (const raw of page.wikilinks) {
+        const link = wikilinkTarget(raw);
+        if (!link) continue; // [[#heading]] points inside this page
         const slug = link.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         if (!existingSlugs.has(slug) && !existingTitles.has(link.toLowerCase())) {
           const refs = missing.get(link) ?? [];
@@ -349,7 +351,7 @@ export function buildIncomingLinksMap(pagePaths: string[]): Map<string, number> 
     try {
       const page = readWikiPage(p);
       titleToSlug.set(page.title.toLowerCase(), slug);
-      titleToSlug.set(slug, slug);
+      titleToSlug.set(slug.toLowerCase(), slug);
     } catch { /* skip */ }
   }
 
@@ -358,7 +360,9 @@ export function buildIncomingLinksMap(pagePaths: string[]): Map<string, number> 
   for (const p of pagePaths) {
     try {
       const page = readWikiPage(p);
-      for (const link of page.wikilinks) {
+      for (const raw of page.wikilinks) {
+        const link = wikilinkTarget(raw);
+        if (!link) continue; // [[#heading]] points inside this page
         const slug =
           titleToSlug.get(link.toLowerCase()) ??
           titleToSlug.get(link.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
@@ -413,12 +417,13 @@ function discoverUnexpected(
   const titleToSlug = new Map<string, string>();
   for (const pd of pageDataCache) {
     titleToSlug.set(pd.title.toLowerCase(), pd.slug);
-    titleToSlug.set(pd.slug, pd.slug);
+    titleToSlug.set(pd.slug.toLowerCase(), pd.slug);
   }
 
   for (const pd of pageDataCache) {
     const neighbors = new Set<string>();
-    for (const link of pd.wikilinks) {
+    for (const raw of pd.wikilinks) {
+      const link = wikilinkTarget(raw);
       const target = titleToSlug.get(link.toLowerCase())
         ?? titleToSlug.get(link.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
       if (target && target !== pd.slug) neighbors.add(target);
@@ -1060,7 +1065,7 @@ function crossLinkDiscovery(pagePaths: string[]): CrossLinkOpportunity[] {
       const page = readWikiPage(p);
       const slug = basename(p, '.md');
       titleToSlug.set(page.title.toLowerCase(), slug);
-      titleToSlug.set(slug, slug);
+      titleToSlug.set(slug.toLowerCase(), slug);
     } catch { /* skip */ }
   }
 
@@ -1088,7 +1093,8 @@ function crossLinkDiscovery(pagePaths: string[]): CrossLinkOpportunity[] {
 
       // Resolve which slugs this page already links to
       const linkedSlugs = new Set<string>();
-      for (const link of page.wikilinks) {
+      for (const raw of page.wikilinks) {
+        const link = wikilinkTarget(raw);
         const target = titleToSlug.get(link.toLowerCase())
           ?? titleToSlug.get(link.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
         if (target) linkedSlugs.add(target);

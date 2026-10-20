@@ -198,6 +198,11 @@ export function extractWikilinks(content: string): string[] {
   return [...new Set(links)];
 }
 
+/** The page a wikilink names, without its |alias or #heading (Obsidian's rules); '' for [[#heading]] on the same page. */
+export function wikilinkTarget(link: string): string {
+  return (link.split('|')[0] ?? '').split('#')[0]!.trim();
+}
+
 export function getVaultStats(config: VaultConfig): VaultStats {
   const pages = listWikiPages(config.wikiDir);
   let totalWords = 0;
@@ -211,15 +216,15 @@ export function getVaultStats(config: VaultConfig): VaultStats {
     totalLinks += page.wikilinks.length;
     pageTitleMap.set(pagePath, page.title);
     for (const link of page.wikilinks) {
-      allLinked.add(link);
+      allLinked.add(wikilinkTarget(link).toLowerCase());
     }
   }
 
-  // Check both frontmatter title AND filename — wikilinks may use either
+  // Check both frontmatter title AND filename, in any case — wikilinks may use either
   const orphans = pages.filter((p) => {
     const fileName = basename(p, '.md');
     const title = pageTitleMap.get(p) ?? fileName;
-    return !allLinked.has(title) && !allLinked.has(fileName) && fileName !== 'index' && fileName !== 'log';
+    return !allLinked.has(title.toLowerCase()) && !allLinked.has(fileName.toLowerCase()) && fileName !== 'index' && fileName !== 'log';
   });
 
   const rawFiles = existsSync(config.rawDir)
